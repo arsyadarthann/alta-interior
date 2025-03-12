@@ -13,14 +13,13 @@ import {type NavItem, NavItemWithChildren} from '@/types';
 import { Link } from '@inertiajs/react';
 import {
     LayoutGrid,
-    Users,
     BookUser,
     Truck,
     Warehouse,
-    Utensils,
     Ticket,
+    ScrollText,
     ClipboardList,
-    PackageCheck, Receipt, ArrowDown, TrendingUp, Box
+    PackageCheck, Receipt, ArrowDown, TrendingUp, Box, Banknote
 } from 'lucide-react';
 import AppLogo from './app-logo';
 import {NavMainWithSubmenu} from "@/components/nav-group";
@@ -49,33 +48,6 @@ export function AppSidebar() {
             icon: Truck
         }
     ].filter(Boolean) as NavItem[];
-
-    const menuAndDiscountItems: NavItemWithChildren[] = [
-        {
-            title: 'Menu & Discounts',
-            url: '',
-            icon: Utensils,
-            children: [
-                {
-                    title: 'Category',
-                    url: '/categories',
-                },
-                {
-                    title: 'Modifier',
-                    url: '/modifiers',
-                },
-                {
-                    title: 'Menu',
-                    url: '/menus',
-                }
-            ]
-        },
-        {
-            title: 'Discount',
-            url: '/discounts',
-            icon: Ticket
-        }
-    ]
 
     const inventoryAndStockItems: NavItemWithChildren[] = [
         {
@@ -113,6 +85,10 @@ export function AppSidebar() {
                 {
                     title: 'Adjustment',
                     url: '/stock/adjustment',
+                },
+                {
+                    title: 'Transfer',
+                    url: '/stock/transfer',
                 }
             ]
         }
@@ -141,6 +117,34 @@ export function AppSidebar() {
                 {
                     title: 'Payments',
                     url: '/procurement/payments',
+                }
+            ]
+        }
+    ]
+
+    const salesItems: NavItemWithChildren[] = [
+        {
+            title: 'Sales Orders',
+            url: '/sales/orders',
+            icon: Ticket,
+        },
+        {
+            title: 'Waybill',
+            url: '/sales/waybills',
+            icon: ScrollText,
+        },
+        {
+            title: 'Receivables',
+            url: '',
+            icon: Banknote,
+            children: [
+                {
+                    title: 'Invoice',
+                    url: '/sales/invoices',
+                },
+                {
+                    title: 'Payments',
+                    url: '/sales/payments',
                 }
             ]
         }
@@ -191,9 +195,9 @@ export function AppSidebar() {
                 { (hasPermission('read_customer') || hasPermission('read_supplier')) && (
                     <NavMain items={customersAndSuppliersItems} title="Customers & Suppliers"/>
                 )}
-                <NavMainWithSubmenu items={menuAndDiscountItems} title="Menu & Discounts"/>
                 <NavMainWithSubmenu items={inventoryAndStockItems} title="Inventory & Stock"/>
                 <NavMainWithSubmenu items={procurementItems} title="Procurement"/>
+                <NavMainWithSubmenu items={salesItems} title="Sales"/>
                 <NavMain items={financeItems} title="Finance"/>
                 <NavMain items={reportItems} title="Reports"/>
             </SidebarContent>
