@@ -7,27 +7,22 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class Supplier extends Model
+class Customer extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $table = 'suppliers';
+    protected $table = 'customers';
 
     protected $fillable = [
         'name',
         'contact_name',
-        'email',
         'phone',
+        'email',
         'address',
     ];
 
-    public function purchaseOrders(): HasMany
+    public function customerPrices(): HasMany
     {
-        return $this->hasMany(PurchaseOrder::class, 'supplier_id', 'id');
-    }
-
-    public function goodsReceipts(): HasMany
-    {
-        return $this->hasMany(GoodsReceipt::class, 'supplier_id', 'id');
+        return $this->hasMany(CustomerPrice::class, 'customer_id', 'id');
     }
 }
