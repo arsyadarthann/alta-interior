@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use App\Trait\PolymorphicStockMovements;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class WaybillDetail extends Model
 {
-    use HasFactory;
+    use HasFactory, PolymorphicStockMovements;
 
     protected $table = 'waybill_details';
 

@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('stock_movements', function (Blueprint $table) {
             $table->id();
             $table->unsignedSmallInteger('branch_id');
-            $table->foreignId('item_id')->constrained('items');
+            $table->foreignId('item_batch_id')->constrained('item_batches');
             $table->enum('type', ['in', 'out', 'increased', 'decreased', 'balanced']);
             $table->decimal('previous_quantity', 15, 2);
             $table->decimal('movement_quantity', 15, 2);

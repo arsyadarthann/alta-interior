@@ -31,6 +31,6 @@ trait PolymorphicStockMovements
 
     public function getStockMovements(array $columns = ['*']): Collection
     {
-        return $this->stockMovements()->with('item')->select($columns)->get();
+        return $this->stockMovements()->with('itemBatch')->select($columns)->get();
     }
 }

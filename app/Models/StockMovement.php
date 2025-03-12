@@ -35,9 +35,9 @@ class StockMovement extends Model
         return $this->belongsTo(Branch::class, 'branch_id', 'id');
     }
 
-    public function item(): BelongsTo
+    public function itemBatch(): BelongsTo
     {
-        return $this->belongsTo(Item::class, 'item_id', 'id');
+        return $this->belongsTo(ItemBatch::class, 'item_batch_id', 'id');
     }
 
     public function referenceable(): MorphTo

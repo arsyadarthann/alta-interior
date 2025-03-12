@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use App\Trait\PolymorphicStockMovements;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class StockTransferDetail extends Model
 {
-    use HasFactory;
+    use HasFactory, PolymorphicStockMovements;
 
     protected $table = 'stock_transfer_details';
 
