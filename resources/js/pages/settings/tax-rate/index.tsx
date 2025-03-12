@@ -5,7 +5,7 @@ import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import HeadingSmall from '@/components/heading-small';
 import { useToastNotification } from "@/hooks/use-toast-notification";
-import {ColumnDef, Row} from "@tanstack/react-table";
+import { ColumnDef, Row } from "@tanstack/react-table";
 import { createNumberColumn } from "@/components/data-table/columns";
 import { ActionColumn } from "@/components/data-table/action-column";
 import { Pencil, Trash2 } from "lucide-react";
@@ -15,77 +15,85 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { usePermissions } from "@/hooks/use-permissions";
 
-type Permission = {
+type TaxRate = {
     id: number;
-    name: string;
+    rate: number;
 }
 
 interface Props {
-    permissions: Permission[];
-    editingPermission?: Permission;
+    taxRates: TaxRate[];
+    editingTaxRate?: TaxRate;
 }
 
-export default function Permission({ permissions, editingPermission }: Props) {
+export default function TaxRate({ taxRates, editingTaxRate }: Props) {
     const { hasPermission } = usePermissions();
     const { showErrorToast } = useToastNotification();
 
     const createForm = useForm({
-        name: '',
+        rate: '',
     });
 
     const editForm = useForm({
-        name: editingPermission?.name || '',
+        rate: editingTaxRate ?
+            (editingTaxRate.rate % 1 === 0 ?
+                    Math.floor(editingTaxRate.rate).toString() :
+                    editingTaxRate.rate.toString()
+            ) : '',
     });
 
     const handleCreateSubmit = (e: { preventDefault: () => void; }) => {
         e.preventDefault();
-        createForm.post(route('permissions.store'), {
+        createForm.post(route('tax-rates.store'), {
             preserveScroll: true,
             onError: showErrorToast,
             onSuccess: () => {
-                createForm.reset('name');
+                createForm.reset('rate');
             }
         });
     };
 
     const handleEditSubmit = (e: { preventDefault: () => void; }) => {
         e.preventDefault();
-        if (!editingPermission) return;
+        if (!editingTaxRate) return;
 
-        editForm.put(route('permissions.update', editingPermission.id), {
+        editForm.put(route('tax-rates.update', editingTaxRate.id), {
             preserveScroll: true,
             onError: showErrorToast
         });
     };
 
-    const orderedPermissions = [...permissions].sort((a, b) => {
-        if (a.id === editingPermission?.id) return -1;
-        if (b.id === editingPermission?.id) return 1;
+    const orderedTaxRates = [...taxRates].sort((a, b) => {
+        if (a.id === editingTaxRate?.id) return -1;
+        if (b.id === editingTaxRate?.id) return 1;
         return 0;
     });
 
-
-    const columns: ColumnDef<Permission>[] = [
-        createNumberColumn<Permission>(),
+    const columns: ColumnDef<TaxRate>[] = [
+        createNumberColumn<TaxRate>(),
         {
-            accessorKey: "name",
-            header: "Name",
-            cell: ({ row }: { row : Row<Permission>}) => row.original.name
+            accessorKey: "rate",
+            header: "Rate (%)",
+            cell: ({ row }: { row: Row<TaxRate> }) => {
+                const rate = row.original.rate;
+                // Check if the decimal part is .00
+                const formattedRate = rate % 1 === 0 ? Math.floor(rate) : rate;
+                return `${formattedRate}%`;
+            }
         },
-        (hasPermission('update_permission') || hasPermission('delete_permission')) && (
-            ActionColumn<Permission>({
+        (hasPermission('update_tax_rate') || hasPermission('delete_tax_rate')) && (
+            ActionColumn<TaxRate>({
                 hasPermission: hasPermission,
-                isHighlighted: (permission) => permission.id === editingPermission?.id,
-                actions: (permission) => [
+                isHighlighted: (taxRate) => taxRate.id === editingTaxRate?.id,
+                actions: (taxRate) => [
                     {
                         label: "Edit",
                         icon: <Pencil className="h-4 w-4" />,
-                        onClick: (data) => router.visit(route('permissions.index', {
+                        onClick: (data) => router.visit(route('tax-rates.index', {
                             id: data.id
                         }), {
                             preserveScroll: true
                         }),
-                        permission: 'update_permission',
+                        permission: 'update_tax_rate',
                     },
                     {
                         label: "Delete",
@@ -93,46 +101,47 @@ export default function Permission({ permissions, editingPermission }: Props) {
                         className: "text-red-600",
                         showConfirmDialog: true,
                         confirmDialogProps: {
-                            title: "Delete Permission",
-                            description: `This action cannot be undone. This will permanently delete ${permission.name}.`,
+                            title: "Delete Tax Rate",
+                            description: `This action cannot be undone. This will permanently delete ${taxRate.rate}% tax rate.`,
                         },
                         onClick: (data) => {
-                            router.delete(route('permissions.destroy', data.id), {
+                            router.delete(route('tax-rates.destroy', data.id), {
                                 preserveScroll: true,
                             });
                         },
-                        permission: 'delete_permission',
+                        permission: 'delete_tax_rate',
                     }
                 ],
             })
         )
-    ].filter(Boolean) as ColumnDef<Permission>[];
+    ].filter(Boolean) as ColumnDef<TaxRate>[];
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Permissions" />
+            <Head title="Tax Rate" />
 
             <SettingsLayout>
                 <div className="space-y-6">
                     <HeadingSmall
-                        title="Permissions"
-                        description="Manage your permissions."
+                        title="Tax Rate"
+                        description="Manage your tax rate."
                     />
 
-                    {editingPermission ? (
+                    {editingTaxRate ? (
                         <form onSubmit={handleEditSubmit} className="mb-6">
                             <div className="flex items-center gap-4">
                                 <div className="flex-grow">
-                                    <Label htmlFor="edit_name" className="sr-only">
-                                        Permission Name
+                                    <Label htmlFor="edit_rate" className="sr-only">
+                                        Tax Rate
                                     </Label>
                                     <Input
-                                        id="edit_name"
-                                        type="text"
-                                        value={editForm.data.name}
-                                        onChange={e => editForm.setData('name', e.target.value)}
-                                        placeholder="Enter permission name"
-                                        className={editForm.errors.name ? "border-red-500 ring-red-100" : ""}
+                                        id="edit_rate"
+                                        type="number"
+                                        step="0.01"
+                                        value={editForm.data.rate}
+                                        onChange={e => editForm.setData('rate', e.target.value)}
+                                        placeholder="Enter tax rate percentage"
+                                        className={editForm.errors.rate ? "border-red-500 ring-red-100" : ""}
                                     />
                                 </div>
                                 <div className="flex items-center gap-2">
@@ -146,7 +155,7 @@ export default function Permission({ permissions, editingPermission }: Props) {
                                     <Button
                                         type="button"
                                         variant="outline"
-                                        onClick={() => router.visit(route('permissions.index'))}
+                                        onClick={() => router.visit(route('tax-rates.index'))}
                                     >
                                         Cancel
                                     </Button>
@@ -154,20 +163,21 @@ export default function Permission({ permissions, editingPermission }: Props) {
                             </div>
                         </form>
                     ) : (
-                        hasPermission('create_permission') && (
+                        hasPermission('create_tax_rate') && (
                             <form onSubmit={handleCreateSubmit} className="mb-6">
                                 <div className="flex items-center gap-4">
                                     <div className="flex-grow">
-                                        <Label htmlFor="name" className="sr-only">
-                                            Permission Name
+                                        <Label htmlFor="rate" className="sr-only">
+                                            Tax Rate
                                         </Label>
                                         <Input
-                                            id="name"
-                                            type="text"
-                                            value={createForm.data.name}
-                                            onChange={e => createForm.setData('name', e.target.value)}
-                                            placeholder="Enter permission name"
-                                            className={createForm.errors.name ? "border-red-500 ring-red-100" : ""}
+                                            id="rate"
+                                            type="number"
+                                            step="0.01"
+                                            value={createForm.data.rate}
+                                            onChange={e => createForm.setData('rate', e.target.value)}
+                                            placeholder="Enter tax rate percentage"
+                                            className={createForm.errors.rate ? "border-red-500 ring-red-100" : ""}
                                         />
                                     </div>
                                     <Button
@@ -175,7 +185,7 @@ export default function Permission({ permissions, editingPermission }: Props) {
                                         disabled={createForm.processing}
                                         className="px-8"
                                     >
-                                        {createForm.processing ? 'Creating...' : 'Create Permission'}
+                                        {createForm.processing ? 'Creating...' : 'Create Tax Rate'}
                                     </Button>
                                 </div>
                             </form>
@@ -184,9 +194,9 @@ export default function Permission({ permissions, editingPermission }: Props) {
 
                     <DataTable
                         columns={columns}
-                        data={orderedPermissions}
+                        data={orderedTaxRates}
                         rowClassName={(row) =>
-                            row.original.id === editingPermission?.id ?
+                            row.original.id === editingTaxRate?.id ?
                                 "bg-gray-200" : ""
                         }
                     />
@@ -198,7 +208,7 @@ export default function Permission({ permissions, editingPermission }: Props) {
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
-        title: 'Permissions',
-        href: route('permissions.index'),
+        title: 'Tax Rate',
+        href: route('tax-rates.index'),
     }
 ];

@@ -19,24 +19,14 @@ class PermissionRequest extends FormRequest
     protected function createRules(): array
     {
         return [
-            'name' => [
-                'required',
-                'string',
-                'max:255',
-                Rule::unique('permissions', 'name'),
-            ]
+            'name' => 'required|string|max:255|unique:permissions,name',
         ];
     }
 
     protected function updateRules(): array
     {
         return [
-            'name' => [
-                'required',
-                'string',
-                'max:255',
-                Rule::unique('permissions', 'name')->ignore($this->id)
-            ]
+            'name' => 'required|string|max:255|unique:permissions,name,' . $this->route('id'),
         ];
     }
 

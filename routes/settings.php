@@ -1,9 +1,12 @@
 <?php
 
+use App\Http\Controllers\Settings\BranchController;
 use App\Http\Controllers\Settings\PasswordController;
+use App\Http\Controllers\Settings\PaymentMethodController;
 use App\Http\Controllers\Settings\PermissionController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\RoleController;
+use App\Http\Controllers\Settings\TaxRateController;
 use App\Http\Controllers\Settings\UserController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -42,5 +45,28 @@ Route::middleware('auth')->group(function () {
         Route::put('/{id}', [UserController::class, 'update'])->middleware('permission:update_user')->name('users.update');
         Route::delete('/{id}', [UserController::class, 'destroy'])->middleware('permission:delete_user')->name('users.destroy');
         Route::patch('/{id}/reset-password', [UserController::class, 'resetPassword'])->middleware('permission:update_user')->name('users.reset-password');
+    });
+
+    Route::group(['prefix' => 'settings/branches'], function () {
+        Route::get('/', [BranchController::class, 'index'])->middleware('permission:read_branch')->name('branches.index');
+        Route::get('/create', [BranchController::class, 'create'])->middleware('permission:create_branch')->name('branches.create');
+        Route::post('/', [BranchController::class, 'store'])->middleware('permission:create_branch')->name('branches.store');
+        Route::get('/{id}/edit', [BranchController::class, 'edit'])->middleware('permission:update_branch')->name('branches.edit');
+        Route::put('/{id}', [BranchController::class, 'update'])->middleware('permission:update_branch')->name('branches.update');
+        Route::delete('/{id}', [BranchController::class, 'destroy'])->middleware('permission:delete_branch')->name('branches.destroy');
+    });
+
+    Route::group(['prefix' => 'settings/tax-rates'], function () {
+        Route::get('/', [TaxRateController::class, 'index'])->middleware('permission:read_tax_rate')->name('tax-rates.index');
+        Route::post('/', [TaxRateController::class, 'store'])->middleware('permission:create_tax_rate')->name('tax-rates.store');
+        Route::put('/{id}', [TaxRateController::class, 'update'])->middleware('permission:update_tax_rate')->name('tax-rates.update');
+        Route::delete('/{id}', [TaxRateController::class, 'destroy'])->middleware('permission:delete_tax_rate')->name('tax-rates.destroy');
+    });
+
+    Route::group(['prefix' => 'settings/payment-methods'], function () {
+        Route::get('/', [PaymentMethodController::class, 'index'])->middleware('permission:read_payment_method')->name('payment-methods.index');
+        Route::post('/', [PaymentMethodController::class, 'store'])->middleware('permission:create_payment_method')->name('payment-methods.store');
+        Route::put('/{id}', [PaymentMethodController::class, 'update'])->middleware('permission:update_payment_method')->name('payment-methods.update');
+        Route::delete('/{id}', [PaymentMethodController::class, 'destroy'])->middleware('permission:delete_payment_method')->name('payment-methods.destroy');
     });
 });

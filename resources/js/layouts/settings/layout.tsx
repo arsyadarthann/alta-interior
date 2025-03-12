@@ -25,22 +25,30 @@ export default function SettingsLayout({ children, fullWidth = false }: Settings
         {
             title: 'Password',
             url: '/settings/password',
-            icon: null,
         },
         hasPermission('read_permission') && {
             title: 'Permission',
             url: '/settings/permissions',
-            icon: null,
         },
         hasPermission('read_role') && {
             title: 'Role',
             url: '/settings/roles',
-            icon: null,
         },
-        {
+        hasPermission('read_user') && {
             title: 'User Account',
             url: '/settings/users',
-            icon: null,
+        },
+        hasPermission('read_branch') && {
+            title: 'Branch',
+            url: '/settings/branches',
+        },
+        {
+            title: 'Tax Rate',
+            url: '/settings/tax-rates',
+        },
+        {
+            title: 'Payment Method',
+            url: '/settings/payment-methods',
         }
     ].filter(Boolean) as NavItem[];
 

@@ -83,11 +83,13 @@ export default function Role({ roles } : Props) {
                             description="Manage your roles."
                         />
 
-                        <Button
-                            onClick={() => router.visit(route('roles.create'))}
-                        >
-                            Create Role
-                        </Button>
+                        { hasPermission('create_role') && (
+                            <Button
+                                onClick={() => router.visit(route('roles.create'))}
+                            >
+                                Create Role
+                            </Button>
+                        )}
                     </div>
 
                     <DataTable

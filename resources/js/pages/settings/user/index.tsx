@@ -119,11 +119,13 @@ export default function User({ users } : Props) {
                             description="Manage your user account."
                         />
 
-                        <Button
-                            onClick={() => router.visit(route('users.create'))}
-                        >
-                            Create User
-                        </Button>
+                        { hasPermission('create_user') && (
+                            <Button
+                                onClick={() => router.visit(route('users.create'))}
+                            >
+                                Create User
+                            </Button>
+                        )}
                     </div>
 
                     <DataTable
