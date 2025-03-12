@@ -8,7 +8,7 @@ import { useToastNotification } from "@/hooks/use-toast-notification";
 import {ColumnDef, Row} from "@tanstack/react-table";
 import { createNumberColumn } from "@/components/data-table/columns";
 import { ActionColumn } from "@/components/data-table/action-column";
-import { Pencil, Trash2} from "lucide-react";
+import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import { usePermissions } from "@/hooks/use-permissions";
@@ -105,7 +105,8 @@ export default function Branch({ branches } : Props) {
                             <Button
                                 onClick={() => router.visit(route('branches.create'))}
                             >
-                                Create Branch
+                                <Plus className="h-4 w-4" />
+                                Add Branch
                             </Button>
                         )}
                     </div>

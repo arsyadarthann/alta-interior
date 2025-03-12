@@ -14,12 +14,8 @@ class TaxRateController extends Controller
 
     public function index()
     {
-        $editingId = request()->query('id');
-        $editingTaxRate = $editingId ? $this->taxRate->getById($editingId) : null;
-
         return Inertia::render('settings/tax-rate/index', [
             'taxRates' => $this->taxRate->getAll(),
-            'editingTaxRate' => $editingTaxRate,
         ]);
     }
 

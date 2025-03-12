@@ -8,13 +8,13 @@ import { useToastNotification } from "@/hooks/use-toast-notification";
 import { ColumnDef, Row } from "@tanstack/react-table";
 import { createNumberColumn } from "@/components/data-table/columns";
 import { ActionColumn } from "@/components/data-table/action-column";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { DataTable } from "@/components/data-table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { usePermissions } from "@/hooks/use-permissions";
+import { FormDialog } from "@/components/form-dialog";
 
 type PaymentMethod = {
     id: number;
@@ -43,7 +43,7 @@ export default function PaymentMethod({ paymentMethods }: Props) {
         charge_percentage: '',
     });
 
-    const handleCreateSubmit = (e: { preventDefault: () => void }) => {
+    const handleCreateSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         createForm.post(route('payment-methods.store'), {
             preserveScroll: true,
@@ -55,7 +55,7 @@ export default function PaymentMethod({ paymentMethods }: Props) {
         });
     };
 
-    const handleEditSubmit = (e: { preventDefault: () => void }) => {
+    const handleEditSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedPaymentMethod) return;
 
@@ -98,33 +98,33 @@ export default function PaymentMethod({ paymentMethods }: Props) {
             },
         },
         (hasPermission('update_payment_method') || hasPermission('delete_payment_method')) &&
-            ActionColumn<PaymentMethod>({
-                hasPermission: hasPermission,
-                actions: (paymentMethod) => [
-                    {
-                        label: 'Edit',
-                        icon: <Pencil className="h-4 w-4" />,
-                        onClick: handleEditClick,
-                        permission: 'update_payment_method',
+        ActionColumn<PaymentMethod>({
+            hasPermission: hasPermission,
+            actions: (paymentMethod) => [
+                {
+                    label: 'Edit',
+                    icon: <Pencil className="h-4 w-4" />,
+                    onClick: handleEditClick,
+                    permission: 'update_payment_method',
+                },
+                {
+                    label: 'Delete',
+                    icon: <Trash2 className="h-4 w-4" />,
+                    className: 'text-red-600',
+                    showConfirmDialog: true,
+                    confirmDialogProps: {
+                        title: 'Delete Payment Method',
+                        description: `This action cannot be undone. This will permanently delete ${paymentMethod.name}.`,
                     },
-                    {
-                        label: 'Delete',
-                        icon: <Trash2 className="h-4 w-4" />,
-                        className: 'text-red-600',
-                        showConfirmDialog: true,
-                        confirmDialogProps: {
-                            title: 'Delete Payment Method',
-                            description: `This action cannot be undone. This will permanently delete ${paymentMethod.name}.`,
-                        },
-                        onClick: (data) => {
-                            router.delete(route('payment-methods.destroy', data.id), {
-                                preserveScroll: true,
-                            });
-                        },
-                        permission: 'delete_payment_method',
+                    onClick: (data) => {
+                        router.delete(route('payment-methods.destroy', data.id), {
+                            preserveScroll: true,
+                        });
                     },
-                ],
-            }),
+                    permission: 'delete_payment_method',
+                },
+            ],
+        }),
     ].filter(Boolean) as ColumnDef<PaymentMethod>[];
 
     return (
@@ -136,86 +136,91 @@ export default function PaymentMethod({ paymentMethods }: Props) {
                     <div className="flex items-center justify-between">
                         <HeadingSmall title="Payment Methods" description="Manage your payment methods." />
 
-                        {hasPermission('create_payment_method') && <Button onClick={() => setIsCreateModalOpen(true)}>Create Payment Method</Button>}
+                        {hasPermission('create_payment_method') && (
+                            <Button onClick={() => setIsCreateModalOpen(true)}>
+                                <Plus className="mr-2 h-4 w-4" />
+                                Add Payment Method
+                            </Button>
+                        )}
                     </div>
 
                     <DataTable columns={columns} data={paymentMethods} />
 
-                    <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-                        <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle>Create Payment Method</DialogTitle>
-                                <DialogDescription>
-                                    Create a new payment method to your system.
-                                </DialogDescription>
-                            </DialogHeader>
+                    <FormDialog
+                        title="Add Payment Method"
+                        description="Create a new payment method to your system."
+                        isOpen={isCreateModalOpen}
+                        onClose={() => setIsCreateModalOpen(false)}
+                        onSubmit={handleCreateSubmit}
+                        isProcessing={createForm.processing}
+                        submitLabel="Create"
+                        processingLabel="Creating..."
+                    >
+                        <div className="space-y-4">
+                            <div className="space-y-2 relative grid gap-2">
+                                <Label htmlFor="create-name">Name</Label>
+                                <Input
+                                    id="create-name"
+                                    value={createForm.data.name}
+                                    onChange={(e) => createForm.setData('name', e.target.value)}
+                                    placeholder="Enter payment method name"
+                                    className={createForm.errors.name ? "border-red-500 ring-red-100" : ""}
+                                />
+                            </div>
+                            <div className="space-y-2 relative grid gap-2">
+                                <Label htmlFor="create-charge">Charge Percentage (%)</Label>
+                                <Input
+                                    id="create-charge"
+                                    type="number"
+                                    step="0.01"
+                                    value={createForm.data.charge_percentage}
+                                    onChange={(e) => createForm.setData('charge_percentage', e.target.value)}
+                                    placeholder="Enter payment method charge percentage"
+                                    min="0"
+                                    max="100"
+                                    className={createForm.errors.charge_percentage ? "border-red-500 ring-red-100" : ""}
+                                />
+                            </div>
+                        </div>
+                    </FormDialog>
 
-                            <form onSubmit={handleCreateSubmit} className="space-y-4">
-                                <div>
-                                    <Label htmlFor="create-name">Name</Label>
-                                    <Input
-                                        id="create-name"
-                                        value={createForm.data.name}
-                                        onChange={(e) => createForm.setData('name', e.target.value)}
-                                    />
-                                </div>
-                                <div>
-                                    <Label htmlFor="create-charge">Charge Percentage (%)</Label>
-                                    <Input
-                                        id="create-charge"
-                                        type="number"
-                                        step="0.01"
-                                        value={createForm.data.charge_percentage}
-                                        onChange={(e) => createForm.setData('charge_percentage', e.target.value)}
-                                    />
-                                </div>
-                                <div className="flex justify-end gap-x-2">
-                                    <Button type="button" variant="outline" onClick={() => setIsCreateModalOpen(false)}>
-                                        Cancel
-                                    </Button>
-                                    <Button type="submit" disabled={createForm.processing}>
-                                        Create Payment Method
-                                    </Button>
-                                </div>
-                            </form>
-                        </DialogContent>
-                    </Dialog>
-
-                    <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-                        <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle>Edit Payment Method</DialogTitle>
-                                <DialogDescription>
-                                    Modify your payment method.
-                                </DialogDescription>
-                            </DialogHeader>
-
-                            <form onSubmit={handleEditSubmit} className="space-y-4">
-                                <div>
-                                    <Label htmlFor="edit-name">Name</Label>
-                                    <Input id="edit-name" value={editForm.data.name} onChange={(e) => editForm.setData('name', e.target.value)} />
-                                </div>
-                                <div>
-                                    <Label htmlFor="edit-charge">Charge Percentage (%)</Label>
-                                    <Input
-                                        id="edit-charge"
-                                        type="number"
-                                        step="0.01"
-                                        value={editForm.data.charge_percentage}
-                                        onChange={(e) => editForm.setData('charge_percentage', e.target.value)}
-                                    />
-                                </div>
-                                <div className="flex justify-end gap-x-2">
-                                    <Button type="button" variant="outline" onClick={() => setIsEditModalOpen(false)}>
-                                        Cancel
-                                    </Button>
-                                    <Button type="submit" disabled={editForm.processing}>
-                                        Save Changes
-                                    </Button>
-                                </div>
-                            </form>
-                        </DialogContent>
-                    </Dialog>
+                    <FormDialog
+                        title="Edit Payment Method"
+                        description="Modify your payment method."
+                        isOpen={isEditModalOpen}
+                        onClose={() => setIsEditModalOpen(false)}
+                        onSubmit={handleEditSubmit}
+                        isProcessing={editForm.processing}
+                        submitLabel="Save Changes"
+                        processingLabel="Saving..."
+                    >
+                        <div className="space-y-4">
+                            <div className="space-y-2 relative grid gap-2">
+                                <Label htmlFor="edit-name">Name</Label>
+                                <Input
+                                    id="edit-name"
+                                    value={editForm.data.name}
+                                    onChange={(e) => editForm.setData('name', e.target.value)}
+                                    placeholder="Enter payment method name"
+                                    className={editForm.errors.name ? "border-red-500 ring-red-100" : ""}
+                                />
+                            </div>
+                            <div className="space-y-2 relative grid gap-2">
+                                <Label htmlFor="edit-charge">Charge Percentage (%)</Label>
+                                <Input
+                                    id="edit-charge"
+                                    type="number"
+                                    step="0.01"
+                                    value={editForm.data.charge_percentage}
+                                    onChange={(e) => editForm.setData('charge_percentage', e.target.value)}
+                                    placeholder="Enter payment method charge percentage"
+                                    min="0"
+                                    max="100"
+                                    className={editForm.errors.charge_percentage ? "border-red-500 ring-red-100" : ""}
+                                />
+                            </div>
+                        </div>
+                    </FormDialog>
                 </div>
             </SettingsLayout>
         </AppLayout>

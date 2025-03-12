@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {CheckedState} from "@radix-ui/react-checkbox";
+import type { BreadcrumbItem } from '@/types';
 
 interface Props {
     role: {
@@ -75,7 +76,7 @@ export default function EditRole({ role, permissions }: Props) {
     };
 
     return (
-        <AppLayout>
+        <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Edit Role" />
             <SettingsLayout>
                 <div className="space-y-6">
@@ -158,3 +159,14 @@ export default function EditRole({ role, permissions }: Props) {
         </AppLayout>
     );
 }
+
+const breadcrumbs: BreadcrumbItem[] = [
+    {
+        title: 'Role',
+        href: route('roles.index'),
+    },
+    {
+        title: 'Edit',
+        href: '#',
+    }
+];
