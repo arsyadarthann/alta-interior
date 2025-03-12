@@ -11,19 +11,16 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('purchase_invoice_payments', function (Blueprint $table) {
+        Schema::create('sales_orders', function (Blueprint $table) {
             $table->id();
             $table->string('code', 100)->unique();
             $table->date('date');
             $table->foreignId('user_id')->constrained('users');
             $table->unsignedSmallInteger('branch_id');
-            $table->foreignId('purchase_invoice_id')->constrained('purchase_invoices');
-            $table->unsignedSmallInteger('payment_method_id');
-            $table->decimal('amount', 15, 2);
+            $table->foreignId('customer_id')->nullable()->constrained('customers');
+            $table->string('customer_name', 100)->nullable();
+            $table->enum('status', ['pending', 'processed', 'completed', 'cancelled'])->default('pending');
             $table->timestamps();
-
-            $table->foreign('branch_id')->references('id')->on('branches');
-            $table->foreign('payment_method_id')->references('id')->on('payment_methods');
         });
     }
 
@@ -32,6 +29,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('purchase_invoice_payments');
+        Schema::dropIfExists('sales_orders');
     }
 };

@@ -55,6 +55,11 @@ class User extends Authenticatable
         return $this->hasMany(SequenceStatus::class, 'user_id', 'id');
     }
 
+    public function purchaseInvoicePayments(): HasMany
+    {
+        return $this->hasMany(PurchaseInvoicePayment::class, 'user_id', 'id');
+    }
+
     public function stockTransfers(): HasMany
     {
         return $this->hasMany(StockTransfer::class, 'user_id', 'id');
@@ -69,4 +74,20 @@ class User extends Authenticatable
     {
         return $this->hasMany(StockAdjustment::class, 'user_id', 'id');
     }
+
+    public function salesOrders(): HasMany
+    {
+        return $this->hasMany(SalesOrder::class, 'user_id', 'id');
+    }
+
+    public function waybills(): HasMany
+    {
+        return $this->hasMany(Waybill::class, 'user_id', 'id');
+    }
+
+    public function salesInvoicePayments(): HasMany
+    {
+        return $this->hasMany(SalesInvoicePayment::class, 'user_id', 'id');
+    }
+
 }

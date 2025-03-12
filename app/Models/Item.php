@@ -61,4 +61,10 @@ class Item extends Model
     {
         return $this->hasMany(StockAdjustmentDetail::class, 'item_id', 'id');
     }
+
+    public function salesOrderDetails(): HasMany
+    {
+        return $this->hasMany(SalesOrderDetail::class, 'item_id', 'id');
+    }
+
 }

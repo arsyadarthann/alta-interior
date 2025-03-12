@@ -6,20 +6,21 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class PurchaseInvoicePayment extends Model
+class SalesInvoicePayment extends Model
 {
     use HasFactory;
 
-    protected $table = 'purchase_invoice_payments';
+    protected $table = 'sales_invoice_payments';
 
     protected $fillable = [
         'code',
         'date',
         'user_id',
         'branch_id',
-        'purchase_invoice_id',
+        'sales_invoice_id',
         'payment_method_id',
         'amount',
+        'note'
     ];
 
     public function user(): BelongsTo
@@ -32,13 +33,14 @@ class PurchaseInvoicePayment extends Model
         return $this->belongsTo(Branch::class, 'branch_id', 'id');
     }
 
-    public function purchaseInvoice(): BelongsTo
+    public function salesInvoice(): BelongsTo
     {
-        return $this->belongsTo(PurchaseInvoice::class, 'purchase_invoice_id', 'id');
+        return $this->belongsTo(SalesInvoice::class, 'sales_invoice_id', 'id');
     }
 
     public function paymentMethod(): BelongsTo
     {
         return $this->belongsTo(PaymentMethod::class, 'payment_method_id', 'id');
     }
+
 }

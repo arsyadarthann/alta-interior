@@ -40,6 +40,11 @@ class Branch extends Model
         return $this->hasMany(GoodsReceipt::class, 'branch_id', 'id');
     }
 
+    public function purchaseInvoicePayments(): HasMany
+    {
+        return $this->hasMany(PurchaseInvoicePayment::class, 'branch_id', 'id');
+    }
+
     public function stockTransfersFrom(): HasMany
     {
         return $this->hasMany(StockTransfer::class, 'from_branch_id', 'id');
@@ -59,4 +64,25 @@ class Branch extends Model
     {
         return $this->hasMany(StockAdjustment::class, 'branch_id', 'id');
     }
+
+    public function salesOrders(): HasMany
+    {
+        return $this->hasMany(SalesOrder::class, 'branch_id', 'id');
+    }
+
+    public function salesOrderDetailsAsItemSource(): HasMany
+    {
+        return $this->hasMany(SalesOrderDetail::class, 'item_from_branch_id', 'id');
+    }
+
+    public function waybills(): HasMany
+    {
+        return $this->hasMany(Waybill::class, 'branch_id', 'id');
+    }
+
+    public function salesInvoicePayments(): HasMany
+    {
+        return $this->hasMany(SalesInvoicePayment::class, 'branch_id', 'id');
+    }
+
 }
