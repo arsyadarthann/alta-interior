@@ -11,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Info, Save } from "lucide-react";
+import { usePermissions } from '@/hooks/use-permissions';
 
 interface TransactionPrefix {
     id: number;
@@ -23,6 +24,7 @@ interface Props {
 }
 
 export default function Index({ transactionPrefixes }: Props) {
+    const { hasPermission } = usePermissions();
     const { toast } = useToast();
     const { data, setData, put, processing } = useForm({
         prefixes: transactionPrefixes.map((prefix) => ({
@@ -95,19 +97,29 @@ export default function Index({ transactionPrefixes }: Props) {
                                         </TooltipProvider>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <Input
-                                            value={currentPrefix}
-                                            onChange={(e) => handlePrefixChange(originalIndex, e.target.value)}
-                                            className={`max-w-[180px] ${hasChanged ? 'border-primary' : ''}`}
-                                            maxLength={10}
-                                            placeholder="Enter prefix"
-                                        />
-                                        {hasChanged && (
+                                        {hasPermission('update_transaction_prefix') ? (
+                                            <Input
+                                                value={currentPrefix}
+                                                onChange={(e) => handlePrefixChange(originalIndex, e.target.value)}
+                                                className={`max-w-[180px] ${hasChanged ? 'border-primary' : ''}`}
+                                                maxLength={10}
+                                                placeholder="Enter prefix"
+                                            />
+                                        ) : (
+                                            <Input
+                                                value={currentPrefix}
+                                                className="max-w-[180px] opacity-70 cursor-not-allowed"
+                                                disabled
+                                                readOnly
+                                            />
+                                        )}
+                                        {hasChanged && hasPermission('update_transaction_prefix') && (
                                             <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/20">
                                                 Modified
                                             </Badge>
                                         )}
                                     </div>
+
                                 </div>
                             );
                         })}
@@ -128,19 +140,23 @@ export default function Index({ transactionPrefixes }: Props) {
                             description="Configure document number prefixes for various transaction types."
                         />
 
-                        <Button
-                            onClick={handleSubmit}
-                            disabled={processing || !formChanged}
-                            className="gap-2"
-                        >
-                            <Save className="h-4 w-4" />
-                            {processing ? 'Saving...' : 'Save Changes'}
-                        </Button>
+                        {hasPermission('update_transaction_prefix') && (
+                            <Button
+                                onClick={handleSubmit}
+                                disabled={processing || !formChanged}
+                                className="gap-2"
+                            >
+                                <Save className="h-4 w-4" />
+                                {processing ? 'Saving...' : 'Save Changes'}
+                            </Button>
+                        )}
                     </div>
 
-                    <div className="p-4 bg-blue-50 text-blue-700 rounded-md text-sm border border-blue-100">
-                        You can customize the prefix codes for each transaction type. Changes will be reflected in new document numbers.
-                    </div>
+                    {hasPermission('update_transaction_prefix') && (
+                        <div className="p-4 bg-blue-50 text-blue-700 rounded-md text-sm border border-blue-100">
+                            You can customize the prefix codes for each transaction type. Changes will be reflected in new document numbers.
+                        </div>
+                    )}
 
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
