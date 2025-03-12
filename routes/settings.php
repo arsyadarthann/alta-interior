@@ -7,6 +7,7 @@ use App\Http\Controllers\Settings\PermissionController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\RoleController;
 use App\Http\Controllers\Settings\TaxRateController;
+use App\Http\Controllers\Settings\TransactionPrefixController;
 use App\Http\Controllers\Settings\UserController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -68,5 +69,10 @@ Route::middleware('auth')->group(function () {
         Route::post('/', [PaymentMethodController::class, 'store'])->middleware('permission:create_payment_method')->name('payment-methods.store');
         Route::put('/{id}', [PaymentMethodController::class, 'update'])->middleware('permission:update_payment_method')->name('payment-methods.update');
         Route::delete('/{id}', [PaymentMethodController::class, 'destroy'])->middleware('permission:delete_payment_method')->name('payment-methods.destroy');
+    });
+
+    Route::group(['prefix' => 'settings/transaction-prefix'], function () {
+        Route::get('/', [TransactionPrefixController::class, 'index'])->middleware('permission:read_transaction_prefix')->name('transaction-prefix.index');
+        Route::put('/', [TransactionPrefixController::class, 'update'])->middleware('permission:update_transaction_prefix')->name('transaction-prefix.update');
     });
 });

@@ -24,7 +24,6 @@ interface DataTableProps<TData> {
     columns: ColumnDef<TData, any>[];
     pageSize?: number;
     rowClassName?: (row: Row<TData>) => string;
-
 }
 
 export function DataTable<TData>({
@@ -59,7 +58,7 @@ export function DataTable<TData>({
 
     return (
         <div className="space-y-4">
-            <div className="rounded-md border">
+            <div className="rounded-md border overflow-x-auto">
                 <Table>
                     <TableHeader>
                         {table.getHeaderGroups().map((headerGroup) => (
@@ -86,11 +85,16 @@ export function DataTable<TData>({
                                     className={rowClassName?.(row)}
                                 >
                                     {row.getVisibleCells().map((cell) => (
-                                        <TableCell key={cell.id}>
-                                            {flexRender(
-                                                cell.column.columnDef.cell,
-                                                cell.getContext()
-                                            )}
+                                        <TableCell
+                                            key={cell.id}
+                                            className="max-w-[200px] sm:max-w-[250px] md:max-w-[300px]"
+                                        >
+                                            <div className="truncate">
+                                                {flexRender(
+                                                    cell.column.columnDef.cell,
+                                                    cell.getContext()
+                                                )}
+                                            </div>
                                         </TableCell>
                                     ))}
                                 </TableRow>
@@ -109,9 +113,9 @@ export function DataTable<TData>({
                 </Table>
             </div>
 
-            <div className="flex items-center justify-between space-x-2 py-4">
-                <div className="flex items-center gap-2">
-                    <p className="text-sm text-muted-foreground">
+            <div className="flex flex-row items-center justify-between gap-2 py-4 overflow-x-auto">
+                <div className="flex-shrink-0">
+                    <p className="text-sm text-muted-foreground whitespace-nowrap">
                         Showing{' '}
                         <span className="font-medium">
                             {table.getState().pagination.pageSize *
@@ -132,8 +136,7 @@ export function DataTable<TData>({
                     </p>
                 </div>
 
-                <div className="flex items-center space-x-2">
-
+                <div className="flex items-center gap-2 flex-shrink-0">
                     <Button
                         variant="outline"
                         size="sm"
