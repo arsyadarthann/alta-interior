@@ -16,4 +16,9 @@ class PaymentMethod extends Model
         'name',
         'charge_percentage',
     ];
+
+    public function purchaseInvoicePayments()
+    {
+        return $this->hasMany(PurchaseInvoicePayment::class, 'payment_method_id', 'id');
+    }
 }

@@ -54,4 +54,19 @@ class User extends Authenticatable
     {
         return $this->hasMany(SequenceStatus::class, 'user_id', 'id');
     }
+
+    public function stockTransfers(): HasMany
+    {
+        return $this->hasMany(StockTransfer::class, 'user_id', 'id');
+    }
+
+    public function stockAudits(): HasMany
+    {
+        return $this->hasMany(StockAudit::class, 'user_id', 'id');
+    }
+
+    public function stockAdjustments(): HasMany
+    {
+        return $this->hasMany(StockAdjustment::class, 'user_id', 'id');
+    }
 }
