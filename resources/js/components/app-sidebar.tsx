@@ -54,6 +54,7 @@ export function AppSidebar() {
             title: 'Inventory',
             url: '/inventory',
             icon: Warehouse,
+            matchPatch: ['/inventory', '/inventory/*']
         },
         {
             title: 'Stock Management',
@@ -177,7 +178,9 @@ export function AppSidebar() {
                 { (hasPermission('read_customer') || hasPermission('read_supplier')) && (
                     <NavMain items={customersAndSuppliersItems} title="Customers & Suppliers"/>
                 )}
-                <NavMainWithSubmenu items={inventoryAndStockItems} title="Inventory & Stock"/>
+                { ((hasPermission('read_item_category') || hasPermission('read_item_unit')) || hasPermission('read_item')) && (
+                    <NavMainWithSubmenu items={inventoryAndStockItems} title="Inventory & Stock"/>
+                )}
                 <NavMainWithSubmenu items={procurementItems} title="Procurement"/>
                 <NavMainWithSubmenu items={salesItems} title="Sales"/>
                 <NavMain items={financeItems} title="Finance"/>

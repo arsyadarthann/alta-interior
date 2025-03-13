@@ -146,7 +146,14 @@ export default function Item({ items, itemCategories, itemUnits, branches, selec
             accessorKey: "stock",
             header: "Stock",
             cell: ({ row }: { row: Row<Item> }) => {
-                return row.original.stock !== undefined ? row.original.stock + ' ' + row.original.item_unit?.abbreviation : '-';
+                if (row.original.stock === undefined) return '-';
+
+                const stockValue = Number(row.original.stock);
+                const formattedStock = Number.isInteger(stockValue)
+                    ? stockValue.toString()
+                    : stockValue.toString();
+
+                return formattedStock + ' ' + row.original.item_unit?.abbreviation;
             }
         },
         {

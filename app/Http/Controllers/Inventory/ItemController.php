@@ -20,7 +20,7 @@ class ItemController extends Controller
         $branchId = $request->query('branch_id');
 
         return Inertia::render('inventory/item/index', [
-            'items' => $this->item->getAll(),
+            'items' => $this->item->getAll($branchId),
             'itemCategories' => $this->itemCategory->getAll(),
             'itemUnits' => $this->itemUnit->getAll(),
             'branches' => $this->branch->getAll(),

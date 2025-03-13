@@ -23,7 +23,6 @@ class ItemRepository implements ItemInterface
             '), 0) as stock');
 
         return $query->orderBy('id')->get();
-
     }
 
     public function getById(int $id)
