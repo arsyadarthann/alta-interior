@@ -39,12 +39,12 @@ export function AppSidebar() {
     const customersAndSuppliersItems: NavItem[] = [
         {
             title: 'Customers',
-            url: '/customers',
+            url: '/master/customers',
             icon: BookUser,
         },
         hasPermission('read_supplier') && {
             title: 'Suppliers',
-            url: route('suppliers.index'),
+            url: '/master/suppliers',
             icon: Truck
         }
     ].filter(Boolean) as NavItem[];
@@ -52,26 +52,8 @@ export function AppSidebar() {
     const inventoryAndStockItems: NavItemWithChildren[] = [
         {
             title: 'Inventory',
-            url: '',
+            url: '/inventory',
             icon: Warehouse,
-            children: [
-                {
-                    title: 'Category',
-                    url: '/categories',
-                },
-                {
-                    title: 'Wholesale Unit',
-                    url: '/wholesale-units',
-                },
-                {
-                    title: 'Retail Unit',
-                    url: '/retail-units',
-                },
-                {
-                    title: 'Product',
-                    url: '/products',
-                }
-            ]
         },
         {
             title: 'Stock Management',
@@ -170,7 +152,7 @@ export function AppSidebar() {
             icon: Receipt,
         },
         {
-            title: 'Inventory Movement',
+            title: 'inventory Movement',
             url: '/reports/inventory-movement',
             icon: Box,
         }

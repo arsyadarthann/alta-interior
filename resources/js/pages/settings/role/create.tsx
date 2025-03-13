@@ -73,7 +73,7 @@ export default function CreateRole({ permissions }: Props) {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Create Role" />
-            <SettingsLayout>
+            <SettingsLayout fullWidth>
                 <div className="space-y-6">
                     <HeadingSmall
                         title="Create Role"
@@ -81,8 +81,8 @@ export default function CreateRole({ permissions }: Props) {
                     />
 
                     <form onSubmit={handleSubmit} className="space-y-6">
-                        <div>
-                            <Label htmlFor="name">Role Name</Label>
+                        <div className="max-w-md">
+                        <Label htmlFor="name">Role Name</Label>
                             <Input
                                 id="name"
                                 type="text"
@@ -116,7 +116,7 @@ export default function CreateRole({ permissions }: Props) {
                             </div>
 
 
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-2">
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-2">
                                 {permissions.map((permission) => (
                                     <div key={permission.id} className="flex items-center space-x-2">
                                         <Checkbox
