@@ -120,7 +120,7 @@ export default function EditRole({ role, permissions }: Props) {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-2">
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-2">
                                 {permissions.map((permission) => (
                                     <div key={permission.id} className="flex items-center space-x-2">
                                         <Checkbox

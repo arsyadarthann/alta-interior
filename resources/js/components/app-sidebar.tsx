@@ -69,10 +69,12 @@ export function AppSidebar() {
                 {
                     title: 'Adjustment',
                     url: '/stock/adjustment',
+                    matchPatch: ['/stock/adjustment', '/stock/adjustment/*', '/stock/adjustment?*']
                 },
                 {
                     title: 'Transfer',
                     url: '/stock/transfer',
+                    matchPatch: ['/stock/transfer', '/stock/transfer/*', '/stock/transfer?*']
                 }
             ]
         }

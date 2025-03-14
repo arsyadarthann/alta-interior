@@ -31,12 +31,12 @@ const breadcrumbs: BreadcrumbItem[] = [
         href: '#',
     },
     {
-        title: 'Audit',
-        href: route('stock.audit.index'),
+        title: 'Adjustment',
+        href: route('stock.adjustment.index'),
     },
     {
         title: 'Create',
-        href: route('stock.audit.create')
+        href: route('stock.adjustment.create')
     }
 ];
 
@@ -82,30 +82,29 @@ export default function Create({ branches = [] }: { branches?: Branch[] }) {
         code: '',
         date: new Date(),
         branch_id: '',
-        stock_audit_details: [] as {
+        stock_adjustment_details: [] as {
             item_id: number;
-            system_quantity: number;
-            physical_quantity: number;
-            discrepancy_quantity: number;
+            type: string;
+            before_adjustment_quantity: number;
+            adjustment_quantity: number;
+            after_adjustment_quantity: number;
             reason: string;
         }[],
         new_item: {
             item_id: 0,
-            system_quantity: 0,
-            physical_quantity: 0,
-            discrepancy_quantity: 0,
+            type: '',
+            before_adjustment_quantity: 0,
+            adjustment_quantity: 0,
+            after_adjustment_quantity: 0,
             reason: ''
-        },
+        }
     });
-
-    // const defaultBranchId = auth?.user?.branch_id ? auth.user.branch_id.toString() : '';
-    // const [currentBranchId, setCurrentBranchId] = useState(defaultBranchId);
 
     useEffect(() => {
         if (!initialized) {
             if (auth?.user?.branch_id) {
                 const userBranchId = auth.user.branch_id.toString();
-                setData('branch_id', userBranchId);
+                setData('branch_id', userBranchId)
             }
             setInitialized(true);
         }
@@ -139,7 +138,7 @@ export default function Create({ branches = [] }: { branches?: Branch[] }) {
                 }
 
                 setItems(itemsData);
-                setData('stock_audit_details', []);
+                setData('stock_adjustment_details', []);
                 setSelectedItemNames({});
                 setSelectedItemUnits({});
             })
@@ -148,8 +147,8 @@ export default function Create({ branches = [] }: { branches?: Branch[] }) {
             });
     }, [setItems, setData, setSelectedItemNames, setSelectedItemUnits, showErrorToast]);
 
-    const fetchAuditCode = useCallback((branchId: string) => {
-        fetch(route('stock.audit.getCode', { branch_id: branchId }), {
+    const fetchAdjustmentCode = useCallback((branchId: string) => {
+        fetch(route('stock.adjustment.getCode', { branch_id: branchId }), {
             method: 'GET',
             headers: {
                 'Accept': 'application/json',
@@ -168,7 +167,7 @@ export default function Create({ branches = [] }: { branches?: Branch[] }) {
                 }
             })
             .catch(() => {
-                showErrorToast(['Failed to get audit code']);
+                showErrorToast(['Failed to get adjustment code']);
             });
     }, [setData, showErrorToast]);
 
@@ -176,71 +175,74 @@ export default function Create({ branches = [] }: { branches?: Branch[] }) {
         setData(prev => ({
             ...prev,
             branch_id: value,
-            stock_audit_details: []
+            stock_adjustment_details: []
         }));
 
         if (value) {
             fetchItems(value);
-            fetchAuditCode(value);
+            fetchAdjustmentCode(value);
         } else {
             setItems([]);
             setData('code', '');
         }
-    };
+    }
 
     useEffect(() => {
         if (initialized && data.branch_id) {
             setData('branch_id', data.branch_id)
             fetchItems(data.branch_id);
-            fetchAuditCode(data.branch_id);
+            fetchAdjustmentCode(data.branch_id);
         }
     }, [initialized, data.branch_id]);
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
-        post(route('stock.audit.store'), {
+        post(route('stock.adjustment.store'), {
             preserveScroll: true,
             onError: showErrorToast
         });
-    };
+    }
 
-    const addAuditItem = () => {
+    const addAdjustmentItem = () => {
+        console.log('tes');
         setAddingItem(true);
         setData('new_item', {
             item_id: 0,
-            system_quantity: 0,
-            physical_quantity: 0,
-            discrepancy_quantity: 0,
+            type: '',
+            before_adjustment_quantity: 0,
+            adjustment_quantity: 0,
+            after_adjustment_quantity: 0,
             reason: ''
         });
     };
 
-    const saveAuditItem = () => {
+    const saveAdjustmentItem = () => {
         if (editingIndex !== null) {
             setEditingIndex(null);
         } else {
             setAddingItem(false);
             if (data.new_item.item_id !== 0) {
-                setData('stock_audit_details', [
-                    ...data.stock_audit_details,
+                setData('stock_adjustment_details', [
+                    ...data.stock_adjustment_details,
                     data.new_item
                 ]);
                 setData('new_item', {
                     item_id: 0,
-                    system_quantity: 0,
-                    physical_quantity: 0,
-                    discrepancy_quantity: 0,
+                    type: 'balanced',
+                    before_adjustment_quantity: 0,
+                    adjustment_quantity: 0,
+                    after_adjustment_quantity: 0,
                     reason: ''
-                });
+                })
             } else {
                 showErrorToast(["Please select an item"]);
             }
         }
-    };
+    }
 
-    const removeAuditItem = (index: number) => {
-        const updatedItems = [...data.stock_audit_details];
+    const removeAdjustmentItem = (index: number) => {
+        const updatedItems = [...data.stock_adjustment_details];
 
         const newSelectedItemNames = { ...selectedItemNames };
         const newSelectedItemUnits = { ...selectedItemUnits };
@@ -248,7 +250,7 @@ export default function Create({ branches = [] }: { branches?: Branch[] }) {
         delete newSelectedItemUnits[index];
 
         updatedItems.splice(index, 1);
-        setData('stock_audit_details', updatedItems);
+        setData('stock_adjustment_details', updatedItems);
 
         const updatedSelectedItemNames: Record<number, string> = {};
         const updatedSelectedItemUnits: Record<number, string> = {};
@@ -262,25 +264,25 @@ export default function Create({ branches = [] }: { branches?: Branch[] }) {
                 updatedSelectedItemNames[keyNum] = newSelectedItemNames[keyNum];
                 updatedSelectedItemUnits[keyNum] = newSelectedItemUnits[keyNum];
             }
-        });
+        })
 
         setSelectedItemNames(updatedSelectedItemNames);
         setSelectedItemUnits(updatedSelectedItemUnits);
-    };
+    }
 
-    const updateAuditItem = (
+    const updateAdjustmentItem = (
         index: number,
-        field: 'item_id' | 'system_quantity' | 'physical_quantity' | 'discrepancy_quantity' | 'reason',
+        field: 'item_id' | 'type' | 'before_adjustment_quantity' | 'adjustment_quantity' | 'after_adjustment_quantity' | 'reason',
         value: string | number
-    ) => {
-        const updatedItems = [...data.stock_audit_details];
+    )=> {
+        const updatedItems = [...data.stock_adjustment_details];
 
         if (field === 'item_id') {
             const itemId = Number(value);
-            const selectedItem = items.find((itm) => itm.id === itemId);
+            const selectedItem = items.find(item => item.id === itemId);
 
             if (selectedItem) {
-                const newSelectedItemNames = {...selectedItemNames};
+                const newSelectedItemNames = {...selectedItemNames };
                 newSelectedItemNames[index] = `${selectedItem.name} (${selectedItem.code})`;
                 setSelectedItemNames(newSelectedItemNames);
 
@@ -292,268 +294,304 @@ export default function Create({ branches = [] }: { branches?: Branch[] }) {
                 updatedItems[index] = {
                     ...updatedItems[index],
                     item_id: itemId,
-                    system_quantity: itemStock,
-                    physical_quantity: 0,
-                    discrepancy_quantity: 0 - itemStock
-                };
+                    type: 'balanced',
+                    before_adjustment_quantity: itemStock,
+                    adjustment_quantity: 0 - itemStock,
+                    after_adjustment_quantity: 0,
+                    reason: ''
+                }
             }
-        } else if (field === 'physical_quantity') {
-            let physicalQty = Number(value);
-            if (physicalQty < 0) {
-                physicalQty = 0;
-            }
-
-            const systemQty = updatedItems[index].system_quantity;
-            updatedItems[index] = {
-                ...updatedItems[index],
-                physical_quantity: physicalQty,
-                discrepancy_quantity: physicalQty - systemQty
-            };
-        } else if (field === 'system_quantity') {
-            let systemQty = Number(value);
-            if (systemQty < 0) {
-                systemQty = 0;
+        } else if (field === 'after_adjustment_quantity') {
+            let afterAdjustmentQuantity = Number(value);
+            if (afterAdjustmentQuantity < 0) {
+                afterAdjustmentQuantity = 0;
             }
 
-            const physicalQty = updatedItems[index].physical_quantity;
+            const beforeAdjustmentQuantity = updatedItems[index].before_adjustment_quantity;
+            const adjustmentQuantity = afterAdjustmentQuantity - beforeAdjustmentQuantity;
+            let type = 'balanced';
+
+            if (adjustmentQuantity > 0) {
+                type = 'increased';
+            } else if (adjustmentQuantity < 0) {
+                type = 'decreased';
+            }
+
             updatedItems[index] = {
                 ...updatedItems[index],
-                system_quantity: systemQty,
-                discrepancy_quantity: physicalQty - systemQty
+                after_adjustment_quantity: afterAdjustmentQuantity,
+                adjustment_quantity: adjustmentQuantity,
+                type: type
+            }
+        } else if (field === 'before_adjustment_quantity') {
+            let beforeAdjustmentQuantity = Number(value);
+            if (beforeAdjustmentQuantity < 0) {
+                beforeAdjustmentQuantity = 0;
+            }
+
+            const afterAdjustmentQuantity = updatedItems[index].after_adjustment_quantity;
+            updatedItems[index] = {
+                ...updatedItems[index],
+                before_adjustment_quantity: beforeAdjustmentQuantity,
+                adjustment_quantity: afterAdjustmentQuantity - beforeAdjustmentQuantity
             };
         } else {
             updatedItems[index] = {
                 ...updatedItems[index],
                 [field]: field === 'reason' ? String(value) : Number(value)
-            };
+            }
         }
 
-        setData('stock_audit_details', updatedItems);
+        setData('stock_adjustment_details', updatedItems);
     };
 
     const getAvailableItems = (currentIndex: number) => {
         return items.filter(item => {
-            return !data.stock_audit_details.some(
-                (auditItem, i) => i !== currentIndex && auditItem.item_id === item.id
+            return !data.stock_adjustment_details.some(
+                (adjustmentItem,  i) => i !== currentIndex && adjustmentItem.item_id === item.id
             );
         });
     };
 
-    const renderAuditItemForm = (
-        auditItem: {
+    const renderAdjustmentItemForm = (
+        adjustmentItem: {
             item_id: number;
-            system_quantity: number;
-            physical_quantity: number;
-            discrepancy_quantity: number;
+            type: string;
+            before_adjustment_quantity: number;
+            adjustment_quantity: number;
+            after_adjustment_quantity: number;
             reason: string;
         } | null = null,
         index: number = -1,
         isAddingNew: boolean = false
-    ) => {
-        const item = auditItem || data.new_item;
+    )=> {
+        const item = adjustmentItem || data.new_item;
         const selectedItemId = isAddingNew ? data.new_item.item_id : item.item_id;
 
         return (
             <div className="flex flex-wrap items-end gap-3 border bg-gray-50 rounded-md p-4 mb-4">
-                <div className="flex-1 min-w-[200px] relative grid gap-2">
-                    <Label htmlFor={`item_id_${index}`}>
-                        Item <span className="text-red-500">*</span>
-                    </Label>
-                    <Select
-                        value={selectedItemId ? String(selectedItemId) : ""}
-                        onValueChange={(value) => {
-                            if (isAddingNew) {
-                                const itemId = Number(value);
-                                const selectedItem = items.find(itm => itm.id === itemId);
+            <div className="flex-1 min-w-[200px] relative grid gap-2">
+                <Label htmlFor={`item_id_${index}`}>
+                    Item <span className="text-red-500">*</span>
+                </Label>
+                <Select
+                    value={selectedItemId ? String(selectedItemId) : ""}
+                    onValueChange={(value) => {
+                        if (isAddingNew) {
+                            const itemId = Number(value);
+                            const selectedItem = items.find(item => item.id === itemId);
 
-                                if (selectedItem) {
-                                    const tempItem = {
-                                        item_id: itemId,
-                                        system_quantity: selectedItem.stock ?? 0,
-                                        physical_quantity: 0,
-                                        discrepancy_quantity: -(selectedItem.stock ?? 0),
-                                        reason: ''
-                                    };
+                            if (selectedItem) {
+                                const itemStock = selectedItem.stock ?? 0;
+                                const adjustmentQuantity = 0 - itemStock;
+                                const type = adjustmentQuantity < 0 ? 'decreased' : adjustmentQuantity > 0 ? 'increased' : 'balanced';
 
-                                    const newSelectedItemNames = { ...selectedItemNames };
-                                    newSelectedItemNames[data.stock_audit_details.length] =
-                                        `${selectedItem.name} (${selectedItem.code})`;
-                                    setSelectedItemNames(newSelectedItemNames);
-
-                                    const newSelectedItemUnits = { ...selectedItemUnits };
-                                    newSelectedItemUnits[data.stock_audit_details.length] =
-                                        selectedItem.item_unit?.abbreviation || '';
-                                    setSelectedItemUnits(newSelectedItemUnits);
-
-                                    setData('new_item', tempItem);
+                                const tempItem = {
+                                    item_id: itemId,
+                                    type: type,
+                                    before_adjustment_quantity: itemStock,
+                                    adjustment_quantity: adjustmentQuantity,
+                                    after_adjustment_quantity: 0,
+                                    reason: ''
                                 }
-                            } else {
-                                updateAuditItem(index, 'item_id', value);
+
+                                const newSelectedItemNames = { ...selectedItemNames };
+                                newSelectedItemNames[data.stock_adjustment_details.length] = `${selectedItem.name} (${selectedItem.code})`;
+                                setSelectedItemNames(newSelectedItemNames);
+
+                                const newSelectedItemUnits = { ...selectedItemUnits };
+                                newSelectedItemUnits[data.stock_adjustment_details.length] = selectedItem.item_unit?.abbreviation || '';
+                                setSelectedItemUnits(newSelectedItemUnits);
+
+                                setData('new_item', tempItem);
                             }
-                        }}
-                    >
-                        <SelectTrigger
-                            id={`item_id_${index}`}
-                            className={`w-full ${
-                                isAddingNew && errors[`new_item.item_id` as keyof typeof errors] ? "border-red-500 ring-red-100" :
-                                    !isAddingNew && errors[`stock_audit_details.${index}.item_id` as keyof typeof errors] ?
-                                        "border-red-500 ring-red-100" : ""
-                            }`}
-                        >
-                            <SelectValue placeholder="Select an item" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {getAvailableItems(isAddingNew ? -1 : index).map((itm) => (
-                                <SelectItem key={itm.id} value={String(itm.id)}>
-                                    {itm.name} ({itm.code})
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
-                <div className="flex-1 min-w-[140px] relative grid gap-2">
-                    <Label htmlFor={`system_quantity_${index}`}>
-                        System Quantity
-                    </Label>
-                    <div className="relative">
-                        <Input
-                            id={`system_quantity_${index}`}
-                            type="number"
-                            value={item.system_quantity === 0 ? 0 :
-                                (item.system_quantity % 1 === 0 ?
-                                    Math.abs(Number(item.system_quantity)) :
-                                    Number(item.system_quantity.toFixed(2)))
-                            }
-                            readOnly
-                            className="bg-gray-50 pr-10"
-                        />
-                        <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-gray-500 text-sm">
-                            {isAddingNew ? selectedItemUnits[data.stock_audit_details.length] || '' : selectedItemUnits[index] || ''}
-                        </div>
-                    </div>
-                </div>
-                <div className="flex-1 min-w-[140px] relative grid gap-2">
-                    <Label htmlFor={`physical_quantity_${index}`}>
-                        Physical Quantity <span className="text-red-500">*</span>
-                    </Label>
-                    <div className="relative">
-                        <Input
-                            id={`physical_quantity_${index}`}
-                            type="number"
-                            min="0"
-                            value={item.physical_quantity === 0 ? "" : item.physical_quantity}
-                            onChange={(e) => {
-                                if (isAddingNew) {
-                                    const physicalQty = Number(e.target.value);
-                                    const systemQty = data.new_item?.system_quantity || 0;
-                                    setData('new_item', {
-                                        ...data.new_item,
-                                        physical_quantity: physicalQty,
-                                        discrepancy_quantity: physicalQty - systemQty
-                                    });
-                                } else {
-                                    updateAuditItem(index, 'physical_quantity', e.target.value);
-                                }
-                            }}
-                            placeholder="Count result"
-                            className={`[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pr-10 ${
-                                isAddingNew && errors[`new_item.physical_quantity` as keyof typeof errors] ? "border-red-500 ring-red-100" :
-                                    !isAddingNew && errors[`stock_audit_details.${index}.physical_quantity` as keyof typeof errors] ?
-                                        "border-red-500 ring-red-100" : ""
-                            }`}
-                        />
-                        <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-gray-500 text-sm">
-                            {isAddingNew ? selectedItemUnits[data.stock_audit_details.length] || '' : selectedItemUnits[index] || ''}
-                        </div>
-                    </div>
-                    {!isAddingNew && errors[`stock_audit_details.${index}.physical_quantity` as keyof typeof errors] && (
-                        <p className="text-xs text-red-500 mt-1">
-                            {errors[`stock_audit_details.${index}.physical_quantity` as keyof typeof errors]}
-                        </p>
-                    )}
-                </div>
-                <div className="flex-1 min-w-[140px] relative grid gap-2">
-                    <Label htmlFor={`discrepancy_quantity_${index}`}>
-                        Discrepancy
-                    </Label>
-                    <div className="relative">
-                        <Input
-                            id={`discrepancy_quantity_${index}`}
-                            type="number"
-                            value={
-                                item.discrepancy_quantity === 0 ? 0 :
-                                    item.discrepancy_quantity < 0 ?
-                                        Math.abs(Number(item.discrepancy_quantity.toFixed(2))) :
-                                        Number(item.discrepancy_quantity.toFixed(2))
-                            }
-                            readOnly
-                            className={`bg-gray-50 pr-10 ${
-                                item.discrepancy_quantity < 0
-                                    ? 'text-red-600'
-                                    : item.discrepancy_quantity > 0
-                                        ? 'text-green-600'
-                                        : ''
-                            }`}
-                        />
-                        <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-gray-500 text-sm">
-                            {isAddingNew ? selectedItemUnits[data.stock_audit_details.length] || '' : selectedItemUnits[index] || ''}
-                        </div>
-                    </div>
-                </div>
-                <div className="flex-1 min-w-[200px] relative grid gap-2">
-                    <Label htmlFor={`reason_${index}`}>
-                        Reason
-                    </Label>
-                    <Input
-                        id={`reason_${index}`}
-                        type="text"
-                        value={item.reason}
-                        onChange={(e) => {
-                            if (isAddingNew) {
-                                setData('new_item', {
-                                    ...data.new_item,
-                                    reason: e.target.value
-                                });
-                            } else {
-                                updateAuditItem(index, 'reason', e.target.value);
-                            }
-                        }}
-                        placeholder="Explain discrepancy"
-                        className={`${
-                            isAddingNew && errors['new_item.reason' as keyof typeof errors] ? "border-red-500 ring-red-100" :
-                                !isAddingNew && errors[`stock_audit_details.${index}.reason` as keyof typeof errors]
-                                    ? "border-red-500 ring-red-100"
-                                    : ""
+                        } else {
+                            updateAdjustmentItem(index, 'item_id', value);
+                        }
+                    }}
+                >
+                    <SelectTrigger
+                        id={`item_id_${index}`}
+                        className={`w-full ${
+                            isAddingNew && errors[`new_item.item_id` as keyof typeof errors] ? "border-red-500 ring-red-100" :
+                                !isAddingNew && errors[`stock_adjustment_details.${index}.item_id` as keyof typeof errors] ?
+                                    "border-red-500 ring-red-100" : ""
                         }`}
-                    />
-                </div>
-                <div className="flex items-end gap-2 pb-[2px]">
-                    <Button
-                        type="button"
-                        variant="default"
-                        size="icon"
-                        onClick={saveAuditItem}
-                        className="h-9 w-9 bg-green-600 hover:bg-green-700"
                     >
-                        <CheckCircle className="h-4 w-4 text-white" />
-                    </Button>
+                        <SelectValue placeholder="Select an item" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {getAvailableItems(isAddingNew ? -1 : index).map((item) => (
+                            <SelectItem key={item.id} value={String(item.id)}>
+                                {item.name} ({item.code})
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
+            <div className="flex-1 min-w-[140px] relative grid gap-2">
+                <Label htmlFor={`before_adjustment_quantity_${index}`}>
+                    Before
+                </Label>
+                <div className="relative">
+                    <Input
+                        id={`before_adjustment_quantity_${index}`}
+                        type="number"
+                        value={item.before_adjustment_quantity === 0 ? 0 :
+                            (item.before_adjustment_quantity % 1 === 0 ?
+                                Math.abs(Number(item.before_adjustment_quantity)) :
+                                Number(item.before_adjustment_quantity.toFixed(2)))
+                        }
+                        readOnly
+                        className="bg-gray-50 pr-10"
+                    />
+                    <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-gray-500 text-sm">
+                        {isAddingNew ? selectedItemUnits[data.stock_adjustment_details.length] || '' : selectedItemUnits[index] || ''}
+                    </div>
                 </div>
             </div>
-        );
+            <div className="flex-1 min-w-[140px] relative grid gap-2">
+                <Label htmlFor={`after_adjustment_quantity_${index}`}>
+                    After <span className="text-red-500">*</span>
+                </Label>
+                <div className="relative">
+                    <Input
+                        id={`after_adjustment_quantity_${index}`}
+                        type="number"
+                        min="0"
+                        value={item.after_adjustment_quantity === 0 ? "" : item.after_adjustment_quantity}
+                        onChange={(e) => {
+                            if (isAddingNew) {
+                                const afterAdjustmentQuantity = Number(e.target.value);
+                                const beforeAdjustmentQuantity = data.new_item?.before_adjustment_quantity || 0;
+                                const adjustmentQuantity = afterAdjustmentQuantity - beforeAdjustmentQuantity;
+                                let type = 'balanced';
+
+                                if (adjustmentQuantity > 0) {
+                                    type = 'increased';
+                                } else if (adjustmentQuantity < 0) {
+                                    type = 'decreased';
+                                }
+
+                                setData('new_item', {
+                                    ...data.new_item,
+                                    after_adjustment_quantity: afterAdjustmentQuantity,
+                                    adjustment_quantity: adjustmentQuantity,
+                                    type: type
+                                });
+                            } else {
+                                updateAdjustmentItem(index, 'after_adjustment_quantity', e.target.value);
+                            }
+                        }}
+                        placeholder="Count result"
+                        className={`[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pr-10 ${
+                            isAddingNew && errors[`new_item.after_adjustment_quantity` as keyof typeof errors] ? "border-red-500 ring-red-100" :
+                                !isAddingNew && errors[`stock_adjustment_details.${index}.after_adjustment_quantity` as keyof typeof errors] ?
+                                    "border-red-500 ring-red-100" : ""
+                        }`}
+                    />
+                    <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-gray-500 text-sm">
+                        {isAddingNew ? selectedItemUnits[data.stock_adjustment_details.length] || '' : selectedItemUnits[index] || ''}
+                    </div>
+                </div>
+                {!isAddingNew && errors[`stock_adjustment_details.${index}.after_adjustment_quantity` as keyof typeof errors] && (
+                    <p className="text-xs text-red-500 mt-1">
+                        {errors[`stock_adjustment_details.${index}.after_adjustment_quantity` as keyof typeof errors]}
+                    </p>
+                )}
+            </div>
+            <div className="flex-1 min-w-[140px] relative grid gap-2">
+                <Label htmlFor={`adjustment_quantity_${index}`}>
+                    Adjustment
+                </Label>
+                <div className="relative">
+                    <Input
+                        id={`adjustment_quantity_${index}`}
+                        type="number"
+                        value={
+                            item.adjustment_quantity === 0 ? 0 :
+                                item.adjustment_quantity < 0 ?
+                                    Math.abs(Number(item.adjustment_quantity.toFixed(2))) :
+                                    Number(item.adjustment_quantity.toFixed(2))
+                        }
+                        readOnly
+                        className={`bg-gray-50 pr-10 ${
+                            item.adjustment_quantity < 0
+                                ? 'text-red-600'
+                                : item.adjustment_quantity > 0
+                                    ? 'text-green-600'
+                                    : ''
+                        }`}
+                    />
+                    <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-gray-500 text-sm">
+                        {isAddingNew ? selectedItemUnits[data.stock_adjustment_details.length] || '' : selectedItemUnits[index] || ''}
+                    </div>
+                </div>
+            </div>
+            <div className="flex-1 min-w-[200px] relative grid gap-2">
+                <Label htmlFor={`reason_${index}`}>
+                    Reason
+                </Label>
+                <Input
+                    id={`reason_${index}`}
+                    type="text"
+                    value={item.reason}
+                    onChange={(e) => {
+                        if (isAddingNew) {
+                            setData('new_item', {
+                                ...data.new_item,
+                                reason: e.target.value
+                            });
+                        } else {
+                            updateAdjustmentItem(index, 'reason', e.target.value);
+                        }
+                    }}
+                    placeholder="Explain adjustment reason"
+                    className={`${
+                        isAddingNew && errors['new_item.reason' as keyof typeof errors] ? "border-red-500 ring-red-100" :
+                            !isAddingNew && errors[`stock_adjustment_details.${index}.reason` as keyof typeof errors]
+                                ? "border-red-500 ring-red-100"
+                                : ""
+                    }`}
+                />
+            </div>
+            <div className="flex items-end gap-2 pb-[2px]">
+                <Button
+                    type="button"
+                    variant="default"
+                    size="icon"
+                    onClick={saveAdjustmentItem}
+                    className="h-9 w-9 bg-green-600 hover:bg-green-700"
+                >
+                    <CheckCircle className="h-4 w-4 text-white" />
+                </Button>
+            </div>
+        </div>
+        )
     };
 
-    const renderAuditItemList = (auditItem: {
+    const renderAdjustmentItemList = (adjustmentItem: {
         item_id: number;
-        system_quantity: number;
-        physical_quantity: number;
-        discrepancy_quantity: number;
+        type: string;
+        before_adjustment_quantity: number;
+        adjustment_quantity: number;
+        after_adjustment_quantity: number;
         reason: string;
     }, index: number) => {
-        const selectedItem = items.find((itm) => itm.id === auditItem.item_id);
-        const itemName = selectedItemNames[index] ||
-            (selectedItem ? `${selectedItem.name} (${selectedItem.code})` : "Unknown Item");
-        const itemUnit = selectedItemUnits[index] ||
-            (selectedItem?.item_unit?.abbreviation || '');
+        const selectedItem = items.find(item => item.id === adjustmentItem.item_id);
+        const itemName = selectedItemNames[index] || (selectedItem ? `${selectedItem.name} (${selectedItem.code})` : '');
+        const itemUnit = selectedItemUnits[index] || (selectedItem?.item_unit?.abbreviation || '');
+
+        let typeColor = 'bg-gray-100 text-gray-800';
+        let typeIcon = '';
+
+        if (adjustmentItem.type === 'increased') {
+            typeColor = 'bg-green-100 text-green-800';
+            typeIcon = '↑';
+        } else if (adjustmentItem.type === 'decreased') {
+            typeColor = 'bg-red-100 text-red-800';
+            typeIcon = '↓';
+        }
 
         return (
             <div key={index} className="flex justify-between items-center border-b border-gray-100 py-3">
@@ -562,29 +600,31 @@ export default function Create({ branches = [] }: { branches?: Branch[] }) {
                         <p className="font-medium text-gray-900">
                             {itemName}
                         </p>
-                        <span>System: {auditItem.system_quantity === 0 ? 0 :
-                            (auditItem.system_quantity % 1 === 0 ?
-                                Math.abs(Number(auditItem.system_quantity)) :
-                                Number(auditItem.system_quantity.toFixed(2)))
+                        <span>Before: {adjustmentItem.before_adjustment_quantity === 0 ? 0 :
+                            (adjustmentItem.before_adjustment_quantity % 1 === 0 ?
+                                Math.abs(Number(adjustmentItem.before_adjustment_quantity)) :
+                                Number(adjustmentItem.before_adjustment_quantity.toFixed(2)))
                         } {itemUnit}</span>
-                        <span>Physical: {auditItem.physical_quantity} {itemUnit}</span>
+                        <span>After: {adjustmentItem.after_adjustment_quantity} {itemUnit}</span>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${typeColor}`}>
+                            {typeIcon} {adjustmentItem.type.charAt(0).toUpperCase() + adjustmentItem.type.slice(1)}
+                        </span>
                         <span
                             className={`${
-                                auditItem.discrepancy_quantity < 0
+                                adjustmentItem.adjustment_quantity < 0
                                     ? 'text-red-600'
-                                    : auditItem.discrepancy_quantity > 0
+                                    : adjustmentItem.adjustment_quantity > 0
                                         ? 'text-green-600'
                                         : ''
                             }`}
                         >
-                            Discrepancy: {auditItem.discrepancy_quantity < 0 ? '-' : '+'}
-                            {auditItem.discrepancy_quantity === 0 ? 0 :
-                                (auditItem.discrepancy_quantity % 1 === 0 ?
-                                    Math.abs(Number(auditItem.discrepancy_quantity)) :
-                                    Number(auditItem.discrepancy_quantity.toFixed(2)))
+                            {adjustmentItem.adjustment_quantity === 0 ? 0 :
+                                (adjustmentItem.adjustment_quantity % 1 === 0 ?
+                                    Math.abs(Number(adjustmentItem.adjustment_quantity)) :
+                                    Number(adjustmentItem.adjustment_quantity.toFixed(2)))
                             } {itemUnit}
                         </span>
-                        {auditItem.reason && <span>Reason: {auditItem.reason}</span>}
+                        {adjustmentItem.reason && <span>Reason: {adjustmentItem.reason}</span>}
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -601,7 +641,7 @@ export default function Create({ branches = [] }: { branches?: Branch[] }) {
                         type="button"
                         variant="ghost"
                         size="icon"
-                        onClick={() => removeAuditItem(index)}
+                        onClick={() => removeAdjustmentItem(index)}
                         className="h-9 w-9"
                     >
                         <Trash2 className="h-4 w-4 text-red-500" />
@@ -613,15 +653,15 @@ export default function Create({ branches = [] }: { branches?: Branch[] }) {
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Create Stock Audit" />
+            <Head title="Create Stock Adjustment" />
             <div className="bg-white rounded-lg px-8 py-6">
                 <div className="flex justify-between items-center mb-6">
                     <Heading
-                        title="Create Stock Audit"
-                        description="Create a new stock audit to verify inventory levels."
+                        title="Create Stock Adjustment"
+                        description="Create a new stock adjustment"
                     />
                     <div className="flex gap-3">
-                        <Link href={route('stock.audit.index')}>
+                        <Link href={route('stock.adjustment.index')}>
                             <Button variant="outline" className="flex items-center gap-2">
                                 <ArrowLeft className="h-4 w-4" /> Back
                             </Button>
@@ -634,26 +674,26 @@ export default function Create({ branches = [] }: { branches?: Branch[] }) {
                         <div className="lg:col-span-1 lg:sticky lg:top-6 lg:self-start">
                             <Card className="border-0 shadow-sm h-full">
                                 <div className="p-6">
-                                    <h2 className="text-base font-semibold text-gray-900 mb-4">Audit Information</h2>
+                                    <h2 className="text-base font-semibold text-gray-900 mb-4">Adjustment Information</h2>
                                     <div className="space-y-4">
                                         <div className="py-2">
                                             <div className="pb-2 border-b border-gray-100">
                                                 {data.code ? (
                                                     <div className="flex items-center justify-between">
-                                                        <span className="text-sm font-medium px-3 py-1.5">
-                                                            {data.code}
-                                                            <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full font-medium ml-2">
-                                                                Generated
+                                                            <span className="text-sm font-medium px-3 py-1.5">
+                                                                {data.code}
+                                                                <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full font-medium ml-2">
+                                                                    Generated
+                                                                </span>
                                                             </span>
-                                                        </span>
                                                         <input type="hidden" name="code" value={data.code} />
                                                     </div>
                                                 ) : (
                                                     <div className="flex items-center gap-2">
                                                         <span className="inline-block w-2 h-2 bg-yellow-400 rounded-full"></span>
                                                         <span className="text-sm text-gray-600">
-                                                            Code will be generated after selecting a branch
-                                                        </span>
+                                                                Code will be generated after selecting a branch
+                                                            </span>
                                                     </div>
                                                 )}
                                             </div>
@@ -687,7 +727,7 @@ export default function Create({ branches = [] }: { branches?: Branch[] }) {
 
                                         <div className="space-y-2 relative grid gap-2">
                                             <Label htmlFor="date">
-                                                Audit Date <span className="text-red-500">*</span>
+                                                Adjustment Date <span className="text-red-500">*</span>
                                             </Label>
                                             <Popover>
                                                 <PopoverTrigger asChild>
@@ -726,32 +766,30 @@ export default function Create({ branches = [] }: { branches?: Branch[] }) {
                             <Card className="border-0 shadow-sm h-full">
                                 <div className="p-6">
                                     <div className="flex items-center justify-between mb-4">
-                                        <h2 className="text-base font-semibold text-gray-900">Audit Items</h2>
+                                        <h2 className="text-base font-semibold text-gray-900">Adjustment Items</h2>
                                         <div className="flex items-center">
-                                            <span className="text-sm text-gray-500 mr-2">
-                                                {data.stock_audit_details.length} items
-                                            </span>
+                                                <span className="text-sm text-gray-500 mr-2">
+                                                    {data.stock_adjustment_details.length} items
+                                                </span>
                                         </div>
                                     </div>
 
                                     <div className="space-y-4">
                                         <div className="max-h-[calc(70vh-260px)] overflow-y-auto pr-2 pl-1">
-                                            {/* Render form when adding new item */}
-                                            {addingItem && renderAuditItemForm(null, -1, true)}
+                                            {addingItem && renderAdjustmentItemForm(null, -1, true)}
 
-                                            {/* Render list or edit form for each item */}
-                                            {data.stock_audit_details.map((auditItem, index) => (
+                                            {data.stock_adjustment_details.map((adjustmentItem, index) => (
                                                 <div key={index}>
                                                     {editingIndex === index
-                                                        ? renderAuditItemForm(auditItem, index)
-                                                        : renderAuditItemList(auditItem, index)}
+                                                        ? renderAdjustmentItemForm(adjustmentItem, index)
+                                                        : renderAdjustmentItemList(adjustmentItem, index)}
                                                 </div>
                                             ))}
                                         </div>
 
-                                        {data.stock_audit_details.length === 0 && !addingItem && (
+                                        {data.stock_adjustment_details.length === 0 && !addingItem && (
                                             <div className="flex items-center justify-center py-8 text-center text-gray-500">
-                                                <p>No items added yet. Click the button below to add items to audit.</p>
+                                                <p>No items added yet. Click the button below to add items to adjustment.</p>
                                             </div>
                                         )}
 
@@ -760,7 +798,7 @@ export default function Create({ branches = [] }: { branches?: Branch[] }) {
                                                 type="button"
                                                 variant="outline"
                                                 size="sm"
-                                                onClick={addAuditItem}
+                                                onClick={addAdjustmentItem}
                                                 className="mt-2"
                                                 disabled={!data.branch_id || items.length === 0}
                                             >
@@ -778,16 +816,16 @@ export default function Create({ branches = [] }: { branches?: Branch[] }) {
                         <Button
                             variant="outline"
                             type="button"
-                            onClick={() => router.visit(route('stock.audit.index'))}
+                            onClick={() => router.visit(route('stock.adjustment.index'))}
                         >
                             Cancel
                         </Button>
                         <Button
                             type="submit"
-                            disabled={processing || data.stock_audit_details.length === 0}
+                            disabled={processing || data.stock_adjustment_details.length === 0}
                             className="px-8"
                         >
-                            {processing ? 'Creating...' : 'Create Audit'}
+                            {processing ? 'Creating...' : 'Create Adjustment'}
                         </Button>
                     </div>
                 </form>

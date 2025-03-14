@@ -73,7 +73,11 @@ class StockAuditController extends Controller
                 'customDescription' => 'The stock audit you are looking for does not exist.',
                 'customBreadcrumbs' => [
                     [
-                        'title' => 'Stock Audit',
+                        'title' => 'Stock',
+                        'href' => '#'
+                    ],
+                    [
+                        'title' => 'Audit',
                         'href' => route('stock.audit.index')
                     ],
                     [

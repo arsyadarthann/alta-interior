@@ -6,6 +6,21 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class StockAuditRequest extends FormRequest
 {
+    protected function prepareForValidation()
+    {
+        $data = $this->all();
+
+        if (isset($data['stock_audit_details']) && is_array($data['stock_audit_details'])) {
+            foreach ($data['stock_audit_details'] as $key => $detail) {
+                if (isset($detail['discrepancy_quantity'])) {
+                    $data['stock_audit_details'][$key]['discrepancy_quantity'] = abs($detail['discrepancy_quantity']);
+                }
+            }
+        }
+
+        $this->replace($data);
+    }
+
     public function rules(): array
     {
         if ($this->method() === 'PUT' || $this->method() === 'PATCH') {

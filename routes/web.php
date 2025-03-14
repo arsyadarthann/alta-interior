@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Master\CustomerController;
 use App\Http\Controllers\Master\SupplierController;
+use App\Http\Controllers\Stock\StockAdjustmentController;
 use App\Http\Controllers\Stock\StockAuditController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -52,7 +53,11 @@ Route::middleware(['auth'])->group(function () {
         });
 
         Route::group(['prefix' => 'adjustment'], function () {
-
+            Route::get('/', [StockAdjustmentController::class, 'index'])->middleware('permission:read_stock_adjustment')->name('stock.adjustment.index');
+            Route::get('/create', [StockAdjustmentController::class, 'create'])->middleware('permission:create_stock_adjustment')->name('stock.adjustment.create');
+            Route::post('/', [StockAdjustmentController::class, 'store'])->middleware('permission:create_stock_adjustment')->name('stock.adjustment.store');
+            Route::get('/getCode', [StockAdjustmentController::class, 'getCode'])->middleware('permission:read_stock_adjustment')->name('stock.adjustment.getCode');
+            Route::get('/{id}', [StockAdjustmentController::class, 'show'])->middleware('permission:read_stock_adjustment')->name('stock.adjustment.show');
         });
 
         Route::group(['prefix' => 'transfer'], function () {});

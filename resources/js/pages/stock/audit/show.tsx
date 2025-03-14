@@ -91,7 +91,10 @@ export default function Show({ stockAudit }: StockAuditProps) {
             header: "System Quantity",
             cell: ({ row }) => {
                 const qty = parseFloat(row.getValue("system_quantity"));
-                return `${qty.toFixed(2)} ${row.original.item.item_unit.abbreviation}`;
+                const formattedQty = qty % 1 === 0 ?
+                    qty.toString() :
+                    qty.toFixed(2).replace(/\.?0+$/, '');
+                return `${formattedQty} ${row.original.item.item_unit.abbreviation}`;
             },
             meta: {
                 className: "text-center",
@@ -102,7 +105,10 @@ export default function Show({ stockAudit }: StockAuditProps) {
             header: "Physical Count",
             cell: ({ row }) => {
                 const qty = parseFloat(row.getValue("physical_quantity"));
-                return `${qty.toFixed(2)} ${row.original.item.item_unit.abbreviation}`;
+                const formattedQty = qty % 1 === 0 ?
+                    qty.toString() :
+                    qty.toFixed(2).replace(/\.?0+$/, '');
+                return `${formattedQty} ${row.original.item.item_unit.abbreviation}`;
             },
             meta: {
                 className: "text-center",
@@ -113,9 +119,12 @@ export default function Show({ stockAudit }: StockAuditProps) {
             header: "Discrepancy",
             cell: ({ row }) => {
                 const qty = parseFloat(row.getValue("discrepancy_quantity"));
+                const formattedQty = qty % 1 === 0 ?
+                    qty.toString() :
+                    qty.toFixed(2).replace(/\.?0+$/, '');
                 return (
                     <span className={qty < 0 ? 'text-red-500' : qty > 0 ? 'text-green-500' : 'text-gray-500'}>
-                        {qty.toFixed(2)} {row.original.item.item_unit.abbreviation}
+                        {formattedQty} {row.original.item.item_unit.abbreviation}
                     </span>
                 );
             },
