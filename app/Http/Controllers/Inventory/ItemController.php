@@ -32,8 +32,9 @@ class ItemController extends Controller
     {
         try {
             $this->item->store($request->validated());
+            $branchId = $request->input('branch_id');
             return redirect()
-                ->route('item.index')
+                ->route('item.index', ['branch_id' => $branchId])
                 ->with('flash', [
                     'toast' => [
                         'variant' => 'success',
@@ -61,8 +62,9 @@ class ItemController extends Controller
     {
         try {
             $this->item->update($id, $request->validated());
+            $branchId = $request->input('branch_id');
             return redirect()
-                ->route('item.index')
+                ->route('item.index', ['branch_id' => $branchId])
                 ->with('flash', [
                     'toast' => [
                         'variant' => 'success',

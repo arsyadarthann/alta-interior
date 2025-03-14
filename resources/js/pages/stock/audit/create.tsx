@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Head, router, useForm, Link } from "@inertiajs/react";
+import React, { useState, useEffect, useCallback } from 'react';
+import { Head, router, useForm, Link, usePage } from '@inertiajs/react';
 import AppLayout from "@/layouts/app-layout";
 import { type BreadcrumbItem } from "@/types";
 import Heading from "@/components/heading";
@@ -75,6 +75,8 @@ export default function Create({ branches = [] }: { branches?: Branch[] }) {
     const [selectedItemUnits, setSelectedItemUnits] = useState<Record<number, string>>({});
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
     const [addingItem, setAddingItem] = useState<boolean>(false);
+    const { auth } = usePage().props as unknown as { auth: { user: { branch_id: number } } };
+    const [initialized, setInitialized] = useState(false);
 
     const { data, setData, post, processing, errors } = useForm({
         code: '',
@@ -96,72 +98,103 @@ export default function Create({ branches = [] }: { branches?: Branch[] }) {
         },
     });
 
+    const defaultBranchId = auth?.user?.branch_id ? auth.user.branch_id.toString() : '';
+    const [currentBranchId, setCurrentBranchId] = useState(defaultBranchId);
+
     useEffect(() => {
-        if (data.branch_id) {
-            fetch(route('item.getItemByBranch', data.branch_id), {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
+        if (!initialized) {
+            if (auth?.user?.branch_id) {
+                const userBranchId = auth.user.branch_id.toString();
+                setData('branch_id', userBranchId);
+            }
+            setInitialized(true);
+        }
+    }, [initialized]);
+
+    const fetchItems = useCallback((branchId: string) => {
+        fetch(route('item.getItemByBranch', branchId), {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(responseData => {
+                let itemsData = [];
+
+                if (Array.isArray(responseData)) {
+                    itemsData = responseData;
+                } else if (responseData && responseData.items && Array.isArray(responseData.items)) {
+                    itemsData = responseData.items;
+                } else if (responseData && responseData.data && Array.isArray(responseData.data)) {
+                    itemsData = responseData.data;
+                } else {
+                    itemsData = [];
+                }
+
+                setItems(itemsData);
+                setData('stock_audit_details', []);
+                setSelectedItemNames({});
+                setSelectedItemUnits({});
+            })
+            .catch(error => {
+                showErrorToast([error.message]);
+            });
+    }, [setItems, setData, setSelectedItemNames, setSelectedItemUnits, showErrorToast]);
+
+    const fetchAuditCode = useCallback((branchId: string) => {
+        fetch(route('stock.audit.getCode', { branch_id: branchId }), {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(responseData => {
+                if (responseData && responseData.code) {
+                    setData('code', responseData.code);
                 }
             })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok');
-                    }
-                    return response.json();
-                })
-                .then(responseData => {
-                    let itemsData = [];
+            .catch(() => {
+                showErrorToast(['Failed to get audit code']);
+            });
+    }, [setData, showErrorToast]);
 
-                    if (Array.isArray(responseData)) {
-                        itemsData = responseData;
-                    } else if (responseData && responseData.items && Array.isArray(responseData.items)) {
-                        itemsData = responseData.items;
-                    } else if (responseData && responseData.data && Array.isArray(responseData.data)) {
-                        itemsData = responseData.data;
-                    } else {
-                        itemsData = [];
-                    }
+    const handleBranchChange = (value: string) => {
+        setData(prev => ({
+            ...prev,
+            branch_id: value,
+            stock_audit_details: []
+        }));
 
-                    setItems(itemsData);
-                    setData('stock_audit_details', []);
-                    setSelectedItemNames({});
-                    setSelectedItemUnits({});
-                })
-                .catch(error => {
-                    showErrorToast([error.message]);
-                });
-
-            fetch(route('stock.audit.getCode', {branch_id: data.branch_id}), {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok');
-                    }
-                    return response.json();
-                })
-                .then(responseData => {
-                    if (responseData && responseData.code) {
-                        setData('code', responseData.code);
-                    }
-                })
-                .catch(() => {
-                    showErrorToast(['Failed to get audit code']);
-                });
+        if (value) {
+            fetchItems(value);
+            fetchAuditCode(value);
         } else {
             setItems([]);
-            setData('stock_audit_details', []);
-            setSelectedItemNames({});
-            setSelectedItemUnits({});
             setData('code', '');
         }
-    }, [data.branch_id]);
+    };
+
+    useEffect(() => {
+        if (initialized && data.branch_id) {
+            setData('branch_id', data.branch_id)
+            fetchItems(data.branch_id);
+            fetchAuditCode(data.branch_id);
+        }
+    }, [initialized, data.branch_id]);
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -631,33 +664,25 @@ export default function Create({ branches = [] }: { branches?: Branch[] }) {
                                             )}
                                         </div>
 
-                                        <div className="space-y-2 relative grid gap-2">
-                                            <Label htmlFor="branch_id">
-                                                Branch <span className="text-red-500">*</span>
-                                            </Label>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="branch_id">Branch <span className="text-red-500">*</span></Label>
                                             <Select
-                                                value={data.branch_id ? String(data.branch_id) : ""}
-                                                onValueChange={(value) => setData('branch_id', value)}
+                                                value={data.branch_id}
+                                                onValueChange={handleBranchChange}
+                                                disabled={!!auth?.user?.branch_id}
                                             >
-                                                <SelectTrigger
-                                                    id="branch_id"
-                                                    className={`${
-                                                        errors.branch_id ? "border-red-500 ring-red-100" : ""
-                                                    }`}
-                                                >
+                                                <SelectTrigger className={errors.branch_id ? "border-red-500" : ""}>
                                                     <SelectValue placeholder="Select branch" />
                                                 </SelectTrigger>
                                                 <SelectContent>
                                                     {branches.map((branch) => (
-                                                        <SelectItem key={branch.id} value={String(branch.id)}>
+                                                        <SelectItem key={branch.id} value={branch.id.toString()}>
                                                             {branch.name}
                                                         </SelectItem>
                                                     ))}
                                                 </SelectContent>
                                             </Select>
-                                            {errors.branch_id && (
-                                                <p className="text-xs text-red-500 mt-1">{errors.branch_id}</p>
-                                            )}
+                                            {errors.branch_id && <p className="text-red-500 text-sm">{errors.branch_id}</p>}
                                         </div>
 
                                         <div className="space-y-2 relative grid gap-2">

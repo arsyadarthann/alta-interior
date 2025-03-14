@@ -92,25 +92,6 @@ export default function CreateUser({ roles, branches }: Props) {
                             </div>
 
                             <div className="relative grid gap-2">
-                                <Label htmlFor="branch_id">Branch</Label>
-                                <Select
-                                    value={data.branch_id}
-                                    onValueChange={(value) => setData('branch_id', value)}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select branch" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {branches.map((branch) => (
-                                            <SelectItem key={branch.id} value={branch.id.toString()}>
-                                                {formatRoleName(branch.name)}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            <div className="relative grid gap-2">
                                 <Label htmlFor="role">Role <span className="text-red-500">*</span></Label>
                                 <Select
                                     value={data.role}
@@ -128,6 +109,27 @@ export default function CreateUser({ roles, branches }: Props) {
                                     </SelectContent>
                                 </Select>
                             </div>
+
+                            { (!['super_admin', ''].includes(data.role)) &&
+                                <div className="relative grid gap-2">
+                                    <Label htmlFor="branch_id">Branch</Label>
+                                    <Select
+                                        value={data.branch_id}
+                                        onValueChange={(value) => setData('branch_id', value)}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select branch" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {branches.map((branch) => (
+                                                <SelectItem key={branch.id} value={branch.id.toString()}>
+                                                    {formatRoleName(branch.name)}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            }
 
                             <div className="flex justify-end gap-3 py-4">
                                 <Button

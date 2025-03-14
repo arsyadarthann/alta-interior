@@ -1,5 +1,5 @@
 import { type BreadcrumbItem } from '@/types';
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
 import React, { useState, useEffect } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import InventoryLayout from '@/layouts/inventory/layout';
@@ -8,7 +8,7 @@ import { useToastNotification } from "@/hooks/use-toast-notification";
 import { ColumnDef, Row } from "@tanstack/react-table";
 import { createNumberColumn } from "@/components/data-table/columns";
 import { ActionColumn } from "@/components/data-table/action-column";
-import { Pencil, Plus, Trash2, FilterIcon } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,7 +59,7 @@ export default function Item({ items, itemCategories, itemUnits, branches, selec
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedItem, setSelectedItem] = useState<Item | undefined>();
-    const [currentBranchId, setCurrentBranchId] = useState(selectedBranchId || branches[0]?.id?.toString() || "");
+    const { auth } = usePage().props as unknown as { auth: { user: { branch_id: number } } };
 
     const createForm = useForm({
         name: '',
@@ -77,6 +77,23 @@ export default function Item({ items, itemCategories, itemUnits, branches, selec
         price: '',
     });
 
+    const defaultBranchId = auth?.user?.branch_id
+        ? auth.user.branch_id.toString()
+        : (selectedBranchId || branches[0]?.id?.toString() || "");
+
+    const [currentBranchId, setCurrentBranchId] = useState(defaultBranchId);
+
+    useEffect(() => {
+        if (auth?.user?.branch_id) {
+            setTimeout(() => {
+                router.get(route('item.index'), { branch_id: auth.user.branch_id.toString() }, {
+                    preserveState: true,
+                    preserveScroll: true,
+                });
+            }, 50)
+        }
+    }, []);
+
     const handleBranchChange = (value: string) => {
         setCurrentBranchId(value);
         router.get(route('item.index'), { branch_id: value }, {
@@ -87,7 +104,7 @@ export default function Item({ items, itemCategories, itemUnits, branches, selec
 
     const handleCreateSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        createForm.post(route('item.store'), {
+        createForm.post(route('item.store', { branch_id: currentBranchId }), {
             preserveScroll: true,
             onError: showErrorToast,
             onSuccess: () => {
@@ -101,7 +118,7 @@ export default function Item({ items, itemCategories, itemUnits, branches, selec
         e.preventDefault();
         if (!selectedItem) return;
 
-        editForm.put(route('item.update', selectedItem.id), {
+        editForm.put(route('item.update', [selectedItem.id, { branch_id: currentBranchId }]), {
             preserveScroll: true,
             onError: showErrorToast,
             onSuccess: () => {
@@ -223,24 +240,33 @@ export default function Item({ items, itemCategories, itemUnits, branches, selec
                     />
 
                     <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <Label htmlFor="branch_id" className="whitespace-nowrap">Branch:</Label>
-                            <Select
-                                value={currentBranchId}
-                                onValueChange={handleBranchChange}
-                            >
-                                <SelectTrigger className="w-[180px]">
-                                    <SelectValue placeholder="Select branch" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {branches.map((branch) => (
-                                        <SelectItem key={branch.id} value={branch.id.toString()}>
-                                            {branch.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
+                        {!auth.user.branch_id ? (
+                            <div className="flex items-center gap-2">
+                                <Label htmlFor="branch_id" className="whitespace-nowrap">Branch:</Label>
+                                <Select
+                                    value={currentBranchId}
+                                    onValueChange={handleBranchChange}
+                                >
+                                    <SelectTrigger className="w-[180px]">
+                                        <SelectValue placeholder="Select branch" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {branches.map((branch) => (
+                                            <SelectItem key={branch.id} value={branch.id.toString()}>
+                                                {branch.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-2">
+                                <Label className="whitespace-nowrap">Branch:</Label>
+                                <span className="text-sm font-medium">
+                                {branches.find(branch => branch.id === auth.user.branch_id)?.name || 'Unknown Branch'}
+                            </span>
+                            </div>
+                        )}
 
                         {hasPermission('create_item') && (
                             <Button

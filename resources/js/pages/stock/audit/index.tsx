@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import {Head, Link, router} from "@inertiajs/react";
+import React, { useState, useEffect, useRef } from 'react';
+import { Head, Link, router, usePage } from "@inertiajs/react";
 import AppLayout from "@/layouts/app-layout";
 import { type BreadcrumbItem } from "@/types";
 import { Button } from "@/components/ui/button";
@@ -8,13 +8,12 @@ import { type ColumnDef, Row } from '@tanstack/react-table';
 import { DataTable } from "@/components/data-table";
 import Heading from "@/components/heading";
 import { useToastNotification } from "@/hooks/use-toast-notification";
-import {createNumberColumn} from "@/components/data-table/columns";
-import {ActionColumn} from "@/components/data-table/action-column";
+import { createNumberColumn } from "@/components/data-table/columns";
+import { ActionColumn } from "@/components/data-table/action-column";
 import { Pencil, Trash2 } from "lucide-react";
-import {usePermissions} from "@/hooks/use-permissions";
+import { usePermissions } from "@/hooks/use-permissions";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -53,21 +52,60 @@ type StockAudit = {
     is_locked: boolean;
 }
 
-export default function Index({ stockAudits, branches, selectedBranchId = '' } : Props) {
+export default function Index({ stockAudits, branches, selectedBranchId = '' }: Props) {
     useToastNotification();
+
     const { hasPermission } = usePermissions();
-    const [currentBranchId, setCurrentBranchId] = useState(selectedBranchId || "all");
+    const { auth } = usePage().props as unknown as {
+        auth: { user: { branch_id: number } },
+    };
+
+    const initialLoadComplete = useRef(false);
+
+    const defaultBranchId = auth.user.branch_id
+        ? auth.user.branch_id.toString()
+        : (selectedBranchId || "all");
+
+    const [currentBranchId, setCurrentBranchId] = useState(defaultBranchId);
+
+    useEffect(() => {
+        if (!initialLoadComplete.current && auth?.user?.branch_id) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlBranchId = urlParams.get('branch_id');
+
+            if (urlBranchId !== auth.user.branch_id.toString()) {
+                initialLoadComplete.current = true;
+
+                if (window.history && window.history.replaceState) {
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('branch_id', auth.user.branch_id.toString());
+                    window.history.replaceState({}, '', url.toString());
+                }
+
+                setTimeout(() => {
+                    router.reload({
+                        data: { branch_id: auth.user.branch_id.toString() },
+                        only: ['stockAudits'],
+                    });
+                }, 0);
+            } else {
+                initialLoadComplete.current = true;
+            }
+        }
+    }, []);
 
     const handleBranchChange = (value: string) => {
-        setCurrentBranchId(value);
+        if (!auth.user.branch_id) {
+            setCurrentBranchId(value);
 
-        // Send null or remove branch_id parameter when "all" is selected
-        const params = value === "all" ? {} : { branch_id: value };
+            const params = value === "all" ? {} : { branch_id: value };
 
-        router.get(route('stock.audit.index'), params, {
-            preserveState: true,
-            preserveScroll: true,
-        });
+            router.get(route('stock.audit.index'), params, {
+                preserveState: true,
+                preserveScroll: true,
+                only: ['stockAudits', 'branches', 'selectedBranchId'],
+            });
+        }
     };
 
     const columns: ColumnDef<StockAudit>[] = [
@@ -96,8 +134,8 @@ export default function Index({ stockAudits, branches, selectedBranchId = '' } :
 
                 return (
                     <span className={`px-2 py-1 rounded text-xs font-medium ${isLocked ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800"}`}>
-                {isLocked ? "Locked" : "Not Locked"}
-            </span>
+                        {isLocked ? "Locked" : "Not Locked"}
+                    </span>
                 );
             }
         },
@@ -166,25 +204,34 @@ export default function Index({ stockAudits, branches, selectedBranchId = '' } :
                 <Heading title="Stock Audit" description="Manage your stock audits." />
 
                 <div className="flex justify-between items-center mb-4">
-                    <div className="flex items-center gap-2">
-                        <Label htmlFor="branch_id" className="whitespace-nowrap">Branch:</Label>
-                        <Select
-                            value={currentBranchId}
-                            onValueChange={handleBranchChange}
-                        >
-                            <SelectTrigger className="w-[180px]">
-                                <SelectValue placeholder="Select branch" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Branches</SelectItem>
-                                {branches.map((branch) => (
-                                    <SelectItem key={branch.id} value={branch.id.toString()}>
-                                        {branch.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
+                    {!auth.user.branch_id ? (
+                        <div className="flex items-center gap-2">
+                            <Label htmlFor="branch_id" className="whitespace-nowrap">Branch:</Label>
+                            <Select
+                                value={currentBranchId}
+                                onValueChange={handleBranchChange}
+                            >
+                                <SelectTrigger className="w-[180px]">
+                                    <SelectValue placeholder="Select branch" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Branches</SelectItem>
+                                    {branches.map((branch) => (
+                                        <SelectItem key={branch.id} value={branch.id.toString()}>
+                                            {branch.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-2">
+                            <Label className="whitespace-nowrap">Branch:</Label>
+                            <span className="text-sm font-medium">
+                                {branches.find(branch => branch.id === auth.user.branch_id)?.name || 'Unknown Branch'}
+                            </span>
+                        </div>
+                    )}
 
                     {hasPermission('create_stock_audit') && (
                         <Link href={route('stock.audit.create')}>
