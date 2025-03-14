@@ -1,6 +1,6 @@
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import InventoryLayout from '@/layouts/inventory/layout';
 import HeadingSmall from '@/components/heading-small';
@@ -53,13 +53,46 @@ interface Props {
     selectedBranchId?: string;
 }
 
-export default function Item({ items, itemCategories, itemUnits, branches, selectedBranchId = '' }: Props) {
+export default function Item({
+                                 items,
+                                 itemCategories,
+                                 itemUnits,
+                                 branches,
+                                 selectedBranchId = ''
+                             }: Props) {
     const { hasPermission } = usePermissions();
     const { showErrorToast } = useToastNotification();
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedItem, setSelectedItem] = useState<Item | undefined>();
     const { auth } = usePage().props as unknown as { auth: { user: { branch_id: number } } };
+
+    // Improved Default Branch Selection Logic
+    const defaultBranchId = useMemo(() => {
+        // Priority order for branch selection:
+        // 1. User's assigned branch
+        // 2. selectedBranchId from props
+        // 3. First branch in the list
+        // 4. Empty string as fallback
+        return auth?.user?.branch_id
+            ? auth.user.branch_id.toString()
+            : (selectedBranchId || branches[0]?.id?.toString() || "");
+    }, [auth?.user?.branch_id, selectedBranchId, branches]);
+
+    const [currentBranchId, setCurrentBranchId] = useState(defaultBranchId);
+
+    // Simplified initial load effect
+    useEffect(() => {
+        // Trigger initial branch load only if no specific branch is set
+        if (defaultBranchId) {
+            router.get(route('item.index'), {
+                branch_id: defaultBranchId
+            }, {
+                preserveState: true,
+                preserveScroll: true,
+            });
+        }
+    }, [defaultBranchId]);
 
     const createForm = useForm({
         name: '',
@@ -76,23 +109,6 @@ export default function Item({ items, itemCategories, itemUnits, branches, selec
         item_unit_id: '',
         price: '',
     });
-
-    const defaultBranchId = auth?.user?.branch_id
-        ? auth.user.branch_id.toString()
-        : (selectedBranchId || branches[0]?.id?.toString() || "");
-
-    const [currentBranchId, setCurrentBranchId] = useState(defaultBranchId);
-
-    useEffect(() => {
-        if (auth?.user?.branch_id) {
-            setTimeout(() => {
-                router.get(route('item.index'), { branch_id: auth.user.branch_id.toString() }, {
-                    preserveState: true,
-                    preserveScroll: true,
-                });
-            }, 50)
-        }
-    }, []);
 
     const handleBranchChange = (value: string) => {
         setCurrentBranchId(value);
@@ -168,7 +184,7 @@ export default function Item({ items, itemCategories, itemUnits, branches, selec
                 const stockValue = Number(row.original.stock);
                 const formattedStock = Number.isInteger(stockValue)
                     ? stockValue.toString()
-                    : stockValue.toString();
+                    : stockValue.toFixed(2);
 
                 return formattedStock + ' ' + row.original.item_unit?.abbreviation;
             }

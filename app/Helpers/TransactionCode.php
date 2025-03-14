@@ -27,7 +27,12 @@ class TransactionCode
             throw new \Exception('Kode transaksi tidak tersedia.');
         }
 
-        $isBranchSpecific = in_array($transactionType, ['Purchase Order', 'Stock Transfer', 'Stock Audit', 'Stock Adjustment', 'Purchase Invoice Payment', 'Sales Order', 'Waybill', 'Sales Invoice', 'Sales Invoice Payment', 'Expense']);
+        // List of transaction types that require branch-specific codes
+        $isBranchSpecific = in_array($transactionType, ['Purchase Order', 'Stock Audit', 'Stock Adjustment', 'Purchase Invoice Payment', 'Sales Order', 'Waybill', 'Sales Invoice', 'Sales Invoice Payment', 'Expense']);
+
+        // List of transaction types that involve branches but don't need branch ID for code generation
+        $isNoBranch = in_array($transactionType, ['Stock Transfer']);
+
         if ($isBranchSpecific) {
             if (!auth()->user()->branch_id) {
                 if (request()->branch_id) {
@@ -38,52 +43,53 @@ class TransactionCode
             } else {
                 $branchId = auth()->user()->branch_id;
             }
+        } else if ($isNoBranch) {
+            $branchId = null;
         } else if ($isBranchSpecific && !auth()->user()->branch_id) {
             throw new \Exception('Anda tidak memiliki akses ke transaksi ini.');
         } else {
             $branchId = auth()->user()->branch_id;
         }
 
-
         $year = Carbon::now()->format('y');
         $month = Carbon::now()->format('m');
 
-        $transactionCode = DB::transaction(function () use ($transactionType, $prefix, $year, $month, $isBranchSpecific, $branchId) {
-            $availableSequence = SequenceStatus::whereHas('transactionSequence', function ($query) use ($transactionType, $prefix, $year, $month, $isBranchSpecific, $branchId) {
+        $transactionCode = DB::transaction(function () use ($transactionType, $prefix, $year, $month, $isBranchSpecific, $isNoBranch, $branchId) {
+            $availableSequence = SequenceStatus::whereHas('transactionSequence', function ($query) use ($transactionType, $prefix, $year, $month, $isBranchSpecific, $isNoBranch, $branchId) {
                 $query->where('transaction_prefix_id', $prefix->id)
                     ->where('month', $month)
                     ->where('year', $year);
 
-                if ($isBranchSpecific) {
+                if ($isBranchSpecific && !$isNoBranch) {
                     $query->where('branch_id', $branchId);
                 }
             })
-                ->where(function ($query) use ($transactionType, $prefix, $year, $month, $branchId, $isBranchSpecific) {
+                ->where(function ($query) use ($transactionType, $prefix, $year, $month, $branchId, $isBranchSpecific, $isNoBranch) {
                     $query->where('status', 'reserved')
                         ->where('user_id', auth()->user()->id)
                         ->where('expires_at', '>', now())
-                        ->whereIn('transaction_sequence_id', function ($subQuery) use ($prefix, $year, $month, $isBranchSpecific, $branchId) {
+                        ->whereIn('transaction_sequence_id', function ($subQuery) use ($prefix, $year, $month, $isBranchSpecific, $isNoBranch, $branchId) {
                             $subQuery->select('id')
                                 ->from('transaction_sequences')
                                 ->where('transaction_prefix_id', $prefix->id)
                                 ->where('month', $month)
                                 ->where('year', $year);
 
-                            if ($isBranchSpecific) {
+                            if ($isBranchSpecific && !$isNoBranch) {
                                 $subQuery->where('branch_id', $branchId);
                             }
                         });
                 })
-                ->orWhere(function ($query) use ($transactionType, $prefix, $year, $month, $branchId, $isBranchSpecific) {
+                ->orWhere(function ($query) use ($transactionType, $prefix, $year, $month, $branchId, $isBranchSpecific, $isNoBranch) {
                     $query->where('status', 'available')
-                        ->whereIn('transaction_sequence_id', function ($subQuery) use ($transactionType, $prefix, $year, $month, $isBranchSpecific, $branchId) {
+                        ->whereIn('transaction_sequence_id', function ($subQuery) use ($transactionType, $prefix, $year, $month, $isBranchSpecific, $isNoBranch, $branchId) {
                             $subQuery->select('id')
                                 ->from('transaction_sequences')
                                 ->where('transaction_prefix_id', $prefix->id)
                                 ->where('month', $month)
                                 ->where('year', $year);
 
-                            if ($isBranchSpecific) {
+                            if ($isBranchSpecific && !$isNoBranch) {
                                 $subQuery->where('branch_id', $branchId);
                             }
                         })
@@ -108,7 +114,7 @@ class TransactionCode
                 $existingTransactionSequence = TransactionSequence::where('transaction_prefix_id', $prefix->id)
                     ->where('month', $month)
                     ->where('year', $year)
-                    ->when($isBranchSpecific, function ($query) use ($branchId) {
+                    ->when($isBranchSpecific && !$isNoBranch, function ($query) use ($branchId) {
                         $query->where('branch_id', $branchId);
                     })
                     ->lockForUpdate()
@@ -118,7 +124,7 @@ class TransactionCode
                     $sequenceNumber = 1;
 
                     $existingTransactionSequence = TransactionSequence::create([
-                        'branch_id' => $isBranchSpecific ? $branchId : null,
+                        'branch_id' => ($isBranchSpecific && !$isNoBranch) ? $branchId : null,
                         'transaction_prefix_id' => $prefix->id,
                         'month' => $month,
                         'year' => $year,
@@ -141,7 +147,7 @@ class TransactionCode
                 RevertSequenceJob::dispatch($sequence->id)->delay(now()->addHour());
             }
 
-            if ($isBranchSpecific) {
+            if ($isBranchSpecific && !$isNoBranch) {
                 $branchInitial = Cache::remember('branch_initial_' . $branchId, 3600, function () use ($branchId) {
                     return Branch::where('id', $branchId)->value('initial');
                 });

@@ -62,6 +62,14 @@ class PermissionSeeder extends Seeder
             'create_item',
             'update_item',
             'delete_item',
+            'read_stock_audit',
+            'create_stock_audit',
+            'update_stock_audit',
+            'delete_stock_audit',
+            'read_stock_adjustment',
+            'create_stock_adjustment',
+            'read_stock_transfer',
+            'create_stock_transfer',
         ];
 
         foreach ($permissions as $permission) {

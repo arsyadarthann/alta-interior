@@ -185,6 +185,71 @@ class ItemRepository implements ItemInterface
         });
     }
 
+    private function addStockBatch(int $itemBatchId, int $branchId, float $addedQuantity)
+    {
+        return DB::transaction(function () use ($itemBatchId, $branchId, $addedQuantity) {
+            $sourceBatch = $this->itemBatch->find($itemBatchId);
+
+            $previousQty = $this->itemBatch
+                ->where('item_id', $sourceBatch->item_id)
+                ->where('branch_id', $branchId)
+                ->sum('stock');
+
+            $existingBatch = $this->itemBatch
+                ->where('item_id', $sourceBatch->item_id)
+                ->where('branch_id', $branchId)
+                ->where('sku', $sourceBatch->sku)
+                ->first();
+
+            if ($existingBatch) {
+                $existingBatch->stock += $addedQuantity;
+                $existingBatch->save();
+
+                return [
+                    'item_batch_id' => $existingBatch->id,
+                    'data_quantity' => [
+                        'previous_quantity' => $previousQty,
+                        'movement_quantity' => $addedQuantity,
+                        'after_quantity' => $previousQty + $addedQuantity,
+                    ]
+                ];
+            }
+
+            $newBatch = $this->itemBatch->create([
+                'sku' => $sourceBatch['sku'],
+                'branch_id' => $branchId,
+                'item_id' => $sourceBatch->item_id,
+                'received_at' => $sourceBatch->received_at,
+                'stock' => $addedQuantity,
+                'cogs' => $sourceBatch->cogs,
+            ]);
+
+            return [
+                'item_batch_id' => $newBatch->id,
+                'data_quantity' => [
+                    'previous_quantity' => $previousQty,
+                    'movement_quantity' => $addedQuantity,
+                    'after_quantity' => $previousQty + $addedQuantity,
+                ]
+            ];
+        });
+    }
+
+    public function transferBatch(int $itemId, int $fromBranchId, int $toBranchId, float $transferQuantity, $stockTransferDetail)
+    {
+        return DB::transaction(function () use ($itemId, $fromBranchId, $toBranchId, $transferQuantity, $stockTransferDetail) {
+            $reduceStockBatches = $this->reduceBatch($itemId, $fromBranchId, $transferQuantity);
+
+            foreach ($reduceStockBatches as $batch) {
+                app(StockMovementRepository::class)->createStockMovement($batch['item_batch_id'], $fromBranchId, StockAdjustmentDetail::TYPE_DECREASED, $batch['data_quantity'], $stockTransferDetail);
+
+                $addStockBatch = $this->addStockBatch($batch['item_batch_id'], $toBranchId, $batch['data_quantity']['movement_quantity']);
+
+                app(StockMovementRepository::class)->createStockMovement($addStockBatch['item_batch_id'], $toBranchId, StockAdjustmentDetail::TYPE_INCREASED, $addStockBatch['data_quantity'], $stockTransferDetail);
+            }
+        });
+    }
+
     private function processBatchAdjustment($batch, $adjustmentType, $adjustmentStock): array
     {
         $previousQuantity = $this->sumStock($batch->item_id, $batch->branch_id);

@@ -20,7 +20,7 @@ class StockAdjustmentRepository implements StockAdjustmentInterface
         return $this->stockAdjustment
             ->with(self::GENERAL_RELATIONSHIPS)
             ->when($branchId, fn($query) => $query->where('branch_id', $branchId))
-            ->orderBy('id')->orderByDesc('date')->get();
+            ->orderByDesc('code')->get();
     }
 
     public function getById(int $id)

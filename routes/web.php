@@ -4,6 +4,7 @@ use App\Http\Controllers\Master\CustomerController;
 use App\Http\Controllers\Master\SupplierController;
 use App\Http\Controllers\Stock\StockAdjustmentController;
 use App\Http\Controllers\Stock\StockAuditController;
+use App\Http\Controllers\Stock\StockTransferController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -60,7 +61,13 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/{id}', [StockAdjustmentController::class, 'show'])->middleware('permission:read_stock_adjustment')->name('stock.adjustment.show');
         });
 
-        Route::group(['prefix' => 'transfer'], function () {});
+        Route::group(['prefix' => 'transfer'], function () {
+            Route::get('/', [StockTransferController::class, 'index'])->middleware('permission:read_stock_transfer')->name('stock.transfer.index');
+            Route::get('/create', [StockTransferController::class, 'create'])->middleware('permission:create_stock_transfer')->name('stock.transfer.create');
+            Route::post('/', [StockTransferController::class, 'store'])->middleware('permission:create_stock_transfer')->name('stock.transfer.store');
+            Route::get('/getCode', [StockTransferController::class, 'getCode'])->middleware('permission:read_stock_transfer')->name('stock.transfer.getCode');
+            Route::get('/{id}', [StockTransferController::class, 'show'])->middleware('permission:read_stock_transfer')->name('stock.transfer.show');
+        });
     });
 
     Route::fallback(function () {

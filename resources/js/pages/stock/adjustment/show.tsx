@@ -155,7 +155,7 @@ export default function Show({ stockAdjustment }: StockAdjustmentProps) {
             <div className="bg-white rounded-lg px-8 py-6">
                 <div className="flex justify-between items-center mb-6">
                     <Heading
-                        title={`Stock Adjustment: ${stockAdjustment.code}`}
+                        title="Stock Adjustment"
                         description="Stock adjustment details and results"
                     />
                     <div className="flex gap-3">
@@ -173,17 +173,25 @@ export default function Show({ stockAdjustment }: StockAdjustmentProps) {
                             <div className="p-6">
                                 <h2 className="text-base font-semibold text-gray-900 mb-4">Adjustment Information</h2>
                                 <div className="space-y-4">
-                                    <div>
-                                        <h3 className="text-sm font-medium text-gray-500">Adjustment Date</h3>
-                                        <p className="mt-1 text-sm text-gray-900">{formatDate(stockAdjustment.date)}</p>
+                                    <div className="flex items-center">
+                                        <div className="flex-1">
+                                            <h3 className="text-sm font-medium text-gray-500">Adjustment Code</h3>
+                                            <p className="mt-1 text-sm text-gray-900">{stockAdjustment.code}</p>
+                                        </div>
+                                        <div className="flex-1">
+                                            <h3 className="text-sm font-medium text-gray-500">Adjustment Date</h3>
+                                            <p className="mt-1 text-sm text-gray-900">{formatDate(stockAdjustment.date)}</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <h3 className="text-sm font-medium text-gray-500">Branch</h3>
-                                        <p className="mt-1 text-sm text-gray-900">{stockAdjustment.branch.name}</p>
-                                    </div>
-                                    <div>
-                                        <h3 className="text-sm font-medium text-gray-500">Adjustment By</h3>
-                                        <p className="mt-1 text-sm text-gray-900">{stockAdjustment.user.name}</p>
+                                    <div className="flex items-center">
+                                        <div className="flex-1">
+                                            <h3 className="text-sm font-medium text-gray-500">Adjustment By</h3>
+                                            <p className="mt-1 text-sm text-gray-900">{stockAdjustment.user.name}</p>
+                                        </div>
+                                        <div className="flex-1">
+                                            <h3 className="text-sm font-medium text-gray-500">Branch</h3>
+                                            <p className="mt-1 text-sm text-gray-900">{stockAdjustment.branch.name}</p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

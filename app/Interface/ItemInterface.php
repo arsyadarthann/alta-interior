@@ -9,4 +9,6 @@ interface ItemInterface
     public function store(array $data);
     public function update(int $id, array $data);
     public function destroy(int $id);
+
+    public function sumStock(int $itemId, int $branchId);
 }

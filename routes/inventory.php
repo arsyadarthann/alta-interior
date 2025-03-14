@@ -28,5 +28,6 @@ Route::middleware('auth')->group(function () {
         Route::put('/{id}', [ItemController::class, 'update'])->middleware('permission:update_item')->name('item.update');
         Route::delete('/{id}', [ItemController::class, 'destroy'])->middleware('permission:delete_item')->name('item.destroy');
         Route::get('/{branchId}/getItemByBranch', [ItemController::class, 'getItemByBranch'])->middleware('permission:read_item')->name('item.getItemByBranch');
+        Route::get('/getItemStockByBranch', [ItemController::class, 'getItemStockByBranch'])->middleware('permission:read_item')->name('item.getItemStockByBranch');
     });
 });

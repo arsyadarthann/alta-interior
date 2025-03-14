@@ -12,6 +12,7 @@ use App\Interface\PermissionInterface;
 use App\Interface\RoleInterface;
 use App\Interface\StockAdjustmentInterface;
 use App\Interface\StockAuditInterface;
+use App\Interface\StockTransferInterface;
 use App\Interface\SupplierInterface;
 use App\Interface\TaxRateInterface;
 use App\Interface\TransactionPrefixInterface;
@@ -26,6 +27,7 @@ use App\Repositories\PermissionRepository;
 use App\Repositories\RoleRepository;
 use App\Repositories\StockAdjustmentRepository;
 use App\Repositories\StockAuditRepository;
+use App\Repositories\StockTransferRepository;
 use App\Repositories\SupplierRepository;
 use App\Repositories\TaxRateRepository;
 use App\Repositories\TransactionPrefixRepository;
@@ -53,6 +55,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(ItemInterface::class, ItemRepository::class);
         $this->app->bind(StockAuditInterface::class, StockAuditRepository::class);
         $this->app->bind(StockAdjustmentInterface::class, StockAdjustmentRepository::class);
+        $this->app->bind(StockTransferInterface::class, StockTransferRepository::class);
     }
 
     /**

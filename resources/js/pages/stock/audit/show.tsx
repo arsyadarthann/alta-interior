@@ -155,7 +155,7 @@ export default function Show({ stockAudit }: StockAuditProps) {
             <div className="bg-white rounded-lg px-8 py-6">
                 <div className="flex justify-between items-center mb-6">
                     <Heading
-                        title={`Stock Audit: ${stockAudit.code}`}
+                        title="Stock Audit"
                         description="Stock audit details and results"
                     />
                     <div className="flex gap-3">
@@ -199,30 +199,40 @@ export default function Show({ stockAudit }: StockAuditProps) {
                             <div className="p-6">
                                 <h2 className="text-base font-semibold text-gray-900 mb-4">Audit Information</h2>
                                 <div className="space-y-4">
-                                    <div>
-                                        <h3 className="text-sm font-medium text-gray-500">Audit Date</h3>
-                                        <p className="mt-1 text-sm text-gray-900">{formatDate(stockAudit.date)}</p>
+                                    <div className="flex items-center">
+                                        <div className="flex-1">
+                                            <h3 className="text-sm font-medium text-gray-500">Audit Code</h3>
+                                            <p className="mt-1 text-sm text-gray-900">{stockAudit.code}</p>
+                                        </div>
+                                        <div className="flex-1">
+                                            <h3 className="text-sm font-medium text-gray-500">Audit Date</h3>
+                                            <p className="mt-1 text-sm text-gray-900">{formatDate(stockAudit.date)}</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <h3 className="text-sm font-medium text-gray-500">Branch</h3>
-                                        <p className="mt-1 text-sm text-gray-900">{stockAudit.branch.name}</p>
+                                    <div className="flex items-center">
+                                        <div className="flex-1">
+                                            <h3 className="text-sm font-medium text-gray-500">Audited By</h3>
+                                            <p className="mt-1 text-sm text-gray-900">{stockAudit.user.name}</p>
+                                        </div>
+                                        <div className="flex-1">
+                                            <h3 className="text-sm font-medium text-gray-500">Branch</h3>
+                                            <p className="mt-1 text-sm text-gray-900">{stockAudit.branch.name}</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <h3 className="text-sm font-medium text-gray-500">Audited By</h3>
-                                        <p className="mt-1 text-sm text-gray-900">{stockAudit.user.name}</p>
-                                    </div>
-                                    <div>
-                                        <h3 className="text-sm font-medium text-gray-500">Status</h3>
-                                        <div className="mt-1">
-                                            {stockAudit.is_locked ? (
-                                                <Badge variant="secondary" className="bg-red-100 text-red-700">
-                                                    Locked
-                                                </Badge>
-                                            ) : (
-                                                <Badge variant="secondary" className="bg-green-100 text-green-700">
-                                                    Not Locked
-                                                </Badge>
-                                            )}
+                                    <div className="flex items-center">
+                                        <div className="flex-1">
+                                            <h3 className="text-sm font-medium text-gray-500">Status</h3>
+                                            <div className="mt-1">
+                                                {stockAudit.is_locked ? (
+                                                    <Badge variant="secondary" className="bg-red-100 text-red-700">
+                                                        Locked
+                                                    </Badge>
+                                                ) : (
+                                                    <Badge variant="secondary" className="bg-green-100 text-green-700">
+                                                        Not Locked
+                                                    </Badge>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

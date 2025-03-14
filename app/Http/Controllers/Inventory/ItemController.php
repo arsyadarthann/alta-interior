@@ -112,4 +112,17 @@ class ItemController extends Controller
             'status' => 404,
         ]);
     }
+
+    public function getItemStockByBranch(Request $request)
+    {
+        if ($request->wantsJson() || $request->header('X-Inertia')) {
+            $itemId = $request->query('item_id');
+            $branchId = $request->query('branch_id');
+            return response()->json(['stock' => $this->item->sumStock($itemId, $branchId)]);
+        }
+
+        return Inertia::render('errors/error-page', [
+            'status' => 404,
+        ]);
+    }
 }
