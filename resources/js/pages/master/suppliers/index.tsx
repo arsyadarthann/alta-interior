@@ -21,6 +21,10 @@ const breadcrumbs: BreadcrumbItem[] = [
     }
 ];
 
+interface Props {
+    suppliers: Supplier[];
+}
+
 type Supplier = {
     id: number;
     name: string;
@@ -30,8 +34,7 @@ type Supplier = {
     address: string;
 }
 
-// @ts-ignore
-export default function Index({ suppliers }) {
+export default function Index({ suppliers } : Props) {
     useToastNotification();
 
     const { hasPermission } = usePermissions();

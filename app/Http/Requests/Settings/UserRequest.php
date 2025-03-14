@@ -19,8 +19,9 @@ class UserRequest extends FormRequest
     {
         return [
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,NULL,id,deleted_at,NULL',
+            'email' => 'required|string|email|max:255|unique:users,email',
             'role' => 'required|string|exists:roles,name',
+            'branch_id' => 'required|numeric|exists:branches,id'
         ];
     }
 
@@ -28,8 +29,9 @@ class UserRequest extends FormRequest
     {
         return [
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,'.$this->route('id') . ',id,deleted_at,NULL',
+            'email' => 'required|string|email|max:255|unique:users,email,'.$this->route('id'),
             'role' => 'required|string|exists:roles,name',
+            'branch_id' => 'nullable|numeric|exists:branches,id'
         ];
     }
 

@@ -21,11 +21,17 @@ export function NavMainWithSubmenu({
         if (!itemUrl) return false;
 
         const currentUrl = page.url;
-        return currentUrl === itemUrl || (
-            currentUrl.startsWith(itemUrl) &&
-            (itemUrl.endsWith('/') || currentUrl.charAt(itemUrl.length) === '/')
-        );
+
+        const currentUrlWithoutQuery = currentUrl.split('?')[0];
+
+        return currentUrl === itemUrl ||
+            currentUrlWithoutQuery === itemUrl ||
+            (
+                currentUrl.startsWith(itemUrl) &&
+                (itemUrl.endsWith('/') || currentUrl.charAt(itemUrl.length) === '/')
+            );
     };
+
 
     const renderMenuItem = (item: NavItemWithChildren) => {
         const isActive = isActiveOrHasActiveChild(item.url);

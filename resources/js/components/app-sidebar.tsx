@@ -62,8 +62,9 @@ export function AppSidebar() {
             icon: ClipboardList,
             children: [
                 {
-                    title: 'Opname',
-                    url: '/stock/opname',
+                    title: 'Audit',
+                    url: '/stock/audit',
+                    matchPatch: ['/stock/audit', '/stock/audit/*', '/stock/audit?*']
                 },
                 {
                     title: 'Adjustment',

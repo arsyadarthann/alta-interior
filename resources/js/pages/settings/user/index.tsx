@@ -30,6 +30,10 @@ type User = {
             name: string;
         }
     ];
+    branch: {
+        id: number;
+        name: string;
+    }
 }
 
 interface Props {
@@ -58,6 +62,11 @@ export default function User({ users } : Props) {
             accessorKey: "email",
             header: "Email",
             cell: ({ row }: { row: Row<User> }) => row.original.email
+        },
+        {
+            accessorKey: "branch",
+            header: "Branch",
+            cell: ({ row }: { row: Row<User> }) => row.original.branch ? row.original.branch.name : '-',
         },
         {
             accessorKey: "roles",

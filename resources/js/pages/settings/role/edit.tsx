@@ -78,7 +78,7 @@ export default function EditRole({ role, permissions }: Props) {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Edit Role" />
-            <SettingsLayout>
+            <SettingsLayout fullWidth>
                 <div className="space-y-6">
                     <HeadingSmall
                         title="Edit Role"

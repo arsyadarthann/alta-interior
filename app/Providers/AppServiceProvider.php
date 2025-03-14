@@ -10,6 +10,7 @@ use App\Interface\ItemUnitInterface;
 use App\Interface\PaymentMethodInterface;
 use App\Interface\PermissionInterface;
 use App\Interface\RoleInterface;
+use App\Interface\StockAuditInterface;
 use App\Interface\SupplierInterface;
 use App\Interface\TaxRateInterface;
 use App\Interface\TransactionPrefixInterface;
@@ -22,6 +23,7 @@ use App\Repositories\ItemUnitRepository;
 use App\Repositories\PaymentMethodRepository;
 use App\Repositories\PermissionRepository;
 use App\Repositories\RoleRepository;
+use App\Repositories\StockAuditRepository;
 use App\Repositories\SupplierRepository;
 use App\Repositories\TaxRateRepository;
 use App\Repositories\TransactionPrefixRepository;
@@ -47,6 +49,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(ItemCategoryInterface::class, ItemCategoryRepository::class);
         $this->app->bind(ItemUnitInterface::class, ItemUnitRepository::class);
         $this->app->bind(ItemInterface::class, ItemRepository::class);
+        $this->app->bind(StockAuditInterface::class, StockAuditRepository::class);
     }
 
     /**

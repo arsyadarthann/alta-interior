@@ -159,9 +159,11 @@ class TransactionCode
         return $transactionCode;
     }
 
-    public static function confirmTransactionCode($transactionType, $branchId = null)
+    public static function confirmTransactionCode($transactionType, $code, $branchId = null)
     {
-        return DB::transaction(function () use ($transactionType, $branchId) {
+        return DB::transaction(function () use ($transactionType, $code, $branchId) {
+            $sequenceNumber = (int) Str::afterLast($code, '-');
+
             $sequence = SequenceStatus::whereHas('transactionSequence.transactionPrefix', function ($query) use ($transactionType) {
                 $query->where('transaction_type', $transactionType);
             })
@@ -170,6 +172,7 @@ class TransactionCode
                         $query->where('branch_id', $branchId);
                     }
                 })
+                ->where('sequence_number', $sequenceNumber)
                 ->where('user_id', auth()->user()->id)
                 ->where('status', 'reserved')
                 ->lockForUpdate()

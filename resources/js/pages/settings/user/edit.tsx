@@ -15,12 +15,21 @@ interface Props {
         id: number;
         name: string;
         email: string;
+        branch_id: string;
         roles: [{
             id: number;
             name: string;
         }];
+        branch : {
+            id: number;
+            name: string;
+        }
     };
     roles: {
+        id: number;
+        name: string;
+    }[];
+    branches: {
         id: number;
         name: string;
     }[];
@@ -37,11 +46,12 @@ const breadcrumbs: BreadcrumbItem[] = [
     }
 ]
 
-export default function EditUser({ user, roles }: Props) {
+export default function EditUser({ user, roles, branches }: Props) {
     const { data, setData, put, processing } = useForm({
         name: user.name,
         email: user.email,
         role: user.roles[0].name,
+        branch_id: user.branch_id ? user.branch_id.toString() : ""
     });
 
     const { showErrorToast } = useToastNotification();
@@ -73,7 +83,9 @@ export default function EditUser({ user, roles }: Props) {
                     <form onSubmit={handleSubmit} className="space-y-6">
                         <div className="space-y-4">
                             <div className="space-y-2">
-                                <Label htmlFor="name">Name</Label>
+                                <Label htmlFor="name">
+                                    Name <span className="text-red-500">*</span>
+                                </Label>
                                 <Input
                                     id="name"
                                     value={data.name}
@@ -82,7 +94,9 @@ export default function EditUser({ user, roles }: Props) {
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="email">Email</Label>
+                                <Label htmlFor="email">
+                                    Email <span className="text-red-500">*</span>
+                                </Label>
                                 <Input
                                     id="email"
                                     type="email"
@@ -92,7 +106,28 @@ export default function EditUser({ user, roles }: Props) {
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="role">Role</Label>
+                                <Label htmlFor="branch_id">Branch</Label>
+                                <Select
+                                    value={data.branch_id}
+                                    onValueChange={(value) => setData('branch_id', value)}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select branch" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {branches.map((branch) => (
+                                            <SelectItem key={branch.id} value={branch.id.toString()}>
+                                                {formatRoleName(branch.name)}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="role">
+                                    Role <span className="text-red-500">*</span>
+                                </Label>
                                 <Select
                                     value={data.role}
                                     onValueChange={(value) => setData('role', value)}

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\UserRequest;
+use App\Interface\BranchInterface;
 use App\Interface\RoleInterface;
 use App\Interface\UserInterface;
 use Illuminate\Http\Request;
@@ -11,7 +12,7 @@ use Inertia\Inertia;
 
 class UserController extends Controller
 {
-    public function __construct(private UserInterface $user, private RoleInterface $role) {}
+    public function __construct(private UserInterface $user, private BranchInterface $branch, private RoleInterface $role) {}
 
     public function index()
     {
@@ -23,7 +24,8 @@ class UserController extends Controller
     public function create()
     {
         return Inertia::render('settings/user/create', [
-            'roles' => $this->role->getAll()
+            'roles' => $this->role->getAll(),
+            'branches' => $this->branch->getAll()
         ]);
     }
 
@@ -84,7 +86,8 @@ class UserController extends Controller
 
         return Inertia::render('settings/user/edit', [
             'user' => $user,
-            'roles' => $this->role->getAll()
+            'roles' => $this->role->getAll(),
+            'branches' => $this->branch->getAll()
         ]);
     }
 

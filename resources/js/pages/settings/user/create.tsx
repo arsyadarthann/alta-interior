@@ -26,13 +26,20 @@ interface Props {
         id: number;
         name: string;
     }[];
+    branches: Branch[];
 }
 
-export default function CreateUser({ roles }: Props) {
+type Branch = {
+    id: number;
+    name: string;
+}
+
+export default function CreateUser({ roles, branches }: Props) {
     const { data, setData, post, processing } = useForm({
         name: '',
         email: '',
         role: '',
+        branch_id: ''
     });
 
     const { showErrorToast } = useToastNotification();
@@ -82,6 +89,25 @@ export default function CreateUser({ roles }: Props) {
                                     onChange={e => setData('email', e.target.value)}
                                     placeholder="Enter email address"
                                 />
+                            </div>
+
+                            <div className="relative grid gap-2">
+                                <Label htmlFor="branch_id">Branch</Label>
+                                <Select
+                                    value={data.branch_id}
+                                    onValueChange={(value) => setData('branch_id', value)}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select branch" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {branches.map((branch) => (
+                                            <SelectItem key={branch.id} value={branch.id.toString()}>
+                                                {formatRoleName(branch.name)}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
 
                             <div className="relative grid gap-2">

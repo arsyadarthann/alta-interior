@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Master;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Master\CustomerRequest;
+use App\Interface\BranchInterface;
 use App\Interface\CustomerInterface;
 use App\Interface\ItemInterface;
 use Illuminate\Http\Request;
