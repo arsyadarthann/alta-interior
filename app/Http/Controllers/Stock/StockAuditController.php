@@ -98,8 +98,35 @@ class StockAuditController extends Controller
 
     public function edit($id)
     {
+        $stockAudit = $this->stockAudit->getById($id);
+
+        if ($stockAudit->is_locked) {
+            return Inertia::render('errors/error-page', [
+                'status' => 423,
+                'customTitle' => 'Stock Audit Locked',
+                'customDescription' => 'The stock audit you are looking for is locked.',
+                'customBreadcrumbs' => [
+                    [
+                        'title' => 'Stock',
+                        'href' => '#'
+                    ],
+                    [
+                        'title' => 'Audit',
+                        'href' => route('stock.audit.index')
+                    ],
+                    [
+                        'title' => 'Edit',
+                        'href' => route('stock.audit.edit', $id)
+                    ],
+                    [
+                        'title' => 'Stock Audit Locked',
+                    ]
+                ]
+            ]);
+        }
+
         return Inertia::render('stock/audit/edit', [
-            'stockAudit' => $this->stockAudit->getById($id),
+            'stockAudit' => $stockAudit,
             'branches' => $this->branch->getAll()
         ]);
     }

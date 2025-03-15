@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Master\CustomerController;
 use App\Http\Controllers\Master\SupplierController;
+use App\Http\Controllers\Procurement\PurchaseOrderController;
 use App\Http\Controllers\Stock\StockAdjustmentController;
 use App\Http\Controllers\Stock\StockAuditController;
 use App\Http\Controllers\Stock\StockTransferController;
@@ -35,6 +36,7 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/', [SupplierController::class, 'index'])->middleware('permission:read_supplier')->name('suppliers.index');
             Route::get('/create', [SupplierController::class, 'create'])->middleware('permission:create_supplier')->name('suppliers.create');
             Route::post('/', [SupplierController::class, 'store'])->middleware('permission:create_supplier')->name('suppliers.store');
+            Route::get('/{id}/edit', [SupplierController::class, 'edit'])->middleware('permission:update_supplier')->name('suppliers.edit');
             Route::put('/{id}', [SupplierController::class, 'update'])->middleware('permission:update_supplier')->name('suppliers.update');
             Route::delete('/{id}', [SupplierController::class, 'destroy'])->middleware('permission:delete_supplier')->name('suppliers.destroy');
         });
@@ -67,6 +69,20 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/', [StockTransferController::class, 'store'])->middleware('permission:create_stock_transfer')->name('stock.transfer.store');
             Route::get('/getCode', [StockTransferController::class, 'getCode'])->middleware('permission:read_stock_transfer')->name('stock.transfer.getCode');
             Route::get('/{id}', [StockTransferController::class, 'show'])->middleware('permission:read_stock_transfer')->name('stock.transfer.show');
+        });
+    });
+
+    Route::group(['prefix' => 'procurement'], function () {
+        Route::group(['prefix' => 'orders'], function () {
+            Route::get('/', [PurchaseOrderController::class, 'index'])->middleware('permission:read_purchase_order')->name('procurement.order.index');
+            Route::get('/create', [PurchaseOrderController::class, 'create'])->middleware('permission:create_purchase_order')->name('procurement.order.create');
+            Route::post('/', [PurchaseOrderController::class, 'store'])->middleware('permission:create_purchase_order')->name('procurement.order.store');
+            Route::get('/getCode', [PurchaseOrderController::class, 'getCode'])->middleware('permission:read_purchase_order')->name('procurement.order.getCode');
+            Route::get('/{id}', [PurchaseOrderController::class, 'show'])->middleware('permission:read_purchase_order')->name('procurement.order.show');
+            Route::get('/{id}/edit', [PurchaseOrderController::class, 'edit'])->middleware('permission:update_purchase_order')->name('procurement.order.edit');
+            Route::put('/{id}', [PurchaseOrderController::class, 'update'])->middleware('permission:update_purchase_order')->name('procurement.order.update');
+            Route::delete('/{id}', [PurchaseOrderController::class, 'destroy'])->middleware('permission:delete_purchase_order')->name('procurement.order.destroy');
+            Route::get('/{id}/generate-pdf', [PurchaseOrderController::class, 'generatePdf'])->middleware('permission:read_purchase_order')->name('procurement.order.generate-pdf');
         });
     });
 

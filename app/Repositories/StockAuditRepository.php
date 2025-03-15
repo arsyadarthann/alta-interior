@@ -76,8 +76,7 @@ class StockAuditRepository implements StockAuditInterface
                     'physical_quantity' => $stockAuditDetail['physical_quantity'],
                     'discrepancy_quantity' => $stockAuditDetail['discrepancy_quantity'],
                     'reason' => $stockAuditDetail['reason'],
-                ]
-                );
+                ]);
             }
         });
     }

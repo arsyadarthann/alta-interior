@@ -70,6 +70,10 @@ class PermissionSeeder extends Seeder
             'create_stock_adjustment',
             'read_stock_transfer',
             'create_stock_transfer',
+            'read_purchase_order',
+            'create_purchase_order',
+            'update_purchase_order',
+            'delete_purchase_order',
         ];
 
         foreach ($permissions as $permission) {

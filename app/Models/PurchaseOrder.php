@@ -20,7 +20,11 @@ class PurchaseOrder extends Model
         'branch_id',
         'supplier_id',
         'expected_delivery_date',
-        'status'
+        'status',
+        'total_amount',
+        'tax_rate_id',
+        'tax_amount',
+        'grand_total',
     ];
 
     protected $casts = [
@@ -40,6 +44,11 @@ class PurchaseOrder extends Model
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(Supplier::class, 'supplier_id', 'id');
+    }
+
+    public function taxRate(): BelongsTo
+    {
+        return $this->belongsTo(TaxRate::class, 'tax_rate_id', 'id');
     }
 
     public function purchaseOrderDetails(): HasMany
