@@ -8,23 +8,36 @@ use App\Interface\BranchInterface;
 use App\Interface\ItemCategoryInterface;
 use App\Interface\ItemInterface;
 use App\Interface\ItemUnitInterface;
+use App\Interface\WarehouseInterface;
+use App\Models\Branch;
+use App\Models\Warehouse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class ItemController extends Controller
 {
-    public function __construct(private ItemInterface $item, private ItemCategoryInterface $itemCategory, private itemUnitInterface $itemUnit, private BranchInterface $branch) {}
+    public function __construct(private ItemInterface $item, private ItemCategoryInterface $itemCategory, private itemUnitInterface $itemUnit, private WarehouseInterface $warehouse, private BranchInterface $branch) {}
 
     public function index(Request $request)
     {
-        $branchId = $request->query('branch_id');
+        $sourceAbleId = $request->query('source_able_id');
+        $sourceAbleType = $request->query('source_able_type');
+        if ($sourceAbleType === 'Branch') {
+            $items = $this->item->getAllByBranch($sourceAbleId);
+        } elseif ($sourceAbleType === 'Warehouse') {
+            $items = $this->item->getAllByWarehouse($sourceAbleId);
+        } else {
+            $items = $this->item->getAll();
+        }
 
         return Inertia::render('inventory/item/index', [
-            'items' => $this->item->getAll($branchId),
+            'items' => $items,
             'itemCategories' => $this->itemCategory->getAll(),
             'itemUnits' => $this->itemUnit->getAll(),
+            'warehouses' => $this->warehouse->getAll(),
             'branches' => $this->branch->getAll(),
-            'selectedBranchId' => $branchId
+            'selectedSourceAbleId' => $sourceAbleId,
+            'selectedSourceAbleType' => $sourceAbleType,
         ]);
     }
 
@@ -32,9 +45,10 @@ class ItemController extends Controller
     {
         try {
             $this->item->store($request->validated());
-            $branchId = $request->input('branch_id');
+            $sourceAbleId = $request->query('source_able_id');
+            $sourceAbleType = $request->query('source_able_type');
             return redirect()
-                ->route('item.index', ['branch_id' => $branchId])
+                ->route('item.index', ['source_able_id' => $sourceAbleId, 'source_able_type' => $sourceAbleType])
                 ->with('flash', [
                     'toast' => [
                         'variant' => 'success',
@@ -62,9 +76,10 @@ class ItemController extends Controller
     {
         try {
             $this->item->update($id, $request->validated());
-            $branchId = $request->input('branch_id');
+            $sourceAbleId = $request->query('source_able_id');
+            $sourceAbleType = $request->query('source_able_type');
             return redirect()
-                ->route('item.index', ['branch_id' => $branchId])
+                ->route('item.index', ['source_able_id' => $sourceAbleId, 'source_able_type' => $sourceAbleType])
                 ->with('flash', [
                     'toast' => [
                         'variant' => 'success',
@@ -102,6 +117,23 @@ class ItemController extends Controller
             ]);
     }
 
+    public function getItemBatch(Request $request)
+    {
+        if ($request->wantsJson() || $request->header('X-Inertia')) {
+            $itemId = $request->query('item_id');
+            $sourceAbleId = $request->query('source_able_id');
+            $sourceAbleType = $request->query('source_able_type');
+
+            return response()->json([
+                'data' => $this->item->getBatch($itemId, $sourceAbleId, $sourceAbleType)
+            ]);
+        }
+
+        return Inertia::render('errors/error-page', [
+            'status' => 404,
+        ]);
+    }
+
     public function getItems(Request $request)
     {
         if ($request->wantsJson() || $request->header('X-Inertia')) {
@@ -113,10 +145,34 @@ class ItemController extends Controller
         ]);
     }
 
+    public function getItemByWarehouse(Request $request, $warehouseId)
+    {
+        if ($request->wantsJson() || $request->header('X-Inertia')) {
+            return response()->json($this->item->getAllByWarehouse($warehouseId));
+        }
+
+        return Inertia::render('errors/error-page', [
+            'status' => 404,
+        ]);
+    }
+
+    public function getItemStockByWarehouse(Request $request)
+    {
+        if ($request->wantsJson() || $request->header('X-Inertia')) {
+            $itemId = $request->query('item_id');
+            $warehouseId = $request->query('source_able_id');
+            return response()->json(['stock' => $this->item->sumStockByWarehouse($itemId, $warehouseId)]);
+        }
+
+        return Inertia::render('errors/error-page', [
+            'status' => 404,
+        ]);
+    }
+
     public function getItemByBranch(Request $request, $branchId)
     {
         if ($request->wantsJson() || $request->header('X-Inertia')) {
-            return response()->json($this->item->getAll($branchId));
+            return response()->json($this->item->getAllByBranch($branchId));
         }
 
         return Inertia::render('errors/error-page', [
@@ -128,8 +184,8 @@ class ItemController extends Controller
     {
         if ($request->wantsJson() || $request->header('X-Inertia')) {
             $itemId = $request->query('item_id');
-            $branchId = $request->query('branch_id');
-            return response()->json(['stock' => $this->item->sumStock($itemId, $branchId)]);
+            $branchId = $request->query('source_able_id');
+            return response()->json(['stock' => $this->item->sumStockByBranch($itemId, $branchId)]);
         }
 
         return Inertia::render('errors/error-page', [

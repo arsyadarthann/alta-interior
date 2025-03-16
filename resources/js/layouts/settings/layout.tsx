@@ -1,12 +1,12 @@
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { usePermissions } from '@/hooks/use-permissions';
 import { cn } from '@/lib/utils';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import { usePermissions } from "@/hooks/use-permissions";
-import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 interface SettingsLayoutProps {
     children: React.ReactNode;
@@ -41,6 +41,10 @@ export default function SettingsLayout({ children, fullWidth = false }: Settings
             title: 'User Account',
             url: '/settings/users',
         },
+        hasPermission('read_warehouse') && {
+            title: 'Warehouse',
+            url: '/settings/warehouses',
+        },
         hasPermission('read_branch') && {
             title: 'Branch',
             url: '/settings/branches',
@@ -56,7 +60,7 @@ export default function SettingsLayout({ children, fullWidth = false }: Settings
         hasPermission('read_transaction_prefix') && {
             title: 'Transaction Prefix',
             url: '/settings/transaction-prefix',
-        }
+        },
     ].filter(Boolean) as NavItem[];
 
     useEffect(() => {
@@ -71,12 +75,12 @@ export default function SettingsLayout({ children, fullWidth = false }: Settings
     }, []);
 
     const handlePrevious = () => {
-        setStartIndex(prevIndex => Math.max(0, prevIndex - 1));
+        setStartIndex((prevIndex) => Math.max(0, prevIndex - 1));
     };
 
     const handleNext = () => {
         const maxVisibleTabs = 3;
-        setStartIndex(prevIndex => Math.min(sidebarNavItems.length - maxVisibleTabs, prevIndex + 1));
+        setStartIndex((prevIndex) => Math.min(sidebarNavItems.length - maxVisibleTabs, prevIndex + 1));
     };
 
     const renderMobileTabs = () => {
@@ -84,27 +88,21 @@ export default function SettingsLayout({ children, fullWidth = false }: Settings
         const visibleItems = sidebarNavItems.slice(startIndex, startIndex + maxVisibleTabs);
 
         return (
-            <div className="flex items-center w-full">
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={handlePrevious}
-                    disabled={startIndex === 0}
-                    className="h-8 w-8 shrink-0"
-                >
+            <div className="flex w-full items-center">
+                <Button variant="ghost" size="icon" onClick={handlePrevious} disabled={startIndex === 0} className="h-8 w-8 shrink-0">
                     <ChevronLeft className="h-4 w-4" />
                 </Button>
 
-                <div className="flex-1 flex justify-between bg-muted/50 rounded-md p-1">
+                <div className="bg-muted/50 flex flex-1 justify-between rounded-md p-1">
                     {visibleItems.map((item) => (
                         <Link
                             key={item.url}
                             href={item.url}
                             className={cn(
-                                "flex-1 text-center py-1.5 px-2 text-sm rounded-md transition-colors",
+                                'flex-1 rounded-md px-2 py-1.5 text-center text-sm transition-colors',
                                 currentPath === item.url
-                                    ? "bg-background text-foreground font-medium"
-                                    : "text-muted-foreground hover:text-foreground"
+                                    ? 'bg-background text-foreground font-medium'
+                                    : 'text-muted-foreground hover:text-foreground',
                             )}
                         >
                             {item.title}
@@ -126,7 +124,7 @@ export default function SettingsLayout({ children, fullWidth = false }: Settings
     };
 
     return (
-        <div className="px-4 sm:px-6 md:px-8 py-6">
+        <div className="px-4 py-6 sm:px-6 md:px-8">
             <Heading title="Settings" description="Manage your account and app settings" />
 
             <div className="flex flex-col space-y-8 lg:flex-row lg:space-y-0 lg:space-x-12">
@@ -138,7 +136,7 @@ export default function SettingsLayout({ children, fullWidth = false }: Settings
                 )}
 
                 {!isMobile && (
-                    <aside className="w-full lg:w-48 shrink-0">
+                    <aside className="w-full shrink-0 lg:w-48">
                         <nav className="flex flex-col space-y-1 space-x-0">
                             {sidebarNavItems.map((item) => (
                                 <Button
@@ -150,9 +148,7 @@ export default function SettingsLayout({ children, fullWidth = false }: Settings
                                         'bg-muted': currentPath === item.url,
                                     })}
                                 >
-                                    <Link href={item.url}>
-                                        {item.title}
-                                    </Link>
+                                    <Link href={item.url}>{item.title}</Link>
                                 </Button>
                             ))}
                         </nav>
@@ -161,12 +157,16 @@ export default function SettingsLayout({ children, fullWidth = false }: Settings
 
                 {!isMobile && <Separator orientation="vertical" className="h-auto" />}
 
-                <div className={cn("flex-1", {
-                    "md:max-w-2xl": !fullWidth
-                })}>
-                    <section className={cn("space-y-12", {
-                        "max-w-xl": !fullWidth
-                    })}>
+                <div
+                    className={cn('flex-1', {
+                        'md:max-w-2xl': !fullWidth,
+                    })}
+                >
+                    <section
+                        className={cn('space-y-12', {
+                            'max-w-xl': !fullWidth,
+                        })}
+                    >
                         {children}
                     </section>
                 </div>

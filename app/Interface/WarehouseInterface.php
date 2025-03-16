@@ -2,7 +2,7 @@
 
 namespace App\Interface;
 
-interface PurchaseOrderInterface
+interface WarehouseInterface
 {
     public function getAll();
     public function getById(int $id);

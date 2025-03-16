@@ -4,14 +4,18 @@ namespace App\Repositories;
 
 use App\Helpers\TransactionCode;
 use App\Interface\StockTransferInterface;
+use App\Models\Branch;
 use App\Models\StockTransfer;
+use App\Models\Warehouse;
 use Illuminate\Support\Facades\DB;
 
 class StockTransferRepository implements StockTransferInterface
 {
     const GENERAL_RELATIONSHIPS = [
-        'fromBranch:id,name', 'toBranch:id,name', 'user:id,name'
+        'source_able:id,name', 'destination_able:id,name', 'user:id,name'
     ];
+
+    const sourceAbleTypeMap = ['branch' => Branch::class, 'warehouse' => Warehouse::class];
 
     public function __construct(private StockTransfer $stockTransfer) {}
 
@@ -35,8 +39,10 @@ class StockTransferRepository implements StockTransferInterface
             $stockTransfer = $this->stockTransfer->create([
                 'code' => $data['code'],
                 'date' => $data['date'],
-                'from_branch_id' => $data['from_branch_id'],
-                'to_branch_id' => $data['to_branch_id'],
+                'source_able_id' => $data['source_able_id'],
+                'source_able_type' => self::sourceAbleTypeMap[$data['source_able_type']],
+                'destination_able_id' => $data['destination_able_id'],
+                'destination_able_type' => self::sourceAbleTypeMap[$data['destination_able_type']],
                 'user_id' => request()->user()->id,
             ]);
 
@@ -44,13 +50,13 @@ class StockTransferRepository implements StockTransferInterface
                 $transfer =  $stockTransfer->stockTransferDetails()->create([
                     'item_id' => $stockTransferDetail['item_id'],
                     'quantity' => $stockTransferDetail['quantity'],
-                    'from_branch_before_quantity' => $stockTransferDetail['from_branch_before_quantity'],
-                    'from_branch_after_quantity' => $stockTransferDetail['from_branch_after_quantity'],
-                    'to_branch_before_quantity' => $stockTransferDetail['to_branch_before_quantity'],
-                    'to_branch_after_quantity' => $stockTransferDetail['to_branch_after_quantity'],
+                    'source_before_quantity' => $stockTransferDetail['source_before_quantity'],
+                    'source_after_quantity' => $stockTransferDetail['source_after_quantity'],
+                    'destination_before_quantity' => $stockTransferDetail['destination_before_quantity'],
+                    'destination_after_quantity' => $stockTransferDetail['destination_after_quantity'],
                 ]);
 
-                app(ItemRepository::class)->transferBatch($transfer->item_id, $data['from_branch_id'], $data['to_branch_id'], $transfer->quantity, $transfer);
+                app(ItemRepository::class)->transferBatch($transfer->item_id, $data['source_able_id'] ,self::sourceAbleTypeMap[$data['source_able_type']], $data['destination_able_id'], self::sourceAbleTypeMap[$data['destination_able_type']], $transfer->quantity, $transfer);
             }
 
             TransactionCode::confirmTransactionCode('Stock Transfer', $data['code']);

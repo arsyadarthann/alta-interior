@@ -50,7 +50,6 @@ interface PurchaseOrderProps {
         id: number;
         code: string;
         date: string;
-        branch_id: number;
         supplier_id: number;
         expected_delivery_date: string;
         status: string;
@@ -58,10 +57,6 @@ interface PurchaseOrderProps {
         tax_rate_id: number | null;
         tax_amount: number;
         grand_total: number;
-        branch: {
-            id: number;
-            name: string;
-        };
         supplier: {
             id: number;
             name: string;
@@ -241,10 +236,6 @@ export default function Show({ purchaseOrder }: PurchaseOrderProps) {
                                         </div>
                                     </div>
                                     <div className="flex items-center">
-                                        <div className="flex-1">
-                                            <h3 className="text-sm font-medium text-gray-500">Branch</h3>
-                                            <p className="mt-1 text-sm text-gray-900">{purchaseOrder.branch.name}</p>
-                                        </div>
                                         <div className="flex-1">
                                             <h3 className="text-sm font-medium text-gray-500">Supplier</h3>
                                             <p className="mt-1 text-sm text-gray-900">{purchaseOrder.supplier.name}</p>

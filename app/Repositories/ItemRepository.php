@@ -4,16 +4,18 @@ namespace App\Repositories;
 
 use App\Helpers\SKUCode;
 use App\Interface\ItemInterface;
+use App\Models\Branch;
 use App\Models\Item;
 use App\Models\ItemBatch;
 use App\Models\StockAdjustmentDetail;
+use App\Models\Warehouse;
 use Illuminate\Support\Facades\DB;
 
 class ItemRepository implements ItemInterface
 {
     public function __construct(private Item $item, private ItemBatch $itemBatch) {}
 
-    public function getAll($branchId = null)
+    public function getAll($sourceId = null, $sourceType = null)
     {
         $query = $this->item->with(['itemCategory:id,name', 'itemUnit:id,name,abbreviation']);
 
@@ -21,10 +23,21 @@ class ItemRepository implements ItemInterface
         SELECT SUM(stock)
         FROM item_batches
         WHERE item_batches.item_id = items.id' .
-            ($branchId ? ' AND item_batches.branch_id = ' . $branchId : '') .
+            ($sourceId ? ' AND item_batches.source_able_id = ' . $sourceId .
+                ' AND item_batches.source_able_type = \'' . $sourceType . '\'' : '') .
             '), 0) as stock');
 
         return $query->orderBy('id')->get();
+    }
+
+    public function getAllByBranch($branchId = null)
+    {
+        return $this->getAll($branchId, Branch::class);
+    }
+
+    public function getAllByWarehouse($warehouseId = null)
+    {
+        return $this->getAll($warehouseId, Warehouse::class);
     }
 
     public function getById(int $id)
@@ -67,21 +80,41 @@ class ItemRepository implements ItemInterface
         });
     }
 
-    public function sumStock(int $itemId, int $branchId)
+    public function sumStock(int $itemId, int $sourceId, string $sourceType)
     {
         return $this->itemBatch
             ->where('item_id', $itemId)
-            ->where('branch_id', $branchId)
+            ->where('source_able_id', $sourceId)
+            ->where('source_able_type', $sourceType)
             ->sum('stock');
     }
 
-    public function getBatch(int $itemId, int $branchId, bool $withWhereStockGreaterThanZero = true)
+
+    public function sumStockByBranch(int $itemId, int $branchId)
     {
+        return $this->sumStock($itemId, $branchId, Branch::class);
+    }
+
+    public function sumStockByWarehouse(int $itemId, int $warehouseId)
+    {
+        return $this->sumStock($itemId, $warehouseId, Warehouse::class);
+    }
+
+    public function getBatch(int $itemId, int $sourceAbleId, string $sourceAbleType, bool $withWhereStockGreaterThanZero = true)
+    {
+        // Map the string type to the actual class name if needed
+        $mappedType = match ($sourceAbleType) {
+            'Branch' => Branch::class,
+            'Warehouse' => Warehouse::class,
+            default => $sourceAbleType
+        };
+
         return $this->itemBatch->with([
-                'branch:id,name', 'item.itemCategory', 'item.itemUnit'
-            ])
+            'source_able:id,name', 'item.itemCategory', 'item.itemUnit'
+        ])
             ->where('item_id', $itemId)
-            ->where('branch_id', $branchId)
+            ->where('source_able_id', $sourceAbleId)
+            ->where('source_able_type', $mappedType)
             ->when($withWhereStockGreaterThanZero, fn($query) => $query->where('stock', '>', 0))
             ->orderBy('received_at')
             ->get();
@@ -92,7 +125,8 @@ class ItemRepository implements ItemInterface
         return DB::transaction(function () use ($data) {
             $newBatch = $this->itemBatch->create([
                 'sku' => $data['sku'],
-                'branch_id' => $data['branch_id'],
+                'source_able_id' => $data['source_able_id'],
+                'source_able_type' => $data['source_able_type'],
                 'item_id' => $data['item_id'],
                 'received_at' => now(),
                 'cogs' => $data['cogs'],
@@ -103,17 +137,17 @@ class ItemRepository implements ItemInterface
         });
     }
 
-    public function reduceBatch(int $itemId, int $branchId, float $usedQuantity)
+    public function reduceBatch(int $itemId, int $sourceAbleId, string $sourceAbleType, float $usedQuantity)
     {
-        return DB::transaction(function () use ($itemId, $branchId, $usedQuantity) {
+        return DB::transaction(function () use ($itemId, $sourceAbleId, $sourceAbleType, $usedQuantity) {
             $usedStock = $usedQuantity;
 
             $batchDetails = [];
 
-            $batches = $this->getBatch($itemId, $branchId);
+            $batches = $this->getBatch($itemId, $sourceAbleId, $sourceAbleType);
 
             foreach ($batches as $batch) {
-                $previousQty = $this->sumStock($itemId, $branchId);
+                $previousQty = $this->sumStock($itemId, $sourceAbleId, $sourceAbleType);
 
                 if ($usedStock <= 0) {
                     break;
@@ -139,14 +173,14 @@ class ItemRepository implements ItemInterface
         });
     }
 
-    public function adjustBatch(int $itemId, int $branchId, string $adjustmentType, float $adjustmentQuantity)
+    public function adjustBatch(int $itemId, int $sourceAbleId, string $sourceAbleType, string $adjustmentType, float $adjustmentQuantity)
     {
-        return DB::transaction(function () use ($itemId, $branchId, $adjustmentType, $adjustmentQuantity) {
+        return DB::transaction(function () use ($itemId, $sourceAbleId, $sourceAbleType, $adjustmentType, $adjustmentQuantity) {
             $adjustmentStock = $adjustmentQuantity;
 
             $batchDetails = [];
 
-            $batches = $this->getBatch($itemId, $branchId);
+            $batches = $this->getBatch($itemId, $sourceAbleId, $sourceAbleType);
 
             if ($batches->isNotEmpty()) {
                 foreach ($batches as $batch) {
@@ -163,8 +197,9 @@ class ItemRepository implements ItemInterface
                     throw new \Exception('Cannot decrease stock: no batches exist for this item in this branch.');
                 } else {
                     $newBatch = $this->addBatch([
-                        'sku' => SKUCode::generateSKU($itemId, $branchId),
-                        'branch_id' => $branchId,
+                        'sku' => SKUCode::generateSKU($itemId, $sourceAbleId, $sourceAbleType),
+                        'source_able_id' => $sourceAbleId,
+                        'source_able_type' => $sourceAbleType,
                         'item_id' => $itemId,
                         'cogs' => 0,
                         'stock' => $adjustmentQuantity,
@@ -185,19 +220,21 @@ class ItemRepository implements ItemInterface
         });
     }
 
-    private function addStockBatch(int $itemBatchId, int $branchId, float $addedQuantity)
+    private function addStockBatch(int $itemBatchId, int $sourceAbleId, $sourceAbleType, float $addedQuantity)
     {
-        return DB::transaction(function () use ($itemBatchId, $branchId, $addedQuantity) {
+        return DB::transaction(function () use ($itemBatchId, $sourceAbleId, $sourceAbleType, $addedQuantity) {
             $sourceBatch = $this->itemBatch->find($itemBatchId);
 
             $previousQty = $this->itemBatch
                 ->where('item_id', $sourceBatch->item_id)
-                ->where('branch_id', $branchId)
+                ->where('source_able_id', $sourceAbleId)
+                ->where('source_able_type', $sourceAbleType)
                 ->sum('stock');
 
             $existingBatch = $this->itemBatch
                 ->where('item_id', $sourceBatch->item_id)
-                ->where('branch_id', $branchId)
+                ->where('source_able_id', $sourceAbleId)
+                ->where('source_able_type', $sourceAbleType)
                 ->where('sku', $sourceBatch->sku)
                 ->first();
 
@@ -217,7 +254,8 @@ class ItemRepository implements ItemInterface
 
             $newBatch = $this->itemBatch->create([
                 'sku' => $sourceBatch['sku'],
-                'branch_id' => $branchId,
+                'source_able_id' => $sourceAbleId,
+                'source_able_type' => $sourceAbleType,
                 'item_id' => $sourceBatch->item_id,
                 'received_at' => $sourceBatch->received_at,
                 'stock' => $addedQuantity,
@@ -235,24 +273,24 @@ class ItemRepository implements ItemInterface
         });
     }
 
-    public function transferBatch(int $itemId, int $fromBranchId, int $toBranchId, float $transferQuantity, $stockTransferDetail)
+    public function transferBatch(int $itemId, int $sourceAbleId, string $sourceAbleType, int $destinationAbleId, string $destinationAbleType, float $transferQuantity, $stockTransferDetail)
     {
-        return DB::transaction(function () use ($itemId, $fromBranchId, $toBranchId, $transferQuantity, $stockTransferDetail) {
-            $reduceStockBatches = $this->reduceBatch($itemId, $fromBranchId, $transferQuantity);
+        return DB::transaction(function () use ($itemId, $sourceAbleId, $sourceAbleType, $destinationAbleId, $destinationAbleType, $transferQuantity, $stockTransferDetail) {
+            $reduceStockBatches = $this->reduceBatch($itemId, $sourceAbleId, $sourceAbleType, $transferQuantity);
 
             foreach ($reduceStockBatches as $batch) {
-                app(StockMovementRepository::class)->createStockMovement($batch['item_batch_id'], $fromBranchId, StockAdjustmentDetail::TYPE_DECREASED, $batch['data_quantity'], $stockTransferDetail);
+                app(StockMovementRepository::class)->createStockMovement($batch['item_batch_id'], $sourceAbleId, $sourceAbleType, StockAdjustmentDetail::TYPE_DECREASED, $batch['data_quantity'], $stockTransferDetail);
 
-                $addStockBatch = $this->addStockBatch($batch['item_batch_id'], $toBranchId, $batch['data_quantity']['movement_quantity']);
+                $addStockBatch = $this->addStockBatch($batch['item_batch_id'], $destinationAbleId, $destinationAbleType, $batch['data_quantity']['movement_quantity']);
 
-                app(StockMovementRepository::class)->createStockMovement($addStockBatch['item_batch_id'], $toBranchId, StockAdjustmentDetail::TYPE_INCREASED, $addStockBatch['data_quantity'], $stockTransferDetail);
+                app(StockMovementRepository::class)->createStockMovement($addStockBatch['item_batch_id'], $destinationAbleId, $destinationAbleType, StockAdjustmentDetail::TYPE_INCREASED, $addStockBatch['data_quantity'], $stockTransferDetail);
             }
         });
     }
 
     private function processBatchAdjustment($batch, $adjustmentType, $adjustmentStock): array
     {
-        $previousQuantity = $this->sumStock($batch->item_id, $batch->branch_id);
+        $previousQuantity = $this->sumStock($batch->item_id, $batch->source_able_id, $batch->source_able_type);
 
         $movementQuantity = match ($adjustmentType) {
             StockAdjustmentDetail::TYPE_DECREASED => min($adjustmentStock, $batch->stock),

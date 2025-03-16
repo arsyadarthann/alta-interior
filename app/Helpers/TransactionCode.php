@@ -17,7 +17,8 @@ class TransactionCode
 {
     public static function generateTransactionCode($transactionType)
     {
-        $branchId = null;
+        $sourceAbleType = null;
+        $sourceAbleId = null;
 
         $prefix = Cache::remember('transaction_prefix_' . $transactionType, 3600, function () use ($transactionType) {
             return TransactionPrefix::where('transaction_type', $transactionType)->first();
@@ -27,73 +28,80 @@ class TransactionCode
             throw new \Exception('Kode transaksi tidak tersedia.');
         }
 
-        // List of transaction types that require branch-specific codes
-        $isBranchSpecific = in_array($transactionType, ['Purchase Order', 'Stock Audit', 'Stock Adjustment', 'Purchase Invoice Payment', 'Sales Order', 'Waybill', 'Sales Invoice', 'Sales Invoice Payment', 'Expense']);
+        $isSourceAbleSpecific = in_array($transactionType, ['Stock Audit', 'Stock Adjustment', 'Purchase Invoice Payment', 'Sales Order', 'Waybill', 'Sales Invoice', 'Sales Invoice Payment', 'Expense']);
+        $isNoSourceAble = in_array($transactionType, ['Stock Transfer', 'Purchase Order']);
 
-        // List of transaction types that involve branches but don't need branch ID for code generation
-        $isNoBranch = in_array($transactionType, ['Stock Transfer']);
-
-        if ($isBranchSpecific) {
-            if (!auth()->user()->branch_id) {
-                if (request()->branch_id) {
-                    $branchId = request()->branch_id;
-                } else {
-                    throw new \Exception('Cabang harus dipilih untuk generate kode transaksi');
-                }
-            } else {
-                $branchId = auth()->user()->branch_id;
+        if ($isSourceAbleSpecific) {
+            if (!request()->has('source_able_type') || !request()->has('source_able_id')) {
+                throw new \Exception('Tipe sumber dan ID sumber harus dipilih untuk generate kode transaksi.');
             }
-        } else if ($isNoBranch) {
-            $branchId = null;
-        } else if ($isBranchSpecific && !auth()->user()->branch_id) {
+
+            $sourceAbleMapping = [
+                'branch' => \App\Models\Branch::class,
+                'warehouse' => \App\Models\Warehouse::class,
+            ];
+
+            $requestedSourceType = request()->input('source_able_type');
+
+            if (!array_key_exists($requestedSourceType, $sourceAbleMapping)) {
+                throw new \Exception('Tipe sumber tidak valid.');
+            }
+
+            $sourceAbleType = $sourceAbleMapping[$requestedSourceType];
+            $sourceAbleId = request()->input('source_able_id');
+        } elseif ($isNoSourceAble) {
+            $sourceAbleType = null;
+            $sourceAbleId = null;
+        } elseif ($isSourceAbleSpecific && !auth()->user()->branch_id) {
             throw new \Exception('Anda tidak memiliki akses ke transaksi ini.');
-        } else {
-            $branchId = auth()->user()->branch_id;
         }
 
         $year = Carbon::now()->format('y');
         $month = Carbon::now()->format('m');
 
-        $transactionCode = DB::transaction(function () use ($transactionType, $prefix, $year, $month, $isBranchSpecific, $isNoBranch, $branchId) {
-            $availableSequence = SequenceStatus::whereHas('transactionSequence', function ($query) use ($transactionType, $prefix, $year, $month, $isBranchSpecific, $isNoBranch, $branchId) {
+        $transactionCode = DB::transaction(function () use ($transactionType, $prefix, $year, $month, $isSourceAbleSpecific, $isNoSourceAble, $sourceAbleType, $sourceAbleId) {
+            $availableSequence = SequenceStatus::whereHas('transactionSequence', function ($query) use ($prefix, $year, $month, $isSourceAbleSpecific, $isNoSourceAble, $sourceAbleType, $sourceAbleId) {
                 $query->where('transaction_prefix_id', $prefix->id)
                     ->where('month', $month)
                     ->where('year', $year);
 
-                if ($isBranchSpecific && !$isNoBranch) {
-                    $query->where('branch_id', $branchId);
+                // Filter berdasarkan source_able_type dan source_able_id jika diperlukan
+                if ($isSourceAbleSpecific && !$isNoSourceAble) {
+                    $query->where('source_able_type', $sourceAbleType)
+                        ->where('source_able_id', $sourceAbleId);
                 }
             })
-                ->where(function ($query) use ($transactionType, $prefix, $year, $month, $branchId, $isBranchSpecific, $isNoBranch) {
+                ->where(function ($query) use ($prefix, $year, $month, $sourceAbleType, $sourceAbleId, $isSourceAbleSpecific, $isNoSourceAble) {
                     $query->where('status', 'reserved')
                         ->where('user_id', auth()->user()->id)
                         ->where('expires_at', '>', now())
-                        ->whereIn('transaction_sequence_id', function ($subQuery) use ($prefix, $year, $month, $isBranchSpecific, $isNoBranch, $branchId) {
+                        ->whereIn('transaction_sequence_id', function ($subQuery) use ($prefix, $year, $month, $isSourceAbleSpecific, $isNoSourceAble, $sourceAbleType, $sourceAbleId) {
                             $subQuery->select('id')
                                 ->from('transaction_sequences')
                                 ->where('transaction_prefix_id', $prefix->id)
                                 ->where('month', $month)
                                 ->where('year', $year);
 
-                            if ($isBranchSpecific && !$isNoBranch) {
-                                $subQuery->where('branch_id', $branchId);
+                            if ($isSourceAbleSpecific && !$isNoSourceAble) {
+                                $subQuery->where('source_able_type', $sourceAbleType)
+                                    ->where('source_able_id', $sourceAbleId);
                             }
                         });
                 })
-                ->orWhere(function ($query) use ($transactionType, $prefix, $year, $month, $branchId, $isBranchSpecific, $isNoBranch) {
+                ->orWhere(function ($query) use ($prefix, $year, $month, $sourceAbleType, $sourceAbleId, $isSourceAbleSpecific, $isNoSourceAble) {
                     $query->where('status', 'available')
-                        ->whereIn('transaction_sequence_id', function ($subQuery) use ($transactionType, $prefix, $year, $month, $isBranchSpecific, $isNoBranch, $branchId) {
+                        ->whereIn('transaction_sequence_id', function ($subQuery) use ($prefix, $year, $month, $isSourceAbleSpecific, $isNoSourceAble, $sourceAbleType, $sourceAbleId) {
                             $subQuery->select('id')
                                 ->from('transaction_sequences')
                                 ->where('transaction_prefix_id', $prefix->id)
                                 ->where('month', $month)
                                 ->where('year', $year);
 
-                            if ($isBranchSpecific && !$isNoBranch) {
-                                $subQuery->where('branch_id', $branchId);
+                            if ($isSourceAbleSpecific && !$isNoSourceAble) {
+                                $subQuery->where('source_able_type', $sourceAbleType)
+                                    ->where('source_able_id', $sourceAbleId);
                             }
-                        })
-                        ->whereDoesntHave('user');
+                        });
                 })
                 ->orderBy('sequence_number', 'asc')
                 ->lockForUpdate()
@@ -106,16 +114,14 @@ class TransactionCode
                     'expires_at' => now()->addHour()
                 ]);
 
-                $jobs = DB::table('jobs')->get();
-                self::updateJobs($jobs, $availableSequence);
-
                 $sequenceNumber = $availableSequence->sequence_number;
             } else {
                 $existingTransactionSequence = TransactionSequence::where('transaction_prefix_id', $prefix->id)
                     ->where('month', $month)
                     ->where('year', $year)
-                    ->when($isBranchSpecific && !$isNoBranch, function ($query) use ($branchId) {
-                        $query->where('branch_id', $branchId);
+                    ->when($isSourceAbleSpecific && !$isNoSourceAble, function ($query) use ($sourceAbleType, $sourceAbleId) {
+                        $query->where('source_able_type', $sourceAbleType)
+                            ->where('source_able_id', $sourceAbleId);
                     })
                     ->lockForUpdate()
                     ->first();
@@ -124,7 +130,8 @@ class TransactionCode
                     $sequenceNumber = 1;
 
                     $existingTransactionSequence = TransactionSequence::create([
-                        'branch_id' => ($isBranchSpecific && !$isNoBranch) ? $branchId : null,
+                        'source_able_type' => ($isSourceAbleSpecific && !$isNoSourceAble) ? $sourceAbleType : null,
+                        'source_able_id'   => ($isSourceAbleSpecific && !$isNoSourceAble) ? $sourceAbleId : null,
                         'transaction_prefix_id' => $prefix->id,
                         'month' => $month,
                         'year' => $year,
@@ -132,7 +139,6 @@ class TransactionCode
                     ]);
                 } else {
                     $existingTransactionSequence->increment('sequence');
-                    $existingTransactionSequence = TransactionSequence::find($existingTransactionSequence->id);
                     $sequenceNumber = $existingTransactionSequence->sequence;
                 }
 
@@ -147,9 +153,9 @@ class TransactionCode
                 RevertSequenceJob::dispatch($sequence->id)->delay(now()->addHour());
             }
 
-            if ($isBranchSpecific && !$isNoBranch) {
-                $branchInitial = Cache::remember('branch_initial_' . $branchId, 3600, function () use ($branchId) {
-                    return Branch::where('id', $branchId)->value('initial');
+            if ($isSourceAbleSpecific && $sourceAbleType === \App\Models\Branch::class) {
+                $branchInitial = Cache::remember('branch_initial_' . $sourceAbleId, 3600, function () use ($sourceAbleId) {
+                    return Branch::where('id', $sourceAbleId)->value('initial');
                 });
 
                 if (!$branchInitial) {
@@ -165,17 +171,18 @@ class TransactionCode
         return $transactionCode;
     }
 
-    public static function confirmTransactionCode($transactionType, $code, $branchId = null)
+    public static function confirmTransactionCode($transactionType, $code, $sourceType = null, $sourceId = null)
     {
-        return DB::transaction(function () use ($transactionType, $code, $branchId) {
+        return DB::transaction(function () use ($transactionType, $code, $sourceType, $sourceId) {
             $sequenceNumber = (int) Str::afterLast($code, '-');
 
             $sequence = SequenceStatus::whereHas('transactionSequence.transactionPrefix', function ($query) use ($transactionType) {
                 $query->where('transaction_type', $transactionType);
             })
-                ->whereHas('transactionSequence', function ($query) use ($branchId) {
-                    if ($branchId) {
-                        $query->where('branch_id', $branchId);
+                ->whereHas('transactionSequence', function ($query) use ($sourceType, $sourceId) {
+                    if ($sourceType && $sourceId) {
+                        $query->where('source_able_id', $sourceId)
+                            ->where('source_able_type', $sourceType);
                     }
                 })
                 ->where('sequence_number', $sequenceNumber)
@@ -262,14 +269,20 @@ class TransactionCode
         }
     }
 
-    public static function cancelTransactionCode($transactionType, $code)
+    public static function cancelTransactionCode($transactionType, $code, $sourceId = null, $sourceType = null)
     {
-        return DB::transaction(function () use ($transactionType, $code) {
+        return DB::transaction(function () use ($sourceType, $sourceId, $transactionType, $code) {
             $sequenceNumber = (int) Str::afterLast($code, '-');
 
-            $sequence = SequenceStatus::whereHas('transactionSequence.transactionPrefix', function ($query) use ($transactionType, $sequenceNumber) {
+            $sequence = SequenceStatus::whereHas('transactionSequence.transactionPrefix', function ($query) use ($transactionType) {
                 $query->where('transaction_type', $transactionType);
             })
+                ->when($sourceId && $sourceType, function ($query) use ($sourceId, $sourceType) {
+                    $query->whereHas('transactionSequence', function ($subQuery) use ($sourceId, $sourceType) {
+                        $subQuery->where('source_able_type', $sourceType)
+                            ->where('source_able_id', $sourceId);
+                    });
+                })
                 ->where('sequence_number', $sequenceNumber)
                 ->where('user_id', auth()->user()->id)
                 ->where('status', 'confirmed')
@@ -277,7 +290,7 @@ class TransactionCode
                 ->first();
 
             if (!$sequence) {
-                throw new \Exception('Kode transaksi tidak dapat disetujui karena tidak ditemukan atau telah kedaluwarsa.');
+                throw new \Exception('Kode transaksi tidak dapat dibatalkan karena tidak ditemukan atau telah kedaluwarsa.');
             }
 
             $sequence->update([
@@ -285,6 +298,7 @@ class TransactionCode
                 'user_id' => null,
                 'updated_at' => now(),
             ]);
+
         });
     }
 }

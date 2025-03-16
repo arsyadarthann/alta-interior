@@ -15,9 +15,12 @@ return new class extends Migration
             $table->id();
             $table->string('code', 100)->unique();
             $table->date('date');
-            $table->unsignedSmallInteger('branch_id');
+            $table->unsignedBigInteger('source_able_id');
+            $table->string('source_able_type');
             $table->foreignId('user_id')->constrained('users');
             $table->timestamps();
+
+            $table->index(['source_able_id', 'source_able_type']);
         });
     }
 

@@ -16,6 +16,10 @@ return new class extends Migration
             $table->foreignId('stock_transfer_id')->constrained('stock_transfers');
             $table->foreignId('item_id')->constrained('items');
             $table->decimal('quantity', 15, 2);
+            $table->decimal('source_before_quantity', 15, 2);
+            $table->decimal('source_after_quantity', 15, 2);
+            $table->decimal('destination_before_quantity', 15, 2);
+            $table->decimal('destination_after_quantity', 15, 2);
             $table->timestamps();
         });
     }

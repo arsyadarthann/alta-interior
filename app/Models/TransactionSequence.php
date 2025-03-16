@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class TransactionSequence extends Model
 {
@@ -15,7 +16,8 @@ class TransactionSequence extends Model
 
     protected $fillable = [
         'transaction_prefix_id',
-        'branch_id',
+        'source_able_id',
+        'source_able_type',
         'month',
         'year',
         'sequence',
@@ -26,9 +28,9 @@ class TransactionSequence extends Model
         return $this->belongsTo(TransactionPrefix::class, 'transaction_prefix_id', 'id');
     }
 
-    public function branch(): BelongsTo
+    public function source_able(): MorphTo
     {
-        return $this->belongsTo(Branch::class, 'branch_id', 'id');
+        return $this->morphTo();
     }
 
     public function sequenceStatuses(): HasMany

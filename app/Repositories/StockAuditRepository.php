@@ -4,23 +4,40 @@ namespace App\Repositories;
 
 use App\Helpers\TransactionCode;
 use App\Interface\StockAuditInterface;
+use App\Models\Branch;
 use App\Models\StockAudit;
+use App\Models\Warehouse;
 use Illuminate\Support\Facades\DB;
 
 class StockAuditRepository implements StockAuditInterface
 {
     const array GENERAL_RELATIONSHIPS = [
-        'branch:id,name', 'user:id,name',
+        'source_able:id,name', 'user:id,name',
     ];
+
+    const sourceAbleTypeMap = ['branch' => Branch::class, 'warehouse' => Warehouse::class];
 
     public function __construct(private StockAudit $stockAudit) {}
 
-    public function getAll($branchId = null)
+    public function getAll($sourceId = null, $sourceType = null)
     {
         return $this->stockAudit
             ->with(self::GENERAL_RELATIONSHIPS)
-            ->when($branchId, fn($query) => $query->where('branch_id', $branchId))
+            ->when($sourceId && $sourceType, function($query) use ($sourceId, $sourceType) {
+                return $query->where('source_able_id', $sourceId)
+                    ->where('source_able_type', $sourceType);
+            })
             ->orderByDesc('id')->orderByDesc('date')->get();
+    }
+
+    public function getAllByBranch($branchId)
+    {
+        return $this->getAll($branchId, Branch::class);
+    }
+
+    public function getAllByWarehouse($warehouseId)
+    {
+        return $this->getAll($warehouseId, Warehouse::class);
     }
 
     public function getById(int $id)
@@ -34,7 +51,8 @@ class StockAuditRepository implements StockAuditInterface
             $stockAudit = $this->stockAudit->create([
                 'code' => $data['code'],
                 'date' => $data['date'],
-                'branch_id' => $data['branch_id'],
+                'source_able_id' => $data['source_able_id'],
+                'source_able_type' => self::sourceAbleTypeMap[$data['source_able_type']],
                 'user_id' => request()->user()->id,
             ]);
 
@@ -48,7 +66,7 @@ class StockAuditRepository implements StockAuditInterface
                 ]);
             }
 
-            TransactionCode::confirmTransactionCode('Stock Audit', $data['code'], $data['branch_id']);
+            TransactionCode::confirmTransactionCode('Stock Audit', $data['code'], $data['source_able_id'], $data['source_able_type']);
         });
     }
 
@@ -59,7 +77,8 @@ class StockAuditRepository implements StockAuditInterface
             $stockAudit->update([
                 'code' => $data['code'],
                 'date' => $data['date'],
-                'branch_id' => $data['branch_id'],
+                'source_able_id' => $data['source_able_id'],
+                'source_able_type' => self::sourceAbleTypeMap[$data['source_able_type']],
                 'user_id' => request()->user()->id,
             ]);
 
@@ -88,7 +107,7 @@ class StockAuditRepository implements StockAuditInterface
             $code = $stockAudit->code;
             $stockAudit->stockAuditDetails()->delete();
             $stockAudit->delete();
-            TransactionCode::cancelTransactionCode('Stock Audit', $code);
+            TransactionCode::cancelTransactionCode('Stock Audit', $code, $stockAudit->source_able_id, $stockAudit->source_able_type);
         });
     }
 

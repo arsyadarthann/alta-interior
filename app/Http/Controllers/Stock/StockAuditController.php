@@ -6,30 +6,43 @@ use App\Helpers\TransactionCode;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Stock\StockAuditRequest;
 use App\Interface\BranchInterface;
-use App\Interface\ItemInterface;
 use App\Interface\StockAuditInterface;
+use App\Interface\WarehouseInterface;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class StockAuditController extends Controller
 {
-    public function __construct(private StockAuditInterface $stockAudit, private BranchInterface $branch, private ItemInterface $item) {}
+    public function __construct(private StockAuditInterface $stockAudit, private WarehouseInterface $warehouse ,private BranchInterface $branch) {}
 
     public function index(Request $request)
     {
-        $branchId = $request->query('branch_id');
+        $sourceAbleId = $request->query('source_able_id');
+        $sourceAbleType = $request->query('source_able_type');
+
+        if ($sourceAbleType === 'Branch') {
+            $stockAudits = $this->stockAudit->getAllByBranch($sourceAbleId);
+        } elseif ($sourceAbleType === 'Warehouse') {
+            $stockAudits = $this->stockAudit->getAllByWarehouse($sourceAbleId);
+        } else {
+            $stockAudits = $this->stockAudit->getAll();
+        }
 
         return Inertia::render('stock/audit/index', [
-            'stockAudits' => $this->stockAudit->getAll($branchId),
+            'stockAudits' => $stockAudits,
             'branches' => $this->branch->getAll(),
-            'selectedBranchId' => $branchId,
+            'warehouses' => $this->warehouse->getAll(),
+            'selectedSourceAbleId' => $sourceAbleId,
+            'selectedSourceAbleType' => $sourceAbleType,
         ]);
+
     }
 
     public function create()
     {
         return Inertia::render('stock/audit/create', [
-            'branches' => $this->branch->getAll(),
+            'warehouses' => $this->warehouse->getAll(),
+            'branches' => $this->branch->getAll()
         ]);
     }
 
@@ -100,6 +113,18 @@ class StockAuditController extends Controller
     {
         $stockAudit = $this->stockAudit->getById($id);
 
+        if (request()->user()->id !== $stockAudit->user_id) {
+            return redirect()
+                ->route('stock.audit.index')
+                ->with('flash', [
+                    'toast' => [
+                        'variant' => 'destructive',
+                        'title' => 'Unauthorized Access',
+                        'description' => 'Access denied. You do not have permission to edit this data as only the creator is allowed to make changes.',
+                    ]
+                ]);
+        }
+
         if ($stockAudit->is_locked) {
             return Inertia::render('errors/error-page', [
                 'status' => 423,
@@ -127,6 +152,7 @@ class StockAuditController extends Controller
 
         return Inertia::render('stock/audit/edit', [
             'stockAudit' => $stockAudit,
+            'warehouses' => $this->warehouse->getAll(),
             'branches' => $this->branch->getAll()
         ]);
     }
@@ -162,6 +188,20 @@ class StockAuditController extends Controller
 
     public function destroy($id)
     {
+        $stockAudit = $this->stockAudit->getById($id);
+
+        if (request()->user()->id !== $stockAudit->user_id) {
+            return redirect()
+                ->route('stock.audit.index')
+                ->with('flash', [
+                    'toast' => [
+                        'variant' => 'destructive',
+                        'title' => 'Unauthorized Access',
+                        'description' => 'Access denied. You do not have permission to delete this data as only the creator is allowed to make changes.',
+                    ]
+                ]);
+        }
+
         $this->stockAudit->destroy($id);
         return redirect()
             ->back()
@@ -176,6 +216,20 @@ class StockAuditController extends Controller
 
     public function lock($id)
     {
+        $stockAudit = $this->stockAudit->getById($id);
+
+        if (request()->user()->id !== $stockAudit->user_id) {
+            return redirect()
+                ->route('stock.audit.index')
+                ->with('flash', [
+                    'toast' => [
+                        'variant' => 'destructive',
+                        'title' => 'Unauthorized Access',
+                        'description' => 'Access denied. You do not have permission to lock this data as only the creator is allowed to make changes.',
+                    ]
+                ]);
+        }
+
         $this->stockAudit->lock($id);
         return redirect()
             ->back()

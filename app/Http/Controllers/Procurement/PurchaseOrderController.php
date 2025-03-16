@@ -15,23 +15,18 @@ use Inertia\Inertia;
 
 class PurchaseOrderController extends Controller
 {
-    public function __construct(private PurchaseOrderInterface $purchaseOrder, private BranchInterface $branch, private SupplierInterface $supplier, private TaxRateInterface $taxRate) {}
+    public function __construct(private PurchaseOrderInterface $purchaseOrder, private SupplierInterface $supplier, private TaxRateInterface $taxRate) {}
 
     public function index(Request $request)
     {
-        $branchId = $request->query('branch_id');
-
         return Inertia::render('procurement/order/index', [
-            'purchaseOrders' => $this->purchaseOrder->getAll($branchId),
-            'branches' => $this->branch->getAll(),
-            'selectedBranchId' => $branchId
+            'purchaseOrders' => $this->purchaseOrder->getAll(),
         ]);
     }
 
     public function create()
     {
         return Inertia::render('procurement/order/create', [
-            'branches' => $this->branch->getAll(),
             'suppliers' => $this->supplier->getAll(),
             'taxRates' => $this->taxRate->getAll(),
         ]);
@@ -156,7 +151,6 @@ class PurchaseOrderController extends Controller
 
         return Inertia::render('procurement/order/edit', [
             'purchaseOrder' => $purchaseOrder,
-            'branches' => $this->branch->getAll(),
             'suppliers' => $this->supplier->getAll(),
             'taxRates' => $this->taxRate->getAll(),
         ]);

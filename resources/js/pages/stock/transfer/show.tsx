@@ -17,15 +17,21 @@ interface ItemUnit {
     name: string;
 }
 
+interface Location {
+    id: number;
+    name: string;
+    type?: string;
+}
+
 interface StockTransferDetail {
     id: number;
     stock_transfer_id: number;
     item_id: number;
     quantity: number;
-    from_branch_before_quantity: number;
-    from_branch_after_quantity: number;
-    to_branch_before_quantity: number;
-    to_branch_after_quantity: number;
+    source_before_quantity: number;
+    source_after_quantity: number;
+    destination_before_quantity: number;
+    destination_after_quantity: number;
     item: {
         id: number;
         name: string;
@@ -39,16 +45,12 @@ interface StockTransferProps {
         id: number;
         code: string;
         date: string;
-        from_branch_id: number;
-        to_branch_id: number;
-        from_branch: {
-            id: number;
-            name: string;
-        };
-        to_branch: {
-            id: number;
-            name: string;
-        };
+        source_able_id: number;
+        source_able_type: string;
+        destination_able_id: number;
+        destination_able_type: string;
+        source_able: Location;
+        destination_able: Location;
         user: {
             id: number;
             name: string;
@@ -99,11 +101,11 @@ export default function Show({ stockTransfer }: StockTransferProps) {
             },
         },
         {
-            accessorKey: 'from_branch_before_quantity',
-            header: 'From Branch Stock',
+            accessorKey: 'source_before_quantity',
+            header: 'Source Stock',
             cell: ({ row }) => {
-                const beforeQty = parseFloat(row.getValue('from_branch_before_quantity'));
-                const afterQty = parseFloat(row.original.from_branch_after_quantity);
+                const beforeQty = parseFloat(row.getValue('source_before_quantity'));
+                const afterQty = parseFloat(row.original.source_after_quantity);
                 const formattedBeforeQty = beforeQty % 1 === 0 ? beforeQty.toString() : beforeQty.toFixed(2).replace(/\.?0+$/, '');
                 const formattedAfterQty = afterQty % 1 === 0 ? afterQty.toString() : afterQty.toFixed(2).replace(/\.?0+$/, '');
                 const unitAbbreviation = row.original.item.item_unit.abbreviation;
@@ -128,11 +130,11 @@ export default function Show({ stockTransfer }: StockTransferProps) {
             },
         },
         {
-            accessorKey: 'to_branch_before_quantity',
-            header: 'To Branch Stock',
+            accessorKey: 'destination_before_quantity',
+            header: 'Destination Stock',
             cell: ({ row }) => {
-                const beforeQty = parseFloat(row.getValue('to_branch_before_quantity'));
-                const afterQty = parseFloat(row.original.to_branch_after_quantity);
+                const beforeQty = parseFloat(row.getValue('destination_before_quantity'));
+                const afterQty = parseFloat(row.original.destination_after_quantity);
                 const formattedBeforeQty = beforeQty % 1 === 0 ? beforeQty.toString() : beforeQty.toFixed(2).replace(/\.?0+$/, '');
                 const formattedAfterQty = afterQty % 1 === 0 ? afterQty.toString() : afterQty.toFixed(2).replace(/\.?0+$/, '');
                 const unitAbbreviation = row.original.item.item_unit.abbreviation;
@@ -167,6 +169,12 @@ export default function Show({ stockTransfer }: StockTransferProps) {
         }).format(date);
     };
 
+    // Helper function to get location display name with type
+    const getLocationDisplayName = (location: Location) => {
+        const typeLabel = location.type === 'Branch' ? 'Branch' : location.type === 'Warehouse' ? 'Warehouse' : '';
+        return `${location.name} ${typeLabel ? `(${typeLabel})` : ''}`;
+    };
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Stock Transfer: ${stockTransfer.code}`} />
@@ -194,28 +202,37 @@ export default function Show({ stockTransfer }: StockTransferProps) {
                             <div className="p-6">
                                 <h2 className="mb-4 text-base font-semibold text-gray-900">Transfer Information</h2>
                                 <div className="space-y-4">
-                                    <div className="flex items-center">
-                                        <div className="flex-1">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
                                             <h3 className="text-sm font-medium text-gray-500">Transfer Code</h3>
                                             <p className="mt-1 text-sm text-gray-900">{stockTransfer.code}</p>
                                         </div>
-                                        <div className="flex-1">
+                                        <div>
                                             <h3 className="text-sm font-medium text-gray-500">Transfer Date</h3>
                                             <p className="mt-1 text-sm text-gray-900">{formatDate(stockTransfer.date)}</p>
                                         </div>
                                     </div>
-                                    <div className="flex items-center">
-                                        <div className="flex-1">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
                                             <h3 className="text-sm font-medium text-gray-500">Transferred By</h3>
                                             <p className="mt-1 text-sm text-gray-900">{stockTransfer.user.name}</p>
                                         </div>
-                                        <div className="flex-1">
-                                            <h3 className="text-sm font-medium text-gray-500">Branch Transfer</h3>
-                                            <p className="mt-1 flex items-center text-sm text-gray-900">
-                                                <span>{stockTransfer.from_branch.name}</span>
-                                                <span className="mx-2 text-gray-400">→</span>
-                                                <span>{stockTransfer.to_branch.name}</span>
-                                            </p>
+                                        <div>
+                                            <h3 className="text-sm font-medium text-gray-500">Transfer Route</h3>
+                                            <div className="mt-1 text-sm text-gray-900">
+                                                <div className="flex flex-col space-y-1">
+                                                    <div className="flex items-center">
+                                                        <span className="w-12 font-medium text-gray-600">From</span>
+                                                        <span className="mr-1">:</span>
+                                                        <span>{getLocationDisplayName(stockTransfer.source_able)}</span>
+                                                    </div>
+                                                    <div className="flex items-center">
+                                                        <span className="w-12 font-medium text-gray-600">To</span>
+                                                        <span className="mr-1">:</span>
+                                                        <span>{getLocationDisplayName(stockTransfer.destination_able)}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

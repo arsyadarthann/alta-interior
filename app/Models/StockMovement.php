@@ -14,7 +14,8 @@ class StockMovement extends Model
     protected $table = 'stock_movements';
 
     protected $fillable = [
-        'branch_id',
+        'source_able_id',
+        'source_able_type',
         'item_batch_id',
         'type',
         'previous_quantity',
@@ -30,9 +31,9 @@ class StockMovement extends Model
     public const string TYPE_DECREASED = 'decreased';
     public const string TYPE_BALANCED = 'balanced';
 
-    public function branch(): BelongsTo
+    public function source_able():MorphTo
     {
-        return $this->belongsTo(Branch::class, 'branch_id', 'id');
+        return $this->morphTo();
     }
 
     public function itemBatch(): BelongsTo

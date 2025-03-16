@@ -7,28 +7,41 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Stock\StockAdjustmentRequest;
 use App\Interface\BranchInterface;
 use App\Interface\StockAdjustmentInterface;
+use App\Interface\WarehouseInterface;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class StockAdjustmentController extends Controller
 {
-    public function __construct(private StockAdjustmentInterface $stockAdjustment, private BranchInterface $branch) {}
+    public function __construct(private StockAdjustmentInterface $stockAdjustment, private BranchInterface $branch, private WarehouseInterface $warehouse) {}
 
     public function index(Request $request)
     {
-        $branchId = $request->query('branch_id');
+        $sourceAbleId = $request->query('source_able_id');
+        $sourceAbleType = $request->query('source_able_type');
+
+        if ($sourceAbleType === 'Branch') {
+            $stockAdjustments = $this->stockAdjustment->getAllByBranch($sourceAbleId);
+        } elseif ($sourceAbleType === 'Warehouse') {
+            $stockAdjustments = $this->stockAdjustment->getAllByWarehouse($sourceAbleId);
+        } else {
+            $stockAdjustments = $this->stockAdjustment->getAll();
+        }
 
         return Inertia::render('stock/adjustment/index', [
-            'stockAdjustments' => $this->stockAdjustment->getAll($branchId),
+            'stockAdjustments' => $stockAdjustments,
             'branches' => $this->branch->getAll(),
-            'selectedBranchId' => $branchId
+            'warehouses' => $this->warehouse->getAll(),
+            'selectedSourceAbleId' => $sourceAbleId,
+            'selectedSourceAbleType' => $sourceAbleType,
         ]);
     }
 
     public function create()
     {
         return Inertia::render('stock/adjustment/create', [
-            'branches' => $this->branch->getAll()
+            'branches' => $this->branch->getAll(),
+            'warehouses' => $this->warehouse->getAll(),
         ]);
     }
 

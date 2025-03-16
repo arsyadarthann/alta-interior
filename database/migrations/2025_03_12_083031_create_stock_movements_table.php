@@ -13,7 +13,8 @@ return new class extends Migration
     {
         Schema::create('stock_movements', function (Blueprint $table) {
             $table->id();
-            $table->unsignedSmallInteger('branch_id');
+            $table->unsignedBigInteger('source_able_id');
+            $table->string('source_able_type');
             $table->foreignId('item_batch_id')->constrained('item_batches');
             $table->enum('type', ['in', 'out', 'increased', 'decreased', 'balanced']);
             $table->decimal('previous_quantity', 15, 2);
@@ -22,8 +23,6 @@ return new class extends Migration
             $table->bigInteger('reference_able_id');
             $table->string('reference_able_type');
             $table->timestamps();
-
-            $table->foreign('branch_id')->references('id')->on('branches');
         });
     }
 

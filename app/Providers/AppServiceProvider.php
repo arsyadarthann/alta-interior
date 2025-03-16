@@ -18,6 +18,7 @@ use App\Interface\SupplierInterface;
 use App\Interface\TaxRateInterface;
 use App\Interface\TransactionPrefixInterface;
 use App\Interface\UserInterface;
+use App\Interface\WarehouseInterface;
 use App\Repositories\BranchRepository;
 use App\Repositories\CustomerRepository;
 use App\Repositories\ItemCategoryRepository;
@@ -34,6 +35,7 @@ use App\Repositories\SupplierRepository;
 use App\Repositories\TaxRateRepository;
 use App\Repositories\TransactionPrefixRepository;
 use App\Repositories\UserRepository;
+use App\Repositories\WarehouseRepository;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -46,6 +48,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(PermissionInterface::class, PermissionRepository::class);
         $this->app->bind(RoleInterface::class, RoleRepository::class);
         $this->app->bind(UserInterface::class, UserRepository::class);
+        $this->app->bind(WarehouseInterface::class, WarehouseRepository::class);
         $this->app->bind(BranchInterface::class, BranchRepository::class);
         $this->app->bind(TaxRateInterface::class, TaxRateRepository::class);
         $this->app->bind(PaymentMethodInterface::class, PaymentMethodRepository::class);

@@ -9,11 +9,12 @@ class StockMovementRepository
 {
     public function __construct(private StockMovement $stockMovement) {}
 
-    public function createStockMovement(int $itemBatchId, int $branchId, string $type, array $dataQuantity, $reference)
+    public function createStockMovement(int $itemBatchId, int $sourceAbleId, string $sourceAbleType , string $type, array $dataQuantity, $reference)
     {
-        return DB::transaction(function () use ($itemBatchId, $branchId, $type, $dataQuantity, $reference) {
+        return DB::transaction(function () use ($itemBatchId, $sourceAbleId, $sourceAbleType, $type, $dataQuantity, $reference) {
             $this->stockMovement->create([
-                'branch_id' => $branchId,
+                'source_able_id' => $sourceAbleId,
+                'source_able_type' => $sourceAbleType,
                 'item_batch_id' => $itemBatchId,
                 'type' => $type,
                 'previous_quantity' => $dataQuantity['previous_quantity'],

@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class StockTransfer extends Model
 {
@@ -16,19 +17,21 @@ class StockTransfer extends Model
     protected $fillable = [
         'code',
         'date',
-        'from_branch_id',
-        'to_branch_id',
+        'source_able_id',
+        'source_able_type',
+        'destination_able_id',
+        'destination_able_type',
         'user_id',
     ];
 
-    public function fromBranch(): BelongsTo
+    public function source_able(): MorphTo
     {
-        return $this->belongsTo(Branch::class, 'from_branch_id', 'id');
+        return $this->morphTo();
     }
 
-    public function toBranch(): BelongsTo
+    public function destination_able(): MorphTo
     {
-        return $this->belongsTo(Branch::class, 'to_branch_id', 'id');
+        return $this->morphTo();
     }
 
     public function user(): BelongsTo

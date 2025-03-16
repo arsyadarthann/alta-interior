@@ -1,37 +1,43 @@
-import { type BreadcrumbItem } from '@/types';
-import { Head, router, useForm, usePage } from '@inertiajs/react';
-import React, { useState, useEffect, useMemo } from 'react';
+import { DataTable } from '@/components/data-table';
+import { ActionColumn } from '@/components/data-table/action-column';
+import { BatchItemsTable } from '@/components/data-table/batch-items-table';
+import { createNumberColumn } from '@/components/data-table/columns';
+import { FormDialog } from '@/components/form-dialog';
+import HeadingSmall from '@/components/heading-small';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { usePermissions } from '@/hooks/use-permissions';
+import { useToastNotification } from '@/hooks/use-toast-notification';
 import AppLayout from '@/layouts/app-layout';
 import InventoryLayout from '@/layouts/inventory/layout';
-import HeadingSmall from '@/components/heading-small';
-import { useToastNotification } from "@/hooks/use-toast-notification";
-import { ColumnDef, Row } from "@tanstack/react-table";
-import { createNumberColumn } from "@/components/data-table/columns";
-import { ActionColumn } from "@/components/data-table/action-column";
-import { Pencil, Plus, Trash2 } from "lucide-react";
-import { DataTable } from "@/components/data-table";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { usePermissions } from "@/hooks/use-permissions";
-import { FormDialog } from "@/components/form-dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { type BreadcrumbItem } from '@/types';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
+import { ColumnDef, Row } from '@tanstack/react-table';
+import { Boxes, Pencil, Plus, Trash2 } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
 
 type ItemCategory = {
     id: number;
     name: string;
-}
+};
 
 type ItemUnit = {
     id: number;
     name: string;
     abbreviation: string;
-}
+};
 
 type Branch = {
     id: number;
     name: string;
-}
+};
+
+type Warehouse = {
+    id: number;
+    name: string;
+};
 
 type Item = {
     id: number;
@@ -43,56 +49,121 @@ type Item = {
     item_category?: ItemCategory;
     item_unit?: ItemUnit;
     stock?: number;
-}
+};
+
+type SourceItem = {
+    id: number;
+    name: string;
+    type: 'Branch' | 'Warehouse';
+};
 
 interface Props {
     items: Item[];
     itemCategories: ItemCategory[];
     itemUnits: ItemUnit[];
+    warehouses: Warehouse[];
     branches: Branch[];
-    selectedBranchId?: string;
+    selectedSourceAbleId?: string;
+    selectedSourceAbleType?: string;
 }
 
 export default function Item({
-                                 items,
-                                 itemCategories,
-                                 itemUnits,
-                                 branches,
-                                 selectedBranchId = ''
-                             }: Props) {
+    items,
+    itemCategories,
+    itemUnits,
+    warehouses,
+    branches,
+    selectedSourceAbleId = '',
+    selectedSourceAbleType = '',
+}: Props) {
     const { hasPermission } = usePermissions();
     const { showErrorToast } = useToastNotification();
+    const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedItem, setSelectedItem] = useState<Item | undefined>();
-    const { auth } = usePage().props as unknown as { auth: { user: { branch_id: number } } };
+    const { auth } = usePage().props as unknown as { auth: { user: { branch_id: number | null } } };
 
-    // Improved Default Branch Selection Logic
-    const defaultBranchId = useMemo(() => {
-        // Priority order for branch selection:
-        // 1. User's assigned branch
-        // 2. selectedBranchId from props
-        // 3. First branch in the list
-        // 4. Empty string as fallback
-        return auth?.user?.branch_id
-            ? auth.user.branch_id.toString()
-            : (selectedBranchId || branches[0]?.id?.toString() || "");
-    }, [auth?.user?.branch_id, selectedBranchId, branches]);
+    const getSourceFromSelectedValue = (value: string): { id: number; type: string } => {
+        const [type, id] = value.split(':');
+        return {
+            id: parseInt(id),
+            type: type,
+        };
+    };
 
-    const [currentBranchId, setCurrentBranchId] = useState(defaultBranchId);
+    // Combine branches and warehouses into a single source list
+    const sources: SourceItem[] = useMemo(() => {
+        const branchSources = branches.map((branch) => ({
+            id: branch.id,
+            name: `${branch.name}`,
+            type: 'Branch' as const,
+        }));
 
-    // Simplified initial load effect
-    useEffect(() => {
-        // Trigger initial branch load only if no specific branch is set
-        if (defaultBranchId) {
-            router.get(route('item.index'), {
-                branch_id: defaultBranchId
-            }, {
-                preserveState: true,
-                preserveScroll: true,
-            });
+        const warehouseSources = warehouses.map((warehouse) => ({
+            id: warehouse.id,
+            name: `${warehouse.name}`,
+            type: 'Warehouse' as const,
+        }));
+
+        return [...warehouseSources, ...branchSources];
+    }, [branches, warehouses]);
+
+    // Determine default selected source
+    const defaultSource = useMemo(() => {
+        // If user has a branch_id, use that branch
+        if (auth?.user?.branch_id) {
+            return `Branch:${auth.user.branch_id}`;
         }
-    }, [defaultBranchId]);
+
+        // If there's a selected source from props
+        if (selectedSourceAbleId && selectedSourceAbleType) {
+            return `${selectedSourceAbleType}:${selectedSourceAbleId}`;
+        }
+
+        // Default to first warehouse if available
+        if (warehouses.length > 0) {
+            return `Warehouse:${warehouses[0].id}`;
+        }
+
+        // If no warehouses, default to first branch if available
+        if (branches.length > 0) {
+            return `Branch:${branches[0].id}`;
+        }
+
+        // Fallback to "all" option if no sources available
+        return 'all';
+    }, [auth?.user?.branch_id, selectedSourceAbleId, selectedSourceAbleType, warehouses, branches]);
+
+    const [selectedSource, setSelectedSource] = useState(defaultSource);
+
+    // Fetch items based on selected source
+    useEffect(() => {
+        if (selectedSource && selectedSource !== 'all') {
+            const [type, id] = selectedSource.split(':');
+            router.get(
+                route('item.index'),
+                {
+                    source_able_id: id,
+                    source_able_type: type,
+                },
+                {
+                    preserveState: true,
+                    preserveScroll: true,
+                },
+            );
+        } else {
+            // Fetch all items when "all" is selected
+            router.get(
+                route('item.index'),
+                {},
+                {
+                    preserveState: true,
+                    preserveScroll: true,
+                },
+            );
+        }
+    }, [selectedSource]);
 
     const createForm = useForm({
         name: '',
@@ -110,38 +181,70 @@ export default function Item({
         price: '',
     });
 
-    const handleBranchChange = (value: string) => {
-        setCurrentBranchId(value);
-        router.get(route('item.index'), { branch_id: value }, {
-            preserveState: true,
-            preserveScroll: true,
-        });
+    const handleSourceChange = (value: string) => {
+        setSelectedSource(value);
     };
 
     const handleCreateSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        createForm.post(route('item.store', { branch_id: currentBranchId }), {
-            preserveScroll: true,
-            onError: showErrorToast,
-            onSuccess: () => {
-                setIsCreateModalOpen(false);
-                createForm.reset();
-            }
-        });
+
+        // Parse selected source for form submission if needed
+        let sourceAbleId;
+        let sourceAbleType;
+
+        if (selectedSource && selectedSource !== 'all') {
+            const [type, id] = selectedSource.split(':');
+            sourceAbleId = id;
+            sourceAbleType = type;
+        }
+
+        createForm.post(
+            route('item.store', {
+                source_able_id: sourceAbleId || undefined,
+                source_able_type: sourceAbleType || undefined,
+            }),
+            {
+                preserveScroll: true,
+                onError: showErrorToast,
+                onSuccess: () => {
+                    setIsCreateModalOpen(false);
+                    createForm.reset();
+                },
+            },
+        );
     };
 
     const handleEditSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedItem) return;
 
-        editForm.put(route('item.update', [selectedItem.id, { branch_id: currentBranchId }]), {
-            preserveScroll: true,
-            onError: showErrorToast,
-            onSuccess: () => {
-                setIsEditModalOpen(false);
-                setSelectedItem(undefined);
-            }
-        });
+        // Parse selected source for form submission
+        let sourceAbleId;
+        let sourceAbleType;
+
+        if (selectedSource && selectedSource !== 'all') {
+            const [type, id] = selectedSource.split(':');
+            sourceAbleId = id;
+            sourceAbleType = type;
+        }
+
+        editForm.put(
+            route('item.update', [
+                selectedItem.id,
+                {
+                    source_able_id: sourceAbleId || undefined,
+                    source_able_type: sourceAbleType || undefined,
+                },
+            ]),
+            {
+                preserveScroll: true,
+                onError: showErrorToast,
+                onSuccess: () => {
+                    setIsEditModalOpen(false);
+                    setSelectedItem(undefined);
+                },
+            },
+        );
     };
 
     const formatPrice = (price: number): string => {
@@ -150,58 +253,64 @@ export default function Item({
             currency: 'IDR',
             minimumFractionDigits: 0,
         }).format(price);
-    }
+    };
 
     const columns: ColumnDef<Item>[] = [
         createNumberColumn<Item>(),
         {
-            accessorKey: "code",
-            header: "Code",
+            accessorKey: 'code',
+            header: 'Code',
             cell: ({ row }: { row: Row<Item> }) => {
                 return row.original.code;
-            }
+            },
         },
         {
-            accessorKey: "name",
-            header: "Item Name",
+            accessorKey: 'name',
+            header: 'Item Name',
             cell: ({ row }: { row: Row<Item> }) => {
                 return row.original.name;
-            }
+            },
         },
         {
-            accessorKey: "category",
-            header: "Category",
+            accessorKey: 'category',
+            header: 'Category',
             cell: ({ row }: { row: Row<Item> }) => {
                 return row.original.item_category?.name || '-';
-            }
+            },
         },
         {
-            accessorKey: "stock",
-            header: "Stock",
+            accessorKey: 'stock',
+            header: 'Stock',
             cell: ({ row }: { row: Row<Item> }) => {
                 if (row.original.stock === undefined) return '-';
 
                 const stockValue = Number(row.original.stock);
-                const formattedStock = Number.isInteger(stockValue)
-                    ? stockValue.toString()
-                    : stockValue.toFixed(2);
+                const formattedStock = Number.isInteger(stockValue) ? stockValue.toString() : stockValue.toFixed(2);
 
                 return formattedStock + ' ' + row.original.item_unit?.abbreviation;
-            }
+            },
         },
         {
-            accessorKey: "price",
-            header: "Price",
+            accessorKey: 'price',
+            header: 'Price',
             cell: ({ row }: { row: Row<Item> }) => {
                 return formatPrice(row.original.price);
-            }
+            },
         },
-        (hasPermission('update_item') || hasPermission('delete_item')) && (
+        (hasPermission('update_item') || hasPermission('delete_item')) &&
             ActionColumn<Item>({
                 hasPermission: hasPermission,
                 actions: (item) => [
                     {
-                        label: "Edit",
+                        label: 'Batch',
+                        icon: <Boxes className="h-4 w-4" />,
+                        onClick: (data) => {
+                            setSelectedItem(data);
+                            setIsBatchModalOpen(true);
+                        },
+                    },
+                    {
+                        label: 'Edit',
                         icon: <Pencil className="h-4 w-4" />,
                         onClick: (data) => {
                             setSelectedItem(data);
@@ -217,12 +326,12 @@ export default function Item({
                         permission: 'update_item',
                     },
                     {
-                        label: "Delete",
+                        label: 'Delete',
                         icon: <Trash2 className="h-4 w-4" />,
-                        className: "text-red-600",
+                        className: 'text-red-600',
                         showConfirmDialog: true,
                         confirmDialogProps: {
-                            title: "Delete Item",
+                            title: 'Delete Item',
                             description: `This action cannot be undone. This will permanently delete the "${item.name}" item.`,
                         },
                         onClick: (data) => {
@@ -231,17 +340,16 @@ export default function Item({
                             });
                         },
                         permission: 'delete_item',
-                    }
+                    },
                 ],
-            })
-        )
+            }),
     ].filter(Boolean) as ColumnDef<Item>[];
 
     const breadcrumbs: BreadcrumbItem[] = [
         {
             title: 'Items',
             href: route('item.index'),
-        }
+        },
     ];
 
     return (
@@ -250,26 +358,22 @@ export default function Item({
 
             <InventoryLayout fullWidth>
                 <div className="space-y-6">
-                    <HeadingSmall
-                        title="Items"
-                        description="Manage your inventory items."
-                    />
+                    <HeadingSmall title="Items" description="Manage your inventory items." />
 
                     <div className="flex items-center justify-between">
                         {!auth.user.branch_id ? (
                             <div className="flex items-center gap-2">
-                                <Label htmlFor="branch_id" className="whitespace-nowrap">Branch:</Label>
-                                <Select
-                                    value={currentBranchId}
-                                    onValueChange={handleBranchChange}
-                                >
-                                    <SelectTrigger className="w-[180px]">
-                                        <SelectValue placeholder="Select branch" />
+                                <Label htmlFor="source" className="whitespace-nowrap">
+                                    Location Filter:
+                                </Label>
+                                <Select value={selectedSource} onValueChange={handleSourceChange}>
+                                    <SelectTrigger className="w-[200px]">
+                                        <SelectValue placeholder="Filter by location" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {branches.map((branch) => (
-                                            <SelectItem key={branch.id} value={branch.id.toString()}>
-                                                {branch.name}
+                                        {sources.map((source) => (
+                                            <SelectItem key={`${source.type}-${source.id}`} value={`${source.type}:${source.id}`}>
+                                                {source.name}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
@@ -279,26 +383,41 @@ export default function Item({
                             <div className="flex items-center gap-2">
                                 <Label className="whitespace-nowrap">Branch:</Label>
                                 <span className="text-sm font-medium">
-                                {branches.find(branch => branch.id === auth.user.branch_id)?.name || 'Unknown Branch'}
-                            </span>
+                                    {branches.find((branch) => branch.id === auth.user.branch_id)?.name || 'Unknown Branch'}
+                                </span>
                             </div>
                         )}
 
                         {hasPermission('create_item') && (
-                            <Button
-                                onClick={() => setIsCreateModalOpen(true)}
-                                className="flex items-center gap-2"
-                            >
+                            <Button onClick={() => setIsCreateModalOpen(true)} className="flex items-center gap-2">
                                 <Plus className="h-4 w-4" />
                                 Add Item
                             </Button>
                         )}
                     </div>
 
-                    <DataTable
-                        columns={columns}
-                        data={items}
-                    />
+                    <DataTable columns={columns} data={items} />
+
+                    <FormDialog
+                        title={`Item Batch - ${selectedItem?.name || 'Item'} ${
+                            selectedSource && selectedSource !== 'all'
+                                ? `(${sources.find((source) => `${source.type}:${source.id}` === selectedSource)?.name || ''})`
+                                : ''
+                        }`}
+                        description="Manage batch information for this item."
+                        isOpen={isBatchModalOpen}
+                        onClose={() => setIsBatchModalOpen(false)}
+                        size="xl"
+                        hideSubmitButton={true}
+                    >
+                        {selectedItem && selectedSource && selectedSource !== 'all' && (
+                            <BatchItemsTable
+                                itemId={selectedItem.id}
+                                sourceAbleId={getSourceFromSelectedValue(selectedSource).id}
+                                sourceAbleType={getSourceFromSelectedValue(selectedSource).type}
+                            />
+                        )}
+                    </FormDialog>
 
                     <FormDialog
                         title="Add Item"
@@ -310,7 +429,7 @@ export default function Item({
                         submitLabel="Create"
                         processingLabel="Creating..."
                     >
-                        <div className="space-y-2 relative grid gap-2">
+                        <div className="relative grid gap-2 space-y-2">
                             <Label htmlFor="name">
                                 Item Name <span className="text-red-500">*</span>
                             </Label>
@@ -318,13 +437,13 @@ export default function Item({
                                 id="name"
                                 type="text"
                                 value={createForm.data.name}
-                                onChange={e => createForm.setData('name', e.target.value)}
+                                onChange={(e) => createForm.setData('name', e.target.value)}
                                 placeholder="Enter item name"
-                                className={createForm.errors.name ? "border-red-500 ring-red-100" : ""}
+                                className={createForm.errors.name ? 'border-red-500 ring-red-100' : ''}
                             />
                         </div>
 
-                        <div className="space-y-2 relative grid gap-2">
+                        <div className="relative grid gap-2 space-y-2">
                             <Label htmlFor="code">
                                 Code <span className="text-red-500">*</span>
                             </Label>
@@ -332,14 +451,14 @@ export default function Item({
                                 id="code"
                                 type="text"
                                 value={createForm.data.code}
-                                onChange={e => createForm.setData('code', e.target.value)}
+                                onChange={(e) => createForm.setData('code', e.target.value)}
                                 placeholder="Enter item code"
-                                className={createForm.errors.code ? "border-red-500 ring-red-100" : ""}
+                                className={createForm.errors.code ? 'border-red-500 ring-red-100' : ''}
                             />
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2 relative grid gap-2">
+                            <div className="relative grid gap-2 space-y-2">
                                 <Label htmlFor="item_category_id">
                                     Category <span className="text-red-500">*</span>
                                 </Label>
@@ -347,9 +466,7 @@ export default function Item({
                                     value={createForm.data.item_category_id}
                                     onValueChange={(value) => createForm.setData('item_category_id', value)}
                                 >
-                                    <SelectTrigger
-                                        className={createForm.errors.item_category_id ? "border-red-500 ring-red-100" : ""}
-                                    >
+                                    <SelectTrigger className={createForm.errors.item_category_id ? 'border-red-500 ring-red-100' : ''}>
                                         <SelectValue placeholder="Select a category" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -362,17 +479,12 @@ export default function Item({
                                 </Select>
                             </div>
 
-                            <div className="space-y-2 relative grid gap-2">
+                            <div className="relative grid gap-2 space-y-2">
                                 <Label htmlFor="item_unit_id">
                                     Unit <span className="text-red-500">*</span>
                                 </Label>
-                                <Select
-                                    value={createForm.data.item_unit_id}
-                                    onValueChange={(value) => createForm.setData('item_unit_id', value)}
-                                >
-                                    <SelectTrigger
-                                        className={createForm.errors.item_unit_id ? "border-red-500 ring-red-100" : ""}
-                                    >
+                                <Select value={createForm.data.item_unit_id} onValueChange={(value) => createForm.setData('item_unit_id', value)}>
+                                    <SelectTrigger className={createForm.errors.item_unit_id ? 'border-red-500 ring-red-100' : ''}>
                                         <SelectValue placeholder="Select a unit" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -386,19 +498,19 @@ export default function Item({
                             </div>
                         </div>
 
-                        <div className="space-y-2 relative grid gap-2">
+                        <div className="relative grid gap-2 space-y-2">
                             <Label htmlFor="price">
                                 Price <span className="text-red-500">*</span>
                             </Label>
                             <div className="flex items-center">
-                                <span className="mr-2 text-sm text-muted-foreground">Rp</span>
+                                <span className="text-muted-foreground mr-2 text-sm">Rp</span>
                                 <Input
                                     id="price"
                                     type="number"
                                     value={createForm.data.price}
-                                    onChange={e => createForm.setData('price', e.target.value)}
+                                    onChange={(e) => createForm.setData('price', e.target.value)}
                                     placeholder="Enter price"
-                                    className={createForm.errors.price ? "border-red-500 ring-red-100" : ""}
+                                    className={createForm.errors.price ? 'border-red-500 ring-red-100' : ''}
                                 />
                             </div>
                         </div>
@@ -414,7 +526,7 @@ export default function Item({
                         submitLabel="Save Changes"
                         processingLabel="Saving..."
                     >
-                        <div className="space-y-2 relative grid gap-2">
+                        <div className="relative grid gap-2 space-y-2">
                             <Label htmlFor="edit_name">
                                 Item Name <span className="text-red-500">*</span>
                             </Label>
@@ -422,13 +534,13 @@ export default function Item({
                                 id="edit_name"
                                 type="text"
                                 value={editForm.data.name}
-                                onChange={e => editForm.setData('name', e.target.value)}
+                                onChange={(e) => editForm.setData('name', e.target.value)}
                                 placeholder="Enter item name"
-                                className={editForm.errors.name ? "border-red-500 ring-red-100" : ""}
+                                className={editForm.errors.name ? 'border-red-500 ring-red-100' : ''}
                             />
                         </div>
 
-                        <div className="space-y-2 relative grid gap-2">
+                        <div className="relative grid gap-2 space-y-2">
                             <Label htmlFor="edit_code">
                                 Code <span className="text-red-500">*</span>
                             </Label>
@@ -436,23 +548,18 @@ export default function Item({
                                 id="edit_code"
                                 type="text"
                                 value={editForm.data.code}
-                                onChange={e => editForm.setData('code', e.target.value)}
+                                onChange={(e) => editForm.setData('code', e.target.value)}
                                 placeholder="Enter item code"
-                                className={editForm.errors.code ? "border-red-500 ring-red-100" : ""}
+                                className={editForm.errors.code ? 'border-red-500 ring-red-100' : ''}
                             />
                         </div>
 
-                        <div className="space-y-2 relative grid gap-2">
+                        <div className="relative grid gap-2 space-y-2">
                             <Label htmlFor="edit_item_category_id">
                                 Category <span className="text-red-500">*</span>
                             </Label>
-                            <Select
-                                value={editForm.data.item_category_id}
-                                onValueChange={(value) => editForm.setData('item_category_id', value)}
-                            >
-                                <SelectTrigger
-                                    className={editForm.errors.item_category_id ? "border-red-500 ring-red-100" : ""}
-                                >
+                            <Select value={editForm.data.item_category_id} onValueChange={(value) => editForm.setData('item_category_id', value)}>
+                                <SelectTrigger className={editForm.errors.item_category_id ? 'border-red-500 ring-red-100' : ''}>
                                     <SelectValue placeholder="Select a category" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -465,17 +572,12 @@ export default function Item({
                             </Select>
                         </div>
 
-                        <div className="space-y-2 relative grid gap-2">
+                        <div className="relative grid gap-2 space-y-2">
                             <Label htmlFor="edit_item_unit_id">
                                 Unit <span className="text-red-500">*</span>
                             </Label>
-                            <Select
-                                value={editForm.data.item_unit_id}
-                                onValueChange={(value) => editForm.setData('item_unit_id', value)}
-                            >
-                                <SelectTrigger
-                                    className={editForm.errors.item_unit_id ? "border-red-500 ring-red-100" : ""}
-                                >
+                            <Select value={editForm.data.item_unit_id} onValueChange={(value) => editForm.setData('item_unit_id', value)}>
+                                <SelectTrigger className={editForm.errors.item_unit_id ? 'border-red-500 ring-red-100' : ''}>
                                     <SelectValue placeholder="Select a unit" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -488,19 +590,19 @@ export default function Item({
                             </Select>
                         </div>
 
-                        <div className="space-y-2 relative grid gap-2">
+                        <div className="relative grid gap-2 space-y-2">
                             <Label htmlFor="edit_price">
                                 Price <span className="text-red-500">*</span>
                             </Label>
                             <div className="flex items-center">
-                                <span className="mr-2 text-sm text-muted-foreground">Rp</span>
+                                <span className="text-muted-foreground mr-2 text-sm">Rp</span>
                                 <Input
                                     id="edit_price"
                                     type="number"
                                     value={editForm.data.price}
-                                    onChange={e => editForm.setData('price', e.target.value)}
+                                    onChange={(e) => editForm.setData('price', e.target.value)}
                                     placeholder="Enter price"
-                                    className={editForm.errors.price ? "border-red-500 ring-red-100" : ""}
+                                    className={editForm.errors.price ? 'border-red-500 ring-red-100' : ''}
                                 />
                             </div>
                         </div>

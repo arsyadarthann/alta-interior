@@ -20,7 +20,6 @@ class PurchaseOrderRequest extends FormRequest
         return [
             'code' => 'required|string|max:255|unique:purchase_orders,code',
             'date' => 'required|date',
-            'branch_id' => 'required|exists:branches,id',
             'supplier_id' => 'required|exists:suppliers,id',
             'expected_delivery_date' => 'required|date',
             'total_amount' => 'required|numeric|min:1',
@@ -40,7 +39,6 @@ class PurchaseOrderRequest extends FormRequest
         return [
             'code' => 'required|string|max:255|unique:purchase_orders,code,' . $this->route('id'),
             'date' => 'required|date',
-            'branch_id' => 'required|exists:branches,id',
             'supplier_id' => 'required|exists:suppliers,id',
             'expected_delivery_date' => 'required|date',
             'total_amount' => 'required|numeric|min:1',

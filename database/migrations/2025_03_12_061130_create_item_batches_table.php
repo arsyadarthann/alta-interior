@@ -14,14 +14,15 @@ return new class extends Migration
         Schema::create('item_batches', function (Blueprint $table) {
             $table->id();
             $table->string('sku');
-            $table->unsignedSmallInteger('branch_id');
+            $table->unsignedBigInteger('source_able_id');
+            $table->string('source_able_type');
             $table->foreignId('item_id')->constrained('items');
             $table->timestamp('received_at');
             $table->decimal('cogs', 15, 2);
             $table->decimal('stock', 15, 2);
             $table->timestamps();
 
-            $table->foreign('branch_id')->references('id')->on('branches');
+            $table->index(['source_able_id', 'source_able_type']);
         });
     }
 

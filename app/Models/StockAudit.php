@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class StockAudit extends Model
 {
@@ -16,14 +17,15 @@ class StockAudit extends Model
     protected $fillable = [
         'code',
         'date',
-        'branch_id',
+        'source_able_id',
+        'source_able_type',
         'user_id',
         'is_locked'
     ];
 
-    public function branch(): BelongsTo
+    public function source_able(): MorphTo
     {
-        return $this->belongsTo(Branch::class, 'branch_id', 'id');
+        return $this->morphTo();
     }
 
     public function user(): BelongsTo

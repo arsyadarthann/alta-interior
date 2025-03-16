@@ -19,7 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->web(append: [
             HandleInertiaRequests::class,
-            HandleInertiaErrors::class,
+//            HandleInertiaErrors::class,
             AddLinkHeadersForPreloadedAssets::class,
         ]);
 
@@ -30,15 +30,15 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        $exceptions->renderable(function (\Throwable $e) {
-            if ($e->getCode() !== 0) {
-                $status = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
-
-                if (in_array($status, [403, 404, 500, 503])) {
-                    return inertia('errors/error-page', [
-                        'status' => $status,
-                    ]);
-                }
-            }
-        });
+//        $exceptions->renderable(function (\Throwable $e) {
+//            if ($e->getCode() !== 0) {
+//                $status = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
+//
+//                if (in_array($status, [403, 404, 500, 503])) {
+//                    return inertia('errors/error-page', [
+//                        'status' => $status,
+//                    ]);
+//                }
+//            }
+//        });
     })->create();

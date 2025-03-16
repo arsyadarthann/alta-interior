@@ -41,11 +41,6 @@ type ItemUnit = {
     abbreviation: string;
 };
 
-type Branch = {
-    id: number;
-    name: string;
-};
-
 type Supplier = {
     id: number;
     name: string;
@@ -68,12 +63,11 @@ type TaxRate = {
 };
 
 interface Props {
-    branches?: Branch[];
     suppliers?: Supplier[];
     taxRates?: TaxRate[];
 }
 
-export default function Create({ branches = [], suppliers = [], taxRates = [] }: Props) {
+export default function Create({ suppliers = [], taxRates = [] }: Props) {
     const { showErrorToast } = useToastNotification();
     const [items, setItems] = useState<Item[]>([]);
     const [selectedItemNames, setSelectedItemNames] = useState<Record<number, string>>({});
@@ -86,7 +80,6 @@ export default function Create({ branches = [], suppliers = [], taxRates = [] }:
     const { data, setData, post, processing, errors } = useForm({
         code: '',
         date: new Date(),
-        branch_id: '',
         supplier_id: '',
         expected_delivery_date: new Date(),
         total_amount: 0,
@@ -162,40 +155,36 @@ export default function Create({ branches = [], suppliers = [], taxRates = [] }:
         calculateTotals();
     }, [data.purchase_order_details, data.tax_rate_id, taxRates, setData]);
 
-    const fetchPurchaseOrderCode = useCallback(
-        (branchId: string) => {
-            if (!branchId) return;
-
-            fetch(route('procurement.order.getCode', { branch_id: branchId }), {
-                method: 'GET',
-                headers: {
-                    Accept: 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
+    const fetchPurchaseOrderCode = useCallback(() => {
+        fetch(route('procurement.order.getCode'), {
+            method: 'GET',
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        })
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error(`Network response error: ${response.status} ${response.statusText}`);
+                }
+                return response.json();
             })
-                .then((response) => {
-                    if (!response.ok) {
-                        throw new Error(`Network response error: ${response.status} ${response.statusText}`);
-                    }
-                    return response.json();
-                })
-                .then((responseData) => {
-                    if (responseData && responseData.code) {
-                        setData('code', responseData.code);
-                    } else {
-                        console.error('Unexpected response format:', responseData);
-                        throw new Error('Invalid response format: Code not found in response');
-                    }
-                })
-                .catch((error) => {
-                    console.error('Error fetching purchase order code:', error);
-                    showErrorToast([`Failed to get purchase order code: ${error.message}`]);
-                });
-        },
-        [setData, showErrorToast],
-    );
+            .then((responseData) => {
+                if (responseData && responseData.code) {
+                    setData('code', responseData.code);
+                } else {
+                    console.error('Unexpected response format:', responseData);
+                    throw new Error('Invalid response format: Code not found in response');
+                }
+            })
+            .catch((error) => {
+                console.error('Error fetching purchase order code:', error);
+                showErrorToast([`Failed to get purchase order code: ${error.message}`]);
+            });
+    }, [setData, showErrorToast]);
 
     useEffect(() => {
+        fetchPurchaseOrderCode();
         setInitialized(true);
     }, []);
 
@@ -399,7 +388,7 @@ export default function Create({ branches = [], suppliers = [], taxRates = [] }:
         return (
             <div className="mb-4 rounded-md border bg-gray-50 p-4">
                 <div className="flex flex-wrap items-start gap-3">
-                    <div className="relative grid min-w-[300px] flex-1 gap-2">
+                    <div className="relative grid min-w-[250px] flex-1 gap-2">
                         <Label htmlFor={`item_id_${index}`}>
                             Item <span className="text-red-500">*</span>
                         </Label>
@@ -651,31 +640,6 @@ export default function Create({ branches = [], suppliers = [], taxRates = [] }:
                                         </div>
 
                                         <div className="space-y-2">
-                                            <Label htmlFor="branch_id">
-                                                Branch <span className="text-red-500">*</span>
-                                            </Label>
-                                            <Select
-                                                value={data.branch_id}
-                                                onValueChange={(value) => {
-                                                    setData('branch_id', value);
-                                                    fetchPurchaseOrderCode(value);
-                                                }}
-                                            >
-                                                <SelectTrigger className={errors.branch_id ? 'border-red-500' : ''}>
-                                                    <SelectValue placeholder="Select branch" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {branches.map((branch) => (
-                                                        <SelectItem key={branch.id} value={branch.id.toString()}>
-                                                            {branch.name}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                            {errors.branch_id && <p className="text-sm text-red-500">{errors.branch_id}</p>}
-                                        </div>
-
-                                        <div className="space-y-2">
                                             <Label htmlFor="supplier_id">
                                                 Supplier <span className="text-red-500">*</span>
                                             </Label>
@@ -868,7 +832,7 @@ export default function Create({ branches = [], suppliers = [], taxRates = [] }:
                             </Button>
                             <Button
                                 type="submit"
-                                disabled={processing || data.purchase_order_details.length === 0 || !data.branch_id || !data.supplier_id}
+                                disabled={processing || data.purchase_order_details.length === 0 || !data.supplier_id}
                                 className="px-8"
                             >
                                 {processing ? 'Processing...' : 'Create Order'}

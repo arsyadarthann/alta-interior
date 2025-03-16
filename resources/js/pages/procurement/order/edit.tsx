@@ -26,11 +26,6 @@ type ItemUnit = {
     abbreviation: string;
 };
 
-type Branch = {
-    id: number;
-    name: string;
-};
-
 type Supplier = {
     id: number;
     name: string;
@@ -61,14 +56,12 @@ type OrderDetail = {
 };
 
 interface Props {
-    branches?: Branch[];
     suppliers?: Supplier[];
     taxRates?: TaxRate[];
     purchaseOrder: {
         id: number;
         code: string;
         date: string;
-        branch_id: number;
         supplier_id: number;
         expected_delivery_date: string;
         total_amount: number;
@@ -79,7 +72,7 @@ interface Props {
     };
 }
 
-export default function EditPurchaseOrder({ branches = [], suppliers = [], taxRates = [], purchaseOrder }: Props) {
+export default function EditPurchaseOrder({ suppliers = [], taxRates = [], purchaseOrder }: Props) {
     const { showErrorToast } = useToastNotification();
     const [items, setItems] = useState<Item[]>([]);
     const [selectedItemNames, setSelectedItemNames] = useState<Record<number, string>>({});
@@ -112,7 +105,6 @@ export default function EditPurchaseOrder({ branches = [], suppliers = [], taxRa
     const { data, setData, put, processing, errors } = useForm({
         code: purchaseOrder.code || '',
         date: parseDate(purchaseOrder.date),
-        branch_id: purchaseOrder.branch_id?.toString() || '',
         supplier_id: purchaseOrder.supplier_id?.toString() || '',
         expected_delivery_date: parseDate(purchaseOrder.expected_delivery_date),
         total_amount: purchaseOrder.total_amount || 0,
@@ -662,30 +654,6 @@ export default function EditPurchaseOrder({ branches = [], suppliers = [], taxRa
                                         </div>
 
                                         <div className="space-y-2">
-                                            <Label htmlFor="branch_id">
-                                                Branch <span className="text-red-500">*</span>
-                                            </Label>
-                                            <Select
-                                                value={data.branch_id}
-                                                onValueChange={(value) => {
-                                                    setData('branch_id', value);
-                                                }}
-                                            >
-                                                <SelectTrigger className={errors.branch_id ? 'border-red-500' : ''}>
-                                                    <SelectValue placeholder="Select branch" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {branches.map((branch) => (
-                                                        <SelectItem key={branch.id} value={branch.id.toString()}>
-                                                            {branch.name}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                            {errors.branch_id && <p className="text-sm text-red-500">{errors.branch_id}</p>}
-                                        </div>
-
-                                        <div className="space-y-2">
                                             <Label htmlFor="supplier_id">
                                                 Supplier <span className="text-red-500">*</span>
                                             </Label>
@@ -878,7 +846,7 @@ export default function EditPurchaseOrder({ branches = [], suppliers = [], taxRa
                             </Button>
                             <Button
                                 type="submit"
-                                disabled={processing || data.purchase_order_details.length === 0 || !data.branch_id || !data.supplier_id}
+                                disabled={processing || data.purchase_order_details.length === 0 || !data.supplier_id}
                                 className="px-8"
                             >
                                 {processing ? 'Processing...' : 'Update Order'}

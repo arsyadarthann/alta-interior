@@ -10,18 +10,15 @@ use Illuminate\Support\Facades\DB;
 class PurchaseOrderRepository implements PurchaseOrderInterface
 {
     const GENERAL_RELATIONSHIPS = [
-        'branch:id,name', 'supplier', 'taxRate:id,rate'
+        'supplier', 'taxRate:id,rate'
     ];
 
     public function __construct(private PurchaseOrder $purchaseOrder) {}
 
-    public function getAll($branchId = null)
+    public function getAll()
     {
         return $this->purchaseOrder
             ->with(self::GENERAL_RELATIONSHIPS)
-            ->when($branchId, function ($query, $branchId) {
-                return $query->where('branch_id', $branchId);
-            })
             ->orderBy('code', 'desc')
             ->get();
     }
@@ -39,7 +36,6 @@ class PurchaseOrderRepository implements PurchaseOrderInterface
             $purchaseOrder = $this->purchaseOrder->create([
                 'code' => $data['code'],
                 'date' => $data['date'],
-                'branch_id' => $data['branch_id'],
                 'supplier_id' => $data['supplier_id'],
                 'expected_delivery_date' => $data['expected_delivery_date'],
                 'total_amount' => $data['total_amount'],
@@ -57,7 +53,7 @@ class PurchaseOrderRepository implements PurchaseOrderInterface
                 ]);
             }
 
-            TransactionCode::confirmTransactionCode('Purchase Order', $data['code'], $data['branch_id']);
+            TransactionCode::confirmTransactionCode('Purchase Order', $data['code']);
         });
     }
 
@@ -68,7 +64,6 @@ class PurchaseOrderRepository implements PurchaseOrderInterface
             $purchaseOrder->update([
                 'code' => $data['code'],
                 'date' => $data['date'],
-                'branch_id' => $data['branch_id'],
                 'supplier_id' => $data['supplier_id'],
                 'expected_delivery_date' => $data['expected_delivery_date'],
                 'total_amount' => $data['total_amount'],

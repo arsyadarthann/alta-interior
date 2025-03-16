@@ -4,23 +4,40 @@ namespace App\Repositories;
 
 use App\Helpers\TransactionCode;
 use App\Interface\StockAdjustmentInterface;
+use App\Models\Branch;
 use App\Models\StockAdjustment;
+use App\Models\Warehouse;
 use Illuminate\Support\Facades\DB;
 
 class StockAdjustmentRepository implements StockAdjustmentInterface
 {
     const GENERAL_RELATIONSHIPS = [
-        'branch:id,name', 'user:id,name'
+        'source_able:id,name', 'user:id,name'
     ];
+
+    const sourceAbleTypeMap = ['branch' => Branch::class, 'warehouse' => Warehouse::class];
 
     public function __construct(private StockAdjustment $stockAdjustment) {}
 
-    public function getAll($branchId = null)
+    public function getAll($sourceId = null, $sourceType = null)
     {
         return $this->stockAdjustment
             ->with(self::GENERAL_RELATIONSHIPS)
-            ->when($branchId, fn($query) => $query->where('branch_id', $branchId))
+            ->when($sourceId && $sourceType, function($query) use ($sourceId, $sourceType) {
+                return $query->where('source_able_id', $sourceId)
+                    ->where('source_able_type', $sourceType);
+            })
             ->orderByDesc('code')->get();
+    }
+
+    public function getAllByBranch($branchId)
+    {
+        return $this->getAll($branchId, Branch::class);
+    }
+
+    public function getAllByWarehouse($warehouseId)
+    {
+        return $this->getAll($warehouseId, Warehouse::class);
     }
 
     public function getById(int $id)
@@ -36,7 +53,8 @@ class StockAdjustmentRepository implements StockAdjustmentInterface
             $stockAdjustment = $this->stockAdjustment->create([
                 'code' => $data['code'],
                 'date' => $data['date'],
-                'branch_id' => $data['branch_id'],
+                'source_able_id' => $data['source_able_id'],
+                'source_able_type' => self::sourceAbleTypeMap[$data['source_able_type']],
                 'user_id' => request()->user()->id,
             ]);
 
@@ -50,14 +68,14 @@ class StockAdjustmentRepository implements StockAdjustmentInterface
                     'reason' => $stockAdjustmentDetail['reason'],
                 ]);
 
-                $adjustments = app(ItemRepository::class)->adjustBatch($stockAdjustmentDetail['item_id'], $data['branch_id'], $stockAdjustmentDetail['type'], $stockAdjustmentDetail['adjustment_quantity']);
+                $adjustments = app(ItemRepository::class)->adjustBatch($stockAdjustmentDetail['item_id'], $data['source_able_id'], self::sourceAbleTypeMap[$data['source_able_type']], $stockAdjustmentDetail['type'], $stockAdjustmentDetail['adjustment_quantity']);
 
                 foreach ($adjustments as $adjustment) {
-                    app(StockMovementRepository::class)->createStockMovement($adjustment['item_batch_id'], $data['branch_id'], $stockAdjustmentDetail['type'], $adjustment['data_quantity'], $adjustmentDetail);
+                    app(StockMovementRepository::class)->createStockMovement($adjustment['item_batch_id'], $data['source_able_id'], self::sourceAbleTypeMap[$data['source_able_type']], $stockAdjustmentDetail['type'], $adjustment['data_quantity'], $adjustmentDetail);
                 }
             }
 
-            TransactionCode::confirmTransactionCode('Stock Adjustment', $data['code'], $data['branch_id']);
+            TransactionCode::confirmTransactionCode('Stock Adjustment', $data['code'], self::sourceAbleTypeMap[$data['source_able_type']], $data['source_able_id']);
         });
     }
 }

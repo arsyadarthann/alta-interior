@@ -1,29 +1,19 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Head, router, useForm, Link, usePage } from '@inertiajs/react';
-import AppLayout from "@/layouts/app-layout";
-import { type BreadcrumbItem } from "@/types";
-import Heading from "@/components/heading";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { PlusCircle, Trash2, ArrowLeft, CalendarIcon, Edit, CheckCircle } from "lucide-react";
-import { useToastNotification } from "@/hooks/use-toast-notification";
-import { Card } from "@/components/ui/card";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
-import { Calendar } from "@/components/ui/calendar";
-import { format } from "date-fns";
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
+import Heading from '@/components/heading';
+import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToastNotification } from '@/hooks/use-toast-notification';
+import AppLayout from '@/layouts/app-layout';
+import { cn } from '@/lib/utils';
+import { type BreadcrumbItem } from '@/types';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
+import { format } from 'date-fns';
+import { ArrowLeft, CalendarIcon, CheckCircle, Edit, PlusCircle, Trash2 } from 'lucide-react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -36,25 +26,30 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
     {
         title: 'Create',
-        href: route('stock.audit.create')
-    }
+        href: route('stock.audit.create'),
+    },
 ];
 
 type ItemCategory = {
     id: number;
     name: string;
-}
+};
 
 type ItemUnit = {
     id: number;
     name: string;
     abbreviation: string;
-}
+};
 
 type Branch = {
     id: number;
     name: string;
-}
+};
+
+type Warehouse = {
+    id: number;
+    name: string;
+};
 
 type Item = {
     id: number;
@@ -66,9 +61,9 @@ type Item = {
     item_category?: ItemCategory;
     item_unit?: ItemUnit;
     stock?: number;
-}
+};
 
-export default function Create({ branches = [] }: { branches?: Branch[] }) {
+export default function Create({ branches = [], warehouses = [] }: { branches?: Branch[]; warehouses?: Warehouse[] }) {
     const { showErrorToast } = useToastNotification();
     const [items, setItems] = useState<Item[]>([]);
     const [selectedItemNames, setSelectedItemNames] = useState<Record<number, string>>({});
@@ -78,10 +73,15 @@ export default function Create({ branches = [] }: { branches?: Branch[] }) {
     const { auth } = usePage().props as unknown as { auth: { user: { branch_id: number } } };
     const [initialized, setInitialized] = useState(false);
 
+    // Add refs to track if a fetch is in progress
+    const isFetchingItems = useRef(false);
+    const isFetchingCode = useRef(false);
+
     const { data, setData, post, processing, errors } = useForm({
         code: '',
         date: new Date(),
-        branch_id: '',
+        source_able_type: '',
+        source_able_id: '',
         stock_audit_details: [] as {
             item_id: number;
             system_quantity: number;
@@ -94,114 +94,125 @@ export default function Create({ branches = [] }: { branches?: Branch[] }) {
             system_quantity: 0,
             physical_quantity: 0,
             discrepancy_quantity: 0,
-            reason: ''
+            reason: '',
         },
     });
-
-    // const defaultBranchId = auth?.user?.branch_id ? auth.user.branch_id.toString() : '';
-    // const [currentBranchId, setCurrentBranchId] = useState(defaultBranchId);
 
     useEffect(() => {
         if (!initialized) {
             if (auth?.user?.branch_id) {
                 const userBranchId = auth.user.branch_id.toString();
-                setData('branch_id', userBranchId);
+                setData('source_able_type', 'branch');
+                setData('source_able_id', userBranchId);
             }
             setInitialized(true);
         }
-    }, [initialized]);
+    }, [initialized, auth?.user?.branch_id, setData]);
 
-    const fetchItems = useCallback((branchId: string) => {
-        fetch(route('item.getItemByBranch', branchId), {
-            method: 'GET',
-            headers: {
-                'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                return response.json();
+    const fetchItems = useCallback(
+        (sourceType: string, sourceId: string) => {
+            // Guard against multiple concurrent fetches
+            if (isFetchingItems.current) return;
+
+            isFetchingItems.current = true;
+            const routeName = sourceType === 'branch' ? 'item.getItemByBranch' : 'item.getItemByWarehouse';
+
+            fetch(route(routeName, sourceId), {
+                method: 'GET',
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
             })
-            .then(responseData => {
-                let itemsData = [];
+                .then((response) => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then((responseData) => {
+                    let itemsData = [];
 
-                if (Array.isArray(responseData)) {
-                    itemsData = responseData;
-                } else if (responseData && responseData.items && Array.isArray(responseData.items)) {
-                    itemsData = responseData.items;
-                } else if (responseData && responseData.data && Array.isArray(responseData.data)) {
-                    itemsData = responseData.data;
-                } else {
-                    itemsData = [];
-                }
+                    if (Array.isArray(responseData)) {
+                        itemsData = responseData;
+                    } else if (responseData && responseData.items && Array.isArray(responseData.items)) {
+                        itemsData = responseData.items;
+                    } else if (responseData && responseData.data && Array.isArray(responseData.data)) {
+                        itemsData = responseData.data;
+                    } else {
+                        itemsData = [];
+                    }
 
-                setItems(itemsData);
-                setData('stock_audit_details', []);
-                setSelectedItemNames({});
-                setSelectedItemUnits({});
-            })
-            .catch(error => {
-                showErrorToast([error.message]);
-            });
-    }, [setItems, setData, setSelectedItemNames, setSelectedItemUnits, showErrorToast]);
+                    setItems(itemsData);
+                    setData('stock_audit_details', []);
+                    setSelectedItemNames({});
+                    setSelectedItemUnits({});
+                })
+                .catch((error) => {
+                    showErrorToast([error.message]);
+                })
+                .finally(() => {
+                    isFetchingItems.current = false;
+                });
+        },
+        [setItems, setData, setSelectedItemNames, setSelectedItemUnits, showErrorToast],
+    );
 
-    const fetchAuditCode = useCallback((branchId: string) => {
-        fetch(route('stock.audit.getCode', { branch_id: branchId }), {
-            method: 'GET',
-            headers: {
-                'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                return response.json();
-            })
-            .then(responseData => {
-                if (responseData && responseData.code) {
-                    setData('code', responseData.code);
-                }
-            })
-            .catch(() => {
-                showErrorToast(['Failed to get audit code']);
-            });
-    }, [setData, showErrorToast]);
+    const fetchAuditCode = useCallback(
+        (sourceType: string, sourceId: string) => {
+            if (isFetchingCode.current) return;
 
-    const handleBranchChange = (value: string) => {
-        setData(prev => ({
-            ...prev,
-            branch_id: value,
-            stock_audit_details: []
-        }));
+            isFetchingCode.current = true;
+            fetch(
+                route('stock.audit.getCode', {
+                    source_able_type: sourceType,
+                    source_able_id: sourceId,
+                }),
+                {
+                    method: 'GET',
+                    headers: {
+                        Accept: 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                },
+            )
+                .then((response) => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then((responseData) => {
+                    if (responseData && responseData.code) {
+                        setData('code', responseData.code);
+                    }
+                })
+                .catch(() => {
+                    showErrorToast(['Failed to get audit code']);
+                })
+                .finally(() => {
+                    isFetchingCode.current = false;
+                });
+        },
+        [setData, showErrorToast],
+    );
 
-        if (value) {
-            fetchItems(value);
-            fetchAuditCode(value);
-        } else {
-            setItems([]);
-            setData('code', '');
-        }
-    };
-
+    // Modified useEffect to prevent infinite loops
     useEffect(() => {
-        if (initialized && data.branch_id) {
-            setData('branch_id', data.branch_id)
-            fetchItems(data.branch_id);
-            fetchAuditCode(data.branch_id);
+        if (initialized && data.source_able_type && data.source_able_id) {
+            fetchItems(data.source_able_type, data.source_able_id);
+            fetchAuditCode(data.source_able_type, data.source_able_id);
         }
-    }, [initialized, data.branch_id]);
+        // Important: only run this effect when either initialized changes OR source changes
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [initialized, data.source_able_type + data.source_able_id]);
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
         post(route('stock.audit.store'), {
             preserveScroll: true,
-            onError: showErrorToast
+            onError: showErrorToast,
         });
     };
 
@@ -212,7 +223,7 @@ export default function Create({ branches = [] }: { branches?: Branch[] }) {
             system_quantity: 0,
             physical_quantity: 0,
             discrepancy_quantity: 0,
-            reason: ''
+            reason: '',
         });
     };
 
@@ -222,19 +233,16 @@ export default function Create({ branches = [] }: { branches?: Branch[] }) {
         } else {
             setAddingItem(false);
             if (data.new_item.item_id !== 0) {
-                setData('stock_audit_details', [
-                    ...data.stock_audit_details,
-                    data.new_item
-                ]);
+                setData('stock_audit_details', [...data.stock_audit_details, data.new_item]);
                 setData('new_item', {
                     item_id: 0,
                     system_quantity: 0,
                     physical_quantity: 0,
                     discrepancy_quantity: 0,
-                    reason: ''
+                    reason: '',
                 });
             } else {
-                showErrorToast(["Please select an item"]);
+                showErrorToast(['Please select an item']);
             }
         }
     };
@@ -253,7 +261,7 @@ export default function Create({ branches = [] }: { branches?: Branch[] }) {
         const updatedSelectedItemNames: Record<number, string> = {};
         const updatedSelectedItemUnits: Record<number, string> = {};
 
-        Object.keys(newSelectedItemNames).forEach(key => {
+        Object.keys(newSelectedItemNames).forEach((key) => {
             const keyNum = parseInt(key, 10);
             if (keyNum > index) {
                 updatedSelectedItemNames[keyNum - 1] = newSelectedItemNames[keyNum];
@@ -271,7 +279,7 @@ export default function Create({ branches = [] }: { branches?: Branch[] }) {
     const updateAuditItem = (
         index: number,
         field: 'item_id' | 'system_quantity' | 'physical_quantity' | 'discrepancy_quantity' | 'reason',
-        value: string | number
+        value: string | number,
     ) => {
         const updatedItems = [...data.stock_audit_details];
 
@@ -280,11 +288,11 @@ export default function Create({ branches = [] }: { branches?: Branch[] }) {
             const selectedItem = items.find((itm) => itm.id === itemId);
 
             if (selectedItem) {
-                const newSelectedItemNames = {...selectedItemNames};
+                const newSelectedItemNames = { ...selectedItemNames };
                 newSelectedItemNames[index] = `${selectedItem.name} (${selectedItem.code})`;
                 setSelectedItemNames(newSelectedItemNames);
 
-                const newSelectedItemUnits = {...selectedItemUnits};
+                const newSelectedItemUnits = { ...selectedItemUnits };
                 newSelectedItemUnits[index] = selectedItem.item_unit?.abbreviation || '';
                 setSelectedItemUnits(newSelectedItemUnits);
 
@@ -294,7 +302,7 @@ export default function Create({ branches = [] }: { branches?: Branch[] }) {
                     item_id: itemId,
                     system_quantity: itemStock,
                     physical_quantity: 0,
-                    discrepancy_quantity: 0 - itemStock
+                    discrepancy_quantity: 0 - itemStock,
                 };
             }
         } else if (field === 'physical_quantity') {
@@ -307,7 +315,7 @@ export default function Create({ branches = [] }: { branches?: Branch[] }) {
             updatedItems[index] = {
                 ...updatedItems[index],
                 physical_quantity: physicalQty,
-                discrepancy_quantity: physicalQty - systemQty
+                discrepancy_quantity: physicalQty - systemQty,
             };
         } else if (field === 'system_quantity') {
             let systemQty = Number(value);
@@ -319,12 +327,12 @@ export default function Create({ branches = [] }: { branches?: Branch[] }) {
             updatedItems[index] = {
                 ...updatedItems[index],
                 system_quantity: systemQty,
-                discrepancy_quantity: physicalQty - systemQty
+                discrepancy_quantity: physicalQty - systemQty,
             };
         } else {
             updatedItems[index] = {
                 ...updatedItems[index],
-                [field]: field === 'reason' ? String(value) : Number(value)
+                [field]: field === 'reason' ? String(value) : Number(value),
             };
         }
 
@@ -332,10 +340,8 @@ export default function Create({ branches = [] }: { branches?: Branch[] }) {
     };
 
     const getAvailableItems = (currentIndex: number) => {
-        return items.filter(item => {
-            return !data.stock_audit_details.some(
-                (auditItem, i) => i !== currentIndex && auditItem.item_id === item.id
-            );
+        return items.filter((item) => {
+            return !data.stock_audit_details.some((auditItem, i) => i !== currentIndex && auditItem.item_id === item.id);
         });
     };
 
@@ -348,23 +354,23 @@ export default function Create({ branches = [] }: { branches?: Branch[] }) {
             reason: string;
         } | null = null,
         index: number = -1,
-        isAddingNew: boolean = false
+        isAddingNew: boolean = false,
     ) => {
         const item = auditItem || data.new_item;
         const selectedItemId = isAddingNew ? data.new_item.item_id : item.item_id;
 
         return (
-            <div className="flex flex-wrap items-end gap-3 border bg-gray-50 rounded-md p-4 mb-4">
-                <div className="flex-1 min-w-[200px] relative grid gap-2">
+            <div className="mb-4 flex flex-wrap items-end gap-3 rounded-md border bg-gray-50 p-4">
+                <div className="relative grid min-w-[200px] flex-1 gap-2">
                     <Label htmlFor={`item_id_${index}`}>
                         Item <span className="text-red-500">*</span>
                     </Label>
                     <Select
-                        value={selectedItemId ? String(selectedItemId) : ""}
+                        value={selectedItemId ? String(selectedItemId) : ''}
                         onValueChange={(value) => {
                             if (isAddingNew) {
                                 const itemId = Number(value);
-                                const selectedItem = items.find(itm => itm.id === itemId);
+                                const selectedItem = items.find((itm) => itm.id === itemId);
 
                                 if (selectedItem) {
                                     const tempItem = {
@@ -372,17 +378,15 @@ export default function Create({ branches = [] }: { branches?: Branch[] }) {
                                         system_quantity: selectedItem.stock ?? 0,
                                         physical_quantity: 0,
                                         discrepancy_quantity: -(selectedItem.stock ?? 0),
-                                        reason: ''
+                                        reason: '',
                                     };
 
                                     const newSelectedItemNames = { ...selectedItemNames };
-                                    newSelectedItemNames[data.stock_audit_details.length] =
-                                        `${selectedItem.name} (${selectedItem.code})`;
+                                    newSelectedItemNames[data.stock_audit_details.length] = `${selectedItem.name} (${selectedItem.code})`;
                                     setSelectedItemNames(newSelectedItemNames);
 
                                     const newSelectedItemUnits = { ...selectedItemUnits };
-                                    newSelectedItemUnits[data.stock_audit_details.length] =
-                                        selectedItem.item_unit?.abbreviation || '';
+                                    newSelectedItemUnits[data.stock_audit_details.length] = selectedItem.item_unit?.abbreviation || '';
                                     setSelectedItemUnits(newSelectedItemUnits);
 
                                     setData('new_item', tempItem);
@@ -395,9 +399,11 @@ export default function Create({ branches = [] }: { branches?: Branch[] }) {
                         <SelectTrigger
                             id={`item_id_${index}`}
                             className={`w-full ${
-                                isAddingNew && errors[`new_item.item_id` as keyof typeof errors] ? "border-red-500 ring-red-100" :
-                                    !isAddingNew && errors[`stock_audit_details.${index}.item_id` as keyof typeof errors] ?
-                                        "border-red-500 ring-red-100" : ""
+                                isAddingNew && errors[`new_item.item_id` as keyof typeof errors]
+                                    ? 'border-red-500 ring-red-100'
+                                    : !isAddingNew && errors[`stock_audit_details.${index}.item_id` as keyof typeof errors]
+                                      ? 'border-red-500 ring-red-100'
+                                      : ''
                             }`}
                         >
                             <SelectValue placeholder="Select an item" />
@@ -411,28 +417,28 @@ export default function Create({ branches = [] }: { branches?: Branch[] }) {
                         </SelectContent>
                     </Select>
                 </div>
-                <div className="flex-1 min-w-[140px] relative grid gap-2">
-                    <Label htmlFor={`system_quantity_${index}`}>
-                        System Quantity
-                    </Label>
+                <div className="relative grid min-w-[140px] flex-1 gap-2">
+                    <Label htmlFor={`system_quantity_${index}`}>System Quantity</Label>
                     <div className="relative">
                         <Input
                             id={`system_quantity_${index}`}
                             type="number"
-                            value={item.system_quantity === 0 ? 0 :
-                                (item.system_quantity % 1 === 0 ?
-                                    Math.abs(Number(item.system_quantity)) :
-                                    Number(item.system_quantity.toFixed(2)))
+                            value={
+                                item.system_quantity === 0
+                                    ? 0
+                                    : item.system_quantity % 1 === 0
+                                      ? Math.abs(Number(item.system_quantity))
+                                      : Number(item.system_quantity.toFixed(2))
                             }
                             readOnly
                             className="bg-gray-50 pr-10"
                         />
-                        <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-gray-500 text-sm">
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-sm text-gray-500">
                             {isAddingNew ? selectedItemUnits[data.stock_audit_details.length] || '' : selectedItemUnits[index] || ''}
                         </div>
                     </div>
                 </div>
-                <div className="flex-1 min-w-[140px] relative grid gap-2">
+                <div className="relative grid min-w-[140px] flex-1 gap-2">
                     <Label htmlFor={`physical_quantity_${index}`}>
                         Physical Quantity <span className="text-red-500">*</span>
                     </Label>
@@ -441,7 +447,7 @@ export default function Create({ branches = [] }: { branches?: Branch[] }) {
                             id={`physical_quantity_${index}`}
                             type="number"
                             min="0"
-                            value={item.physical_quantity === 0 ? "" : item.physical_quantity}
+                            value={item.physical_quantity === 0 ? '' : item.physical_quantity}
                             onChange={(e) => {
                                 if (isAddingNew) {
                                     const physicalQty = Number(e.target.value);
@@ -449,61 +455,54 @@ export default function Create({ branches = [] }: { branches?: Branch[] }) {
                                     setData('new_item', {
                                         ...data.new_item,
                                         physical_quantity: physicalQty,
-                                        discrepancy_quantity: physicalQty - systemQty
+                                        discrepancy_quantity: physicalQty - systemQty,
                                     });
                                 } else {
                                     updateAuditItem(index, 'physical_quantity', e.target.value);
                                 }
                             }}
                             placeholder="Count result"
-                            className={`[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pr-10 ${
-                                isAddingNew && errors[`new_item.physical_quantity` as keyof typeof errors] ? "border-red-500 ring-red-100" :
-                                    !isAddingNew && errors[`stock_audit_details.${index}.physical_quantity` as keyof typeof errors] ?
-                                        "border-red-500 ring-red-100" : ""
+                            className={`[appearance:textfield] pr-10 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${
+                                isAddingNew && errors[`new_item.physical_quantity` as keyof typeof errors]
+                                    ? 'border-red-500 ring-red-100'
+                                    : !isAddingNew && errors[`stock_audit_details.${index}.physical_quantity` as keyof typeof errors]
+                                      ? 'border-red-500 ring-red-100'
+                                      : ''
                             }`}
                         />
-                        <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-gray-500 text-sm">
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-sm text-gray-500">
                             {isAddingNew ? selectedItemUnits[data.stock_audit_details.length] || '' : selectedItemUnits[index] || ''}
                         </div>
                     </div>
                     {!isAddingNew && errors[`stock_audit_details.${index}.physical_quantity` as keyof typeof errors] && (
-                        <p className="text-xs text-red-500 mt-1">
-                            {errors[`stock_audit_details.${index}.physical_quantity` as keyof typeof errors]}
-                        </p>
+                        <p className="mt-1 text-xs text-red-500">{errors[`stock_audit_details.${index}.physical_quantity` as keyof typeof errors]}</p>
                     )}
                 </div>
-                <div className="flex-1 min-w-[140px] relative grid gap-2">
-                    <Label htmlFor={`discrepancy_quantity_${index}`}>
-                        Discrepancy
-                    </Label>
+                <div className="relative grid min-w-[140px] flex-1 gap-2">
+                    <Label htmlFor={`discrepancy_quantity_${index}`}>Discrepancy</Label>
                     <div className="relative">
                         <Input
                             id={`discrepancy_quantity_${index}`}
                             type="number"
                             value={
-                                item.discrepancy_quantity === 0 ? 0 :
-                                    item.discrepancy_quantity < 0 ?
-                                        Math.abs(Number(item.discrepancy_quantity.toFixed(2))) :
-                                        Number(item.discrepancy_quantity.toFixed(2))
+                                item.discrepancy_quantity === 0
+                                    ? 0
+                                    : item.discrepancy_quantity < 0
+                                      ? Math.abs(Number(item.discrepancy_quantity.toFixed(2)))
+                                      : Number(item.discrepancy_quantity.toFixed(2))
                             }
                             readOnly
                             className={`bg-gray-50 pr-10 ${
-                                item.discrepancy_quantity < 0
-                                    ? 'text-red-600'
-                                    : item.discrepancy_quantity > 0
-                                        ? 'text-green-600'
-                                        : ''
+                                item.discrepancy_quantity < 0 ? 'text-red-600' : item.discrepancy_quantity > 0 ? 'text-green-600' : ''
                             }`}
                         />
-                        <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-gray-500 text-sm">
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-sm text-gray-500">
                             {isAddingNew ? selectedItemUnits[data.stock_audit_details.length] || '' : selectedItemUnits[index] || ''}
                         </div>
                     </div>
                 </div>
-                <div className="flex-1 min-w-[200px] relative grid gap-2">
-                    <Label htmlFor={`reason_${index}`}>
-                        Reason
-                    </Label>
+                <div className="relative grid min-w-[200px] flex-1 gap-2">
+                    <Label htmlFor={`reason_${index}`}>Reason</Label>
                     <Input
                         id={`reason_${index}`}
                         type="text"
@@ -512,7 +511,7 @@ export default function Create({ branches = [] }: { branches?: Branch[] }) {
                             if (isAddingNew) {
                                 setData('new_item', {
                                     ...data.new_item,
-                                    reason: e.target.value
+                                    reason: e.target.value,
                                 });
                             } else {
                                 updateAuditItem(index, 'reason', e.target.value);
@@ -520,21 +519,16 @@ export default function Create({ branches = [] }: { branches?: Branch[] }) {
                         }}
                         placeholder="Explain discrepancy"
                         className={`${
-                            isAddingNew && errors['new_item.reason' as keyof typeof errors] ? "border-red-500 ring-red-100" :
-                                !isAddingNew && errors[`stock_audit_details.${index}.reason` as keyof typeof errors]
-                                    ? "border-red-500 ring-red-100"
-                                    : ""
+                            isAddingNew && errors['new_item.reason' as keyof typeof errors]
+                                ? 'border-red-500 ring-red-100'
+                                : !isAddingNew && errors[`stock_audit_details.${index}.reason` as keyof typeof errors]
+                                  ? 'border-red-500 ring-red-100'
+                                  : ''
                         }`}
                     />
                 </div>
                 <div className="flex items-end gap-2 pb-[2px]">
-                    <Button
-                        type="button"
-                        variant="default"
-                        size="icon"
-                        onClick={saveAuditItem}
-                        className="h-9 w-9 bg-green-600 hover:bg-green-700"
-                    >
+                    <Button type="button" variant="default" size="icon" onClick={saveAuditItem} className="h-9 w-9 bg-green-600 hover:bg-green-700">
                         <CheckCircle className="h-4 w-4 text-white" />
                     </Button>
                 </div>
@@ -542,68 +536,58 @@ export default function Create({ branches = [] }: { branches?: Branch[] }) {
         );
     };
 
-    const renderAuditItemList = (auditItem: {
-        item_id: number;
-        system_quantity: number;
-        physical_quantity: number;
-        discrepancy_quantity: number;
-        reason: string;
-    }, index: number) => {
+    const renderAuditItemList = (
+        auditItem: {
+            item_id: number;
+            system_quantity: number;
+            physical_quantity: number;
+            discrepancy_quantity: number;
+            reason: string;
+        },
+        index: number,
+    ) => {
         const selectedItem = items.find((itm) => itm.id === auditItem.item_id);
-        const itemName = selectedItemNames[index] ||
-            (selectedItem ? `${selectedItem.name} (${selectedItem.code})` : "Unknown Item");
-        const itemUnit = selectedItemUnits[index] ||
-            (selectedItem?.item_unit?.abbreviation || '');
+        const itemName = selectedItemNames[index] || (selectedItem ? `${selectedItem.name} (${selectedItem.code})` : 'Unknown Item');
+        const itemUnit = selectedItemUnits[index] || selectedItem?.item_unit?.abbreviation || '';
 
         return (
-            <div key={index} className="flex justify-between items-center border-b border-gray-100 py-3">
+            <div key={index} className="flex items-center justify-between border-b border-gray-100 py-3">
                 <div className="flex-1">
-                    <div className="flex gap-4 text-sm text-gray-500 mt-1">
-                        <p className="font-medium text-gray-900">
-                            {itemName}
-                        </p>
-                        <span>System: {auditItem.system_quantity === 0 ? 0 :
-                            (auditItem.system_quantity % 1 === 0 ?
-                                Math.abs(Number(auditItem.system_quantity)) :
-                                Number(auditItem.system_quantity.toFixed(2)))
-                        } {itemUnit}</span>
-                        <span>Physical: {auditItem.physical_quantity} {itemUnit}</span>
+                    <div className="mt-1 flex gap-4 text-sm text-gray-500">
+                        <p className="font-medium text-gray-900">{itemName}</p>
+                        <span>
+                            System:{' '}
+                            {auditItem.system_quantity === 0
+                                ? 0
+                                : auditItem.system_quantity % 1 === 0
+                                  ? Math.abs(Number(auditItem.system_quantity))
+                                  : Number(auditItem.system_quantity.toFixed(2))}{' '}
+                            {itemUnit}
+                        </span>
+                        <span>
+                            Physical: {auditItem.physical_quantity} {itemUnit}
+                        </span>
                         <span
                             className={`${
-                                auditItem.discrepancy_quantity < 0
-                                    ? 'text-red-600'
-                                    : auditItem.discrepancy_quantity > 0
-                                        ? 'text-green-600'
-                                        : ''
+                                auditItem.discrepancy_quantity < 0 ? 'text-red-600' : auditItem.discrepancy_quantity > 0 ? 'text-green-600' : ''
                             }`}
                         >
                             Discrepancy: {auditItem.discrepancy_quantity < 0 ? '-' : '+'}
-                            {auditItem.discrepancy_quantity === 0 ? 0 :
-                                (auditItem.discrepancy_quantity % 1 === 0 ?
-                                    Math.abs(Number(auditItem.discrepancy_quantity)) :
-                                    Number(auditItem.discrepancy_quantity.toFixed(2)))
-                            } {itemUnit}
+                            {auditItem.discrepancy_quantity === 0
+                                ? 0
+                                : auditItem.discrepancy_quantity % 1 === 0
+                                  ? Math.abs(Number(auditItem.discrepancy_quantity))
+                                  : Number(auditItem.discrepancy_quantity.toFixed(2))}{' '}
+                            {itemUnit}
                         </span>
                         {auditItem.reason && <span>Reason: {auditItem.reason}</span>}
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setEditingIndex(index)}
-                        className="h-9 w-9"
-                    >
+                    <Button type="button" variant="ghost" size="icon" onClick={() => setEditingIndex(index)} className="h-9 w-9">
                         <Edit className="h-4 w-4 text-gray-500" />
                     </Button>
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeAuditItem(index)}
-                        className="h-9 w-9"
-                    >
+                    <Button type="button" variant="ghost" size="icon" onClick={() => removeAuditItem(index)} className="h-9 w-9">
                         <Trash2 className="h-4 w-4 text-red-500" />
                     </Button>
                 </div>
@@ -614,12 +598,9 @@ export default function Create({ branches = [] }: { branches?: Branch[] }) {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Create Stock Audit" />
-            <div className="bg-white rounded-lg px-8 py-6">
-                <div className="flex justify-between items-center mb-6">
-                    <Heading
-                        title="Create Stock Audit"
-                        description="Create a new stock audit to verify inventory levels."
-                    />
+            <div className="rounded-lg bg-white px-8 py-6">
+                <div className="mb-6 flex items-center justify-between">
+                    <Heading title="Create Stock Audit" description="Create a new stock audit to verify inventory levels." />
                     <div className="flex gap-3">
                         <Link href={route('stock.audit.index')}>
                             <Button variant="outline" className="flex items-center gap-2">
@@ -630,19 +611,19 @@ export default function Create({ branches = [] }: { branches?: Branch[] }) {
                 </div>
 
                 <form onSubmit={handleSubmit}>
-                    <div className="relative grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <div className="lg:col-span-1 lg:sticky lg:top-6 lg:self-start">
-                            <Card className="border-0 shadow-sm h-full">
+                    <div className="relative grid grid-cols-1 gap-6 lg:grid-cols-3">
+                        <div className="lg:sticky lg:top-6 lg:col-span-1 lg:self-start">
+                            <Card className="h-full border-0 shadow-sm">
                                 <div className="p-6">
-                                    <h2 className="text-base font-semibold text-gray-900 mb-4">Audit Information</h2>
+                                    <h2 className="mb-4 text-base font-semibold text-gray-900">Audit Information</h2>
                                     <div className="space-y-4">
                                         <div className="py-2">
-                                            <div className="pb-2 border-b border-gray-100">
+                                            <div className="border-b border-gray-100 pb-2">
                                                 {data.code ? (
                                                     <div className="flex items-center justify-between">
-                                                        <span className="text-sm font-medium px-3 py-1.5">
+                                                        <span className="px-3 py-1.5 text-sm font-medium">
                                                             {data.code}
-                                                            <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full font-medium ml-2">
+                                                            <span className="ml-2 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
                                                                 Generated
                                                             </span>
                                                         </span>
@@ -650,42 +631,87 @@ export default function Create({ branches = [] }: { branches?: Branch[] }) {
                                                     </div>
                                                 ) : (
                                                     <div className="flex items-center gap-2">
-                                                        <span className="inline-block w-2 h-2 bg-yellow-400 rounded-full"></span>
-                                                        <span className="text-sm text-gray-600">
-                                                            Code will be generated after selecting a branch
-                                                        </span>
+                                                        <span className="inline-block h-2 w-2 rounded-full bg-yellow-400"></span>
+                                                        <span className="text-sm text-gray-600">Code will be generated after selecting a source</span>
                                                     </div>
                                                 )}
                                             </div>
-                                            {errors.code && (
-                                                <p className="text-xs text-red-500 mt-1">
-                                                    {errors.code}
-                                                </p>
-                                            )}
+                                            {errors.code && <p className="mt-1 text-xs text-red-500">{errors.code}</p>}
                                         </div>
 
                                         <div className="space-y-2">
-                                            <Label htmlFor="branch_id">Branch <span className="text-red-500">*</span></Label>
+                                            <Label htmlFor="source">
+                                                Audit Source <span className="text-red-500">*</span>
+                                            </Label>
                                             <Select
-                                                value={data.branch_id}
-                                                onValueChange={handleBranchChange}
+                                                value={
+                                                    data.source_able_id && data.source_able_type
+                                                        ? `${data.source_able_type}-${data.source_able_id}`
+                                                        : ''
+                                                }
+                                                onValueChange={(value) => {
+                                                    const [type, id] = value.split('-');
+                                                    setData((prev) => ({
+                                                        ...prev,
+                                                        source_able_type: type,
+                                                        source_able_id: id,
+                                                        stock_audit_details: [],
+                                                    }));
+                                                }}
                                                 disabled={!!auth?.user?.branch_id}
                                             >
-                                                <SelectTrigger className={errors.branch_id ? "border-red-500" : ""}>
-                                                    <SelectValue placeholder="Select branch" />
+                                                <SelectTrigger className={errors.source_able_id || errors.source_able_type ? 'border-red-500' : ''}>
+                                                    <SelectValue placeholder="Select audit source" />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    {branches.map((branch) => (
-                                                        <SelectItem key={branch.id} value={branch.id.toString()}>
-                                                            {branch.name}
-                                                        </SelectItem>
-                                                    ))}
+                                                    {!auth?.user?.branch_id && (
+                                                        <>
+                                                            {warehouses.length > 0 && (
+                                                                <SelectGroup>
+                                                                    {warehouses.map((warehouse) => (
+                                                                        <SelectItem
+                                                                            key={`warehouse-${warehouse.id}`}
+                                                                            value={`warehouse-${warehouse.id}`}
+                                                                        >
+                                                                            {warehouse.name}
+                                                                        </SelectItem>
+                                                                    ))}
+                                                                </SelectGroup>
+                                                            )}
+                                                            {branches.length > 0 && (
+                                                                <SelectGroup>
+                                                                    {branches.map((branch) => (
+                                                                        <SelectItem key={`branch-${branch.id}`} value={`branch-${branch.id}`}>
+                                                                            {branch.name}
+                                                                        </SelectItem>
+                                                                    ))}
+                                                                </SelectGroup>
+                                                            )}
+                                                        </>
+                                                    )}
+
+                                                    {auth?.user?.branch_id && (
+                                                        <SelectGroup>
+                                                            {branches.map((branch) => {
+                                                                if (branch.id === auth.user.branch_id) {
+                                                                    return (
+                                                                        <SelectItem key={`branch-${branch.id}`} value={`branch-${branch.id}`}>
+                                                                            {branch.name}
+                                                                        </SelectItem>
+                                                                    );
+                                                                }
+                                                                return null;
+                                                            })}
+                                                        </SelectGroup>
+                                                    )}
                                                 </SelectContent>
                                             </Select>
-                                            {errors.branch_id && <p className="text-red-500 text-sm">{errors.branch_id}</p>}
+                                            {(errors.source_able_id || errors.source_able_type) && (
+                                                <p className="text-sm text-red-500">{errors.source_able_id || errors.source_able_type}</p>
+                                            )}
                                         </div>
 
-                                        <div className="space-y-2 relative grid gap-2">
+                                        <div className="relative grid gap-2 space-y-2">
                                             <Label htmlFor="date">
                                                 Audit Date <span className="text-red-500">*</span>
                                             </Label>
@@ -695,13 +721,13 @@ export default function Create({ branches = [] }: { branches?: Branch[] }) {
                                                         id="date"
                                                         variant="outline"
                                                         className={cn(
-                                                            "w-full justify-start text-left font-normal",
-                                                            !data.date && "text-muted-foreground",
-                                                            errors.date && "border-red-500 ring-red-100"
+                                                            'w-full justify-start text-left font-normal',
+                                                            !data.date && 'text-muted-foreground',
+                                                            errors.date && 'border-red-500 ring-red-100',
                                                         )}
                                                     >
                                                         <CalendarIcon className="mr-2 h-4 w-4" />
-                                                        {data.date ? format(data.date, "PPP") : <span>Select date</span>}
+                                                        {data.date ? format(data.date, 'PPP') : <span>Select date</span>}
                                                     </Button>
                                                 </PopoverTrigger>
                                                 <PopoverContent className="w-auto p-0">
@@ -713,9 +739,7 @@ export default function Create({ branches = [] }: { branches?: Branch[] }) {
                                                     />
                                                 </PopoverContent>
                                             </Popover>
-                                            {errors.date && (
-                                                <p className="text-xs text-red-500 mt-1">{errors.date}</p>
-                                            )}
+                                            {errors.date && <p className="mt-1 text-xs text-red-500">{errors.date}</p>}
                                         </div>
                                     </div>
                                 </div>
@@ -723,14 +747,12 @@ export default function Create({ branches = [] }: { branches?: Branch[] }) {
                         </div>
 
                         <div className="lg:col-span-2">
-                            <Card className="border-0 shadow-sm h-full">
+                            <Card className="h-full border-0 shadow-sm">
                                 <div className="p-6">
-                                    <div className="flex items-center justify-between mb-4">
+                                    <div className="mb-4 flex items-center justify-between">
                                         <h2 className="text-base font-semibold text-gray-900">Audit Items</h2>
                                         <div className="flex items-center">
-                                            <span className="text-sm text-gray-500 mr-2">
-                                                {data.stock_audit_details.length} items
-                                            </span>
+                                            <span className="mr-2 text-sm text-gray-500">{data.stock_audit_details.length} items</span>
                                         </div>
                                     </div>
 
@@ -755,16 +777,16 @@ export default function Create({ branches = [] }: { branches?: Branch[] }) {
                                             </div>
                                         )}
 
-                                        {!addingItem && !editingIndex && (
+                                        {!addingItem && editingIndex === null && (
                                             <Button
                                                 type="button"
                                                 variant="outline"
                                                 size="sm"
                                                 onClick={addAuditItem}
                                                 className="mt-2"
-                                                disabled={!data.branch_id || items.length === 0}
+                                                disabled={!data.source_able_id || !items.length}
                                             >
-                                                <PlusCircle className="h-4 w-4 mr-2" />
+                                                <PlusCircle className="mr-2 h-4 w-4" />
                                                 Add Item
                                             </Button>
                                         )}
@@ -774,19 +796,11 @@ export default function Create({ branches = [] }: { branches?: Branch[] }) {
                         </div>
                     </div>
 
-                    <div className="flex justify-end gap-3 py-4 mt-6">
-                        <Button
-                            variant="outline"
-                            type="button"
-                            onClick={() => router.visit(route('stock.audit.index'))}
-                        >
+                    <div className="mt-6 flex justify-end gap-3 py-4">
+                        <Button variant="outline" type="button" onClick={() => router.visit(route('stock.audit.index'))}>
                             Cancel
                         </Button>
-                        <Button
-                            type="submit"
-                            disabled={processing || data.stock_audit_details.length === 0}
-                            className="px-8"
-                        >
+                        <Button type="submit" disabled={processing || data.stock_audit_details.length === 0} className="px-8">
                             {processing ? 'Creating...' : 'Create Audit'}
                         </Button>
                     </div>

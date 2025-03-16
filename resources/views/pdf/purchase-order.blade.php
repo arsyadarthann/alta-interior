@@ -29,21 +29,7 @@
             font-style: italic;
             margin-bottom: 5mm;
         }
-        /* Replace flex with table-like layout */
-        .company-info {
-            width: 100%;
-            margin-bottom: 5mm;
-            /* Clear fix to ensure container includes floated elements */
-            overflow: hidden;
-        }
-        .left-company {
-            float: left;
-            width: 48%;
-        }
-        .right-company {
-            float: right;
-            width: 48%;
-        }
+
         .company-label {
             font-weight: bold;
         }
@@ -59,21 +45,10 @@
             padding: 2mm;
             text-align: left;
         }
-        .totals {
-            text-align: right;
-            margin-bottom: 5mm;
-        }
-        .notes {
-            border: 1px solid black;
-            padding: 3mm;
-        }
+
         .notes-title {
             font-weight: bold;
             margin-bottom: 2mm;
-        }
-        .signature {
-            text-align: right;
-            padding-top: 10mm;
         }
     </style>
 </head>
@@ -88,11 +63,10 @@
     <tr>
         <td style="width: 48%; vertical-align: top; border: none;">
             <div class="company-label">Company</div>
-            <div>{{ $purchaseOrder->branch->name }}</div>
-            <div>{{ $purchaseOrder->branch->address ?? 'Company address' }}</div>
-            <div>Phone: {{ $purchaseOrder->branch->phone ?? '-' }}</div>
-            <div>Fax: {{ $purchaseOrder->branch->fax ?? '-' }}</div>
-            <div>Contact: {{ $purchaseOrder->branch->contact_person ?? ($purchaseOrder->user->name ?? '-') }}</div>
+            <div>Alta Interior</div>
+            <div>Jl. Cawas - Tawang No. 3, Ngreco, Weru, Sukoharjo</div>
+            <div>Phone/Fax: 085741601168</div>
+            <div>Contact: Pak Bagus</div>
         </td>
         <td style="width: 4%; border: none;"></td>
         <td style="width: 48%; vertical-align: top; border: none;">
@@ -165,7 +139,7 @@
         </td>
         <td style="width: 4%; border: none;"></td>
         <td style="width: 48%; vertical-align: top; border: none; text-align: right;">
-            <div>{{ $purchaseOrder->branch->name }}</div>
+            <div>Alta Interior</div>
             <div style="margin-top: 15mm;">{{ $purchaseOrder->user->name ?? 'Authorized Signatory' }}</div>
             <div>{{ $userPosition ?? 'Purchasing Officer' }}</div>
         </td>

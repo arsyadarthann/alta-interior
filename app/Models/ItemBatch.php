@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class ItemBatch extends Model
 {
@@ -14,16 +15,17 @@ class ItemBatch extends Model
 
     protected $fillable = [
         'sku',
-        'branch_id',
+        'source_able_id',
+        'source_able_type',
         'item_id',
         'received_at',
         'cogs',
         'stock'
     ];
 
-    public function branch(): BelongsTo
+    public function source_able(): MorphTo
     {
-        return $this->belongsTo(Branch::class, 'branch_id', 'id');
+        return $this->morphTo();
     }
 
     public function item(): BelongsTo

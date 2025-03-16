@@ -15,13 +15,13 @@ return new class extends Migration
             $table->id();
             $table->string('code', 100)->unique();
             $table->date('date');
-            $table->unsignedSmallInteger('from_branch_id');
-            $table->unsignedSmallInteger('to_branch_id');
+            $table->morphs('source_able');
+            $table->morphs('destination_able');
             $table->foreignId('user_id')->constrained('users');
             $table->timestamps();
 
-            $table->foreign('from_branch_id')->references('id')->on('branches');
-            $table->foreign('to_branch_id')->references('id')->on('branches');
+            $table->index(['source_able_id', 'source_able_type']);
+            $table->index(['destination_able_id', 'destination_able_type']);
         });
     }
 

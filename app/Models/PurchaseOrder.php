@@ -17,7 +17,6 @@ class PurchaseOrder extends Model
     protected $fillable = [
         'code',
         'date',
-        'branch_id',
         'supplier_id',
         'expected_delivery_date',
         'status',
@@ -35,11 +34,6 @@ class PurchaseOrder extends Model
     public const string STATUS_PENDING = 'pending';
     public const string STATUS_PARTIALLY_RECEIVED = 'partially_received';
     public const string STATUS_RECEIVED = 'received';
-
-    public function branch(): BelongsTo
-    {
-        return $this->belongsTo(Branch::class, 'branch_id', 'id');
-    }
 
     public function supplier(): BelongsTo
     {

@@ -4,21 +4,19 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class Branch extends Model
+class Warehouse extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $table = 'branches';
+    protected $table = 'warehouses';
 
     protected $fillable = [
         'name',
-        'initial',
-        'contact',
-        'address',
+        'description',
+        'is_active'
     ];
 
     public function transactionSequences(): MorphMany
@@ -29,16 +27,6 @@ class Branch extends Model
     public function itemBatches(): MorphMany
     {
         return $this->morphMany(ItemBatch::class, 'source_able');
-    }
-
-    public function goodsReceipts(): HasMany
-    {
-        return $this->hasMany(GoodsReceipt::class, 'branch_id', 'id');
-    }
-
-    public function purchaseInvoicePayments(): HasMany
-    {
-        return $this->hasMany(PurchaseInvoicePayment::class, 'branch_id', 'id');
     }
 
     public function stockMovements(): MorphMany
@@ -56,34 +44,13 @@ class Branch extends Model
         return $this->morphMany(StockTransfer::class, 'destination_able');
     }
 
-    public function stockAudits(): MorphMany
-    {
-        return $this->morphMany(StockAudit::class, 'source_able');
-    }
-
     public function stockAdjustments(): MorphMany
     {
         return $this->morphMany(StockAdjustment::class, 'source_able');
     }
 
-    public function salesOrders(): HasMany
+    public function stockAudits(): MorphMany
     {
-        return $this->hasMany(SalesOrder::class, 'branch_id', 'id');
+        return $this->morphMany(StockAudit::class, 'source_able');
     }
-
-    public function salesOrderDetailsAsItemSource(): HasMany
-    {
-        return $this->hasMany(SalesOrderDetail::class, 'item_from_branch_id', 'id');
-    }
-
-    public function waybills(): HasMany
-    {
-        return $this->hasMany(Waybill::class, 'branch_id', 'id');
-    }
-
-    public function salesInvoicePayments(): HasMany
-    {
-        return $this->hasMany(SalesInvoicePayment::class, 'branch_id', 'id');
-    }
-
 }

@@ -9,6 +9,7 @@ use App\Http\Controllers\Settings\RoleController;
 use App\Http\Controllers\Settings\TaxRateController;
 use App\Http\Controllers\Settings\TransactionPrefixController;
 use App\Http\Controllers\Settings\UserController;
+use App\Http\Controllers\Settings\WarehouseController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth')->group(function () {
@@ -45,6 +46,13 @@ Route::middleware('auth')->group(function () {
         Route::put('/{id}', [UserController::class, 'update'])->middleware('permission:update_user')->name('users.update');
         Route::delete('/{id}', [UserController::class, 'destroy'])->middleware('permission:delete_user')->name('users.destroy');
         Route::patch('/{id}/reset-password', [UserController::class, 'resetPassword'])->middleware('permission:update_user')->name('users.reset-password');
+    });
+
+    Route::group(['prefix' => 'settings/warehouses'], function () {
+        Route::get('/', [WarehouseController::class, 'index'])->middleware('permission:read_warehouse')->name('warehouses.index');
+        Route::post('/', [WarehouseController::class, 'store'])->middleware('permission:create_warehouse')->name('warehouses.store');
+        Route::put('/{id}', [WarehouseController::class, 'update'])->middleware('permission:update_warehouse')->name('warehouses.update');
+        Route::delete('/{id}', [WarehouseController::class, 'destroy'])->middleware('permission:delete_warehouse')->name('warehouses.destroy');
     });
 
     Route::group(['prefix' => 'settings/branches'], function () {

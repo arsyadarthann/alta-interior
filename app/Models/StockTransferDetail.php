@@ -17,10 +17,10 @@ class StockTransferDetail extends Model
         'stock_transfer_id',
         'item_id',
         'quantity',
-        'from_branch_before_quantity',
-        'from_branch_after_quantity',
-        'to_branch_before_quantity',
-        'to_branch_after_quantity',
+        'source_before_quantity',
+        'source_after_quantity',
+        'destination_before_quantity',
+        'destination_after_quantity',
     ];
 
     public function stockTransfer(): BelongsTo

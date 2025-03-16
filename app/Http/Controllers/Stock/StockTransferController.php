@@ -7,12 +7,13 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Stock\StockTransferRequest;
 use App\Interface\BranchInterface;
 use App\Interface\StockTransferInterface;
+use App\Interface\WarehouseInterface;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class StockTransferController extends Controller
 {
-    public function __construct(private StockTransferInterface $stockTransfer, private BranchInterface $branch) {}
+    public function __construct(private StockTransferInterface $stockTransfer, private WarehouseInterface $warehouse, private BranchInterface $branch) {}
 
     public function index()
     {
@@ -24,6 +25,7 @@ class StockTransferController extends Controller
     public function create()
     {
         return Inertia::render('stock/transfer/create', [
+            'warehouses' => $this->warehouse->getAll(),
             'branches' => $this->branch->getAll()
         ]);
     }

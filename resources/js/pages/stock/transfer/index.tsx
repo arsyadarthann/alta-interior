@@ -1,16 +1,15 @@
-import React from 'react';
-import { Head, Link, router } from "@inertiajs/react";
-import AppLayout from "@/layouts/app-layout";
-import { type BreadcrumbItem } from "@/types";
-import { Button } from "@/components/ui/button";
-import { Eye, Plus } from 'lucide-react';
+import { DataTable } from '@/components/data-table';
+import { ActionColumn } from '@/components/data-table/action-column';
+import { createNumberColumn } from '@/components/data-table/columns';
+import Heading from '@/components/heading';
+import { Button } from '@/components/ui/button';
+import { usePermissions } from '@/hooks/use-permissions';
+import { useToastNotification } from '@/hooks/use-toast-notification';
+import AppLayout from '@/layouts/app-layout';
+import { type BreadcrumbItem } from '@/types';
+import { Head, Link, router } from '@inertiajs/react';
 import { type ColumnDef } from '@tanstack/react-table';
-import { DataTable } from "@/components/data-table";
-import Heading from "@/components/heading";
-import { useToastNotification } from "@/hooks/use-toast-notification";
-import { createNumberColumn } from "@/components/data-table/columns";
-import { ActionColumn } from "@/components/data-table/action-column";
-import { usePermissions } from "@/hooks/use-permissions";
+import { Eye, Plus } from 'lucide-react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -20,7 +19,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Transfer',
         href: '#',
-    }
+    },
 ];
 
 interface Props {
@@ -31,19 +30,19 @@ type StockTransfer = {
     id: number;
     code: string;
     date: string;
-    from_branch: {
+    source_able: {
         id: number;
         name: string;
     };
-    to_branch: {
+    destination_able: {
         id: number;
         name: string;
-    }
+    };
     user: {
         id: number;
         name: string;
-    }
-}
+    };
+};
 
 export default function Index({ stockTransfers }: Props) {
     useToastNotification();
@@ -53,44 +52,44 @@ export default function Index({ stockTransfers }: Props) {
     const columns: ColumnDef<StockTransfer>[] = [
         createNumberColumn<StockTransfer>(),
         {
-            accessorKey: "code",
-            header: "Code",
+            accessorKey: 'code',
+            header: 'Code',
         },
         {
-            accessorKey: "date",
-            header: "Date",
+            accessorKey: 'date',
+            header: 'Date',
         },
         {
-            accessorKey: "from_branch.name",
-            header: "From",
+            accessorKey: 'source_able.name',
+            header: 'From',
         },
         {
-            accessorKey: "to_branch.name",
-            header: "To",
+            accessorKey: 'destination_able.name',
+            header: 'To',
         },
         {
-            accessorKey: "user.name",
-            header: "Created By",
+            accessorKey: 'user.name',
+            header: 'Created By',
         },
         ActionColumn<StockTransfer>({
             hasPermission: hasPermission,
             actions: () => [
                 {
-                    label: "View Detail",
+                    label: 'View Detail',
                     icon: <Eye className="h-4 w-4" />,
                     onClick: (data) => router.visit(route('stock.transfer.show', data.id)),
                     permission: 'read_stock_transfer',
-                }
+                },
             ],
-        })
+        }),
     ].filter(Boolean) as ColumnDef<StockTransfer>[];
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Stock Transfer" />
 
-            <div className="bg-white rounded-lg px-8 py-6">
-                <div className="flex justify-between items-center">
+            <div className="rounded-lg bg-white px-8 py-6">
+                <div className="flex items-center justify-between">
                     <Heading title="Stock Transfer" description="Manage your stock transfers." />
 
                     {hasPermission('create_stock_transfer') && (

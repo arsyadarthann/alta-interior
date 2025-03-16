@@ -27,7 +27,10 @@ Route::middleware('auth')->group(function () {
         Route::post('/', [ItemController::class, 'store'])->middleware('permission:create_item')->name('item.store');
         Route::put('/{id}', [ItemController::class, 'update'])->middleware('permission:update_item')->name('item.update');
         Route::delete('/{id}', [ItemController::class, 'destroy'])->middleware('permission:delete_item')->name('item.destroy');
+        Route::get('/getItemBatch', [ItemController::class, 'getItemBatch'])->middleware('permission:read_item')->name('item.getItemBatch');
+        Route::get('/{warehouseId}/getItemByWarehouse', [ItemController::class, 'getItemByWarehouse'])->middleware('permission:read_item')->name('item.getItemByWarehouse');
         Route::get('/{branchId}/getItemByBranch', [ItemController::class, 'getItemByBranch'])->middleware('permission:read_item')->name('item.getItemByBranch');
+        Route::get('/getItemStockByWarehouse', [ItemController::class, 'getItemStockByWarehouse'])->middleware('permission:read_item')->name('item.getItemStockByWarehouse');
         Route::get('/getItemStockByBranch', [ItemController::class, 'getItemStockByBranch'])->middleware('permission:read_item')->name('item.getItemStockByBranch');
         Route::get('/getItems', [ItemController::class, 'getItems'])->middleware('permission:read_item')->name('item.getItems');
     });

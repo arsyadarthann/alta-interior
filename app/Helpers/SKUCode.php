@@ -18,7 +18,7 @@ class SKUCode
      * @return string|null
      * @throws InvalidArgumentException
      */
-    public static function generateSKU($itemId, $branchId) : ?string
+    public static function generateSKU($itemId, $sourceAbleId, $sourceAbleType) : ?string
     {
         $item = Item::find($itemId);
 
@@ -28,18 +28,11 @@ class SKUCode
 
         $itemCode = $item->code;
 
-        $branch = Branch::find($branchId);
-
-        if (!$branch || empty($branch->initial)) {
-            throw new InvalidArgumentException('Initial code is required for this branch');
-        }
-
-        $branchInitial = $branch->initial;
-
         $todayDate = now()->format('Ymd');
 
         $lastBatch = ItemBatch::where('item_id', $itemId)
-            ->where('branch_id', $branchId)
+            ->where('source_able_id', $sourceAbleId)
+            ->where('source_able_type', $sourceAbleType)
             ->whereDate('created_at', now()->toDateString())
             ->orderBy('id', 'desc')
             ->first();
@@ -48,6 +41,6 @@ class SKUCode
 
         $batchCode = str_pad($nextBatchNumber, 4, '0', STR_PAD_LEFT);
 
-        return "{$itemCode}-{$branchInitial}-{$todayDate}-{$batchCode}";
+        return "{$itemCode}-{$todayDate}-{$batchCode}";
     }
 }
