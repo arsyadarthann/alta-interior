@@ -2,6 +2,7 @@ import { DataTable } from '@/components/data-table';
 import { ActionColumn } from '@/components/data-table/action-column';
 import { createNumberColumn } from '@/components/data-table/columns';
 import Heading from '@/components/heading';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useToastNotification } from '@/hooks/use-toast-notification';
@@ -96,28 +97,29 @@ export default function Index({ purchaseOrders }: Props) {
             cell: ({ row }: { row: Row<PurchaseOrder> }) => {
                 const status = row.getValue('status') as string;
 
-                const capitalizeWords = (str: string): string => {
-                    return str
-                        .split(' ')
-                        .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-                        .join(' ');
-                };
-
-                let bgColor = '';
-                let textColor = '';
+                let variant = 'outline';
+                let classes = '';
+                let label = '';
 
                 if (status === 'pending') {
-                    bgColor = 'bg-yellow-100';
-                    textColor = 'text-yellow-800';
+                    variant = 'outline';
+                    classes = 'bg-green-100 text-green-800 hover:bg-green-100 border-green-200';
+                    label = 'Pending';
                 } else if (status === 'partially_received') {
-                    bgColor = 'bg-blue-100';
-                    textColor = 'text-blue-800';
+                    variant = 'outline';
+                    classes = 'bg-green-100 text-green-800 hover:bg-green-100 border-green-200';
+                    label = 'Partially Received';
                 } else if (status === 'received') {
-                    bgColor = 'bg-green-100';
-                    textColor = 'text-green-800';
+                    variant = 'outline';
+                    classes = 'bg-green-100 text-green-800 hover:bg-green-100 border-green-200';
+                    label = 'Received';
                 }
 
-                return <span className={`rounded px-2 py-1 text-xs font-medium ${bgColor} ${textColor}`}>{capitalizeWords(status)}</span>;
+                return (
+                    <Badge variant={variant as never} className={classes}>
+                        {label}
+                    </Badge>
+                );
             },
         },
         (hasPermission('update_stock_audit') || hasPermission('delete_stock_audit')) &&

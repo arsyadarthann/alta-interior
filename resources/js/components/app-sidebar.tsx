@@ -1,29 +1,26 @@
+import { NavMainWithSubmenu } from '@/components/nav-group';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
-import {
-    Sidebar,
-    SidebarContent,
-    SidebarFooter,
-    SidebarHeader,
-    SidebarMenu,
-    SidebarMenuButton,
-    SidebarMenuItem
-} from '@/components/ui/sidebar';
-import {type NavItem, NavItemWithChildren} from '@/types';
+import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
+import { usePermissions } from '@/hooks/use-permissions';
+import { type NavItem, NavItemWithChildren } from '@/types';
 import { Link } from '@inertiajs/react';
 import {
-    LayoutGrid,
+    ArrowDown,
+    Banknote,
     BookUser,
+    Box,
+    ClipboardList,
+    LayoutGrid,
+    PackageCheck,
+    Receipt,
+    ScrollText,
+    Ticket,
+    TrendingUp,
     Truck,
     Warehouse,
-    Ticket,
-    ScrollText,
-    ClipboardList,
-    PackageCheck, Receipt, ArrowDown, TrendingUp, Box, Banknote
 } from 'lucide-react';
 import AppLogo from './app-logo';
-import {NavMainWithSubmenu} from "@/components/nav-group";
-import {usePermissions} from "@/hooks/use-permissions";
 
 export function AppSidebar() {
     const { hasPermission } = usePermissions();
@@ -45,8 +42,8 @@ export function AppSidebar() {
         hasPermission('read_supplier') && {
             title: 'Suppliers',
             url: '/master/suppliers',
-            icon: Truck
-        }
+            icon: Truck,
+        },
     ].filter(Boolean) as NavItem[];
 
     const inventoryAndStockItems: NavItemWithChildren[] = [
@@ -54,7 +51,7 @@ export function AppSidebar() {
             title: 'Inventory',
             url: '/inventory',
             icon: Warehouse,
-            matchPatch: ['/inventory', '/inventory/*']
+            matchPatch: ['/inventory', '/inventory/*'],
         },
         {
             title: 'Stock Management',
@@ -64,21 +61,21 @@ export function AppSidebar() {
                 {
                     title: 'Audit',
                     url: '/stock/audit',
-                    matchPatch: ['/stock/audit', '/stock/audit/*', '/stock/audit?*']
+                    matchPatch: ['/stock/audit', '/stock/audit/*', '/stock/audit?*'],
                 },
                 {
                     title: 'Adjustment',
                     url: '/stock/adjustment',
-                    matchPatch: ['/stock/adjustment', '/stock/adjustment/*', '/stock/adjustment?*']
+                    matchPatch: ['/stock/adjustment', '/stock/adjustment/*', '/stock/adjustment?*'],
                 },
                 {
                     title: 'Transfer',
                     url: '/stock/transfer',
-                    matchPatch: ['/stock/transfer', '/stock/transfer/*', '/stock/transfer?*']
-                }
-            ]
-        }
-    ]
+                    matchPatch: ['/stock/transfer', '/stock/transfer/*', '/stock/transfer?*'],
+                },
+            ],
+        },
+    ];
 
     const procurementItems: NavItemWithChildren[] = [
         {
@@ -89,7 +86,7 @@ export function AppSidebar() {
         {
             title: 'Goods Receipts',
             url: '/procurement/receipts',
-            icon: PackageCheck
+            icon: PackageCheck,
         },
         {
             title: 'Payables',
@@ -103,10 +100,10 @@ export function AppSidebar() {
                 {
                     title: 'Payments',
                     url: '/procurement/payments',
-                }
-            ]
-        }
-    ]
+                },
+            ],
+        },
+    ];
 
     const salesItems: NavItemWithChildren[] = [
         {
@@ -131,10 +128,10 @@ export function AppSidebar() {
                 {
                     title: 'Payments',
                     url: '/sales/payments',
-                }
-            ]
-        }
-    ]
+                },
+            ],
+        },
+    ];
 
     const financeItems: NavItem[] = [
         {
@@ -142,13 +139,13 @@ export function AppSidebar() {
             url: '/expenses',
             icon: ArrowDown,
         },
-    ]
+    ];
 
     const reportItems: NavItem[] = [
         {
             title: 'Sales',
             url: '/reports/sales',
-            icon: TrendingUp
+            icon: TrendingUp,
         },
         {
             title: 'Transaction',
@@ -159,8 +156,8 @@ export function AppSidebar() {
             title: 'inventory Movement',
             url: '/reports/inventory-movement',
             icon: Box,
-        }
-    ]
+        },
+    ];
 
     return (
         <Sidebar collapsible="offcanvas" variant="inset">
@@ -177,17 +174,17 @@ export function AppSidebar() {
             </SidebarHeader>
 
             <SidebarContent>
-                <NavMain items={mainNavItems} title="Dashboard"/>
-                { (hasPermission('read_customer') || hasPermission('read_supplier')) && (
-                    <NavMain items={customersAndSuppliersItems} title="Customers & Suppliers"/>
+                <NavMain items={mainNavItems} title="Dashboard" />
+                {(hasPermission('read_customer') || hasPermission('read_supplier')) && (
+                    <NavMain items={customersAndSuppliersItems} title="Customers & Suppliers" />
                 )}
-                { ((hasPermission('read_item_category') || hasPermission('read_item_unit')) || hasPermission('read_item')) && (
-                    <NavMainWithSubmenu items={inventoryAndStockItems} title="Inventory & Stock"/>
+                {(hasPermission('read_item_category') || hasPermission('read_item_unit') || hasPermission('read_item')) && (
+                    <NavMainWithSubmenu items={inventoryAndStockItems} title="Inventory & Stock" />
                 )}
-                <NavMainWithSubmenu items={procurementItems} title="Procurement"/>
-                <NavMainWithSubmenu items={salesItems} title="Sales"/>
-                <NavMain items={financeItems} title="Finance"/>
-                <NavMain items={reportItems} title="Reports"/>
+                <NavMainWithSubmenu items={procurementItems} title="Procurement" />
+                <NavMainWithSubmenu items={salesItems} title="Sales" />
+                <NavMain items={financeItems} title="Finance" />
+                <NavMain items={reportItems} title="Reports" />
             </SidebarContent>
 
             <SidebarFooter>

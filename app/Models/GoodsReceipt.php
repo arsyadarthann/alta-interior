@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class GoodsReceipt extends Model
 {
@@ -15,16 +17,10 @@ class GoodsReceipt extends Model
     protected $fillable = [
         'code',
         'date',
-        'branch_id',
         'supplier_id',
         'received_by',
-        'shipping_cost'
+        'status',
     ];
-
-    public function branch(): BelongsTo
-    {
-        return $this->belongsTo(Branch::class, 'branch_id', 'id');
-    }
 
     public function supplier(): BelongsTo
     {
@@ -34,5 +30,17 @@ class GoodsReceipt extends Model
     public function purchaseOrders(): BelongsToMany
     {
         return $this->belongsToMany(PurchaseOrder::class, 'goods_receipt_purchase_order', 'goods_receipt_id', 'purchase_order_id')->withTimestamps();
+    }
+
+    public function goodsReceiptDetails(): HasManyThrough
+    {
+        return $this->hasManyThrough(
+            GoodsReceiptDetail::class,
+            GoodsReceiptPurchaseOrder::class,
+            'goods_receipt_id',
+            'goods_receipt_purchase_order_id',
+            'id',
+            'id'
+        );
     }
 }

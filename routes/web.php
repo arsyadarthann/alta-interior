@@ -3,6 +3,7 @@
 use App\Http\Controllers\Master\CustomerController;
 use App\Http\Controllers\Master\SupplierController;
 use App\Http\Controllers\Procurement\PurchaseOrderController;
+use App\Http\Controllers\Procurement\GoodsReceiptController;
 use App\Http\Controllers\Stock\StockAdjustmentController;
 use App\Http\Controllers\Stock\StockAuditController;
 use App\Http\Controllers\Stock\StockTransferController;
@@ -83,6 +84,14 @@ Route::middleware(['auth'])->group(function () {
             Route::put('/{id}', [PurchaseOrderController::class, 'update'])->middleware('permission:update_purchase_order')->name('procurement.order.update');
             Route::delete('/{id}', [PurchaseOrderController::class, 'destroy'])->middleware('permission:delete_purchase_order')->name('procurement.order.destroy');
             Route::get('/{id}/generate-pdf', [PurchaseOrderController::class, 'generatePdf'])->middleware('permission:read_purchase_order')->name('procurement.order.generate-pdf');
+        });
+
+        Route::group(['prefix' => 'receipts'], function () {
+            Route::get('/', [GoodsReceiptController::class, 'index'])->middleware('permission:read_goods_receipt')->name('procurement.receipt.index');
+            Route::get('/create', [GoodsReceiptController::class, 'create'])->middleware('permission:create_goods_receipt')->name('procurement.receipt.create');
+            Route::post('/', [GoodsReceiptController::class, 'store'])->middleware('permission:create_goods_receipt')->name('procurement.receipt.store');
+            Route::get('/get-unreceived-purchase-order-details', [GoodsReceiptController::class, 'getUnreceivedPurchaseOrderDetails'])->middleware('permission:read_goods_receipt')->name('procurement.receipt.getUnreceivedPurchaseOrderDetails');
+            Route::get('/{id}', [GoodsReceiptController::class, 'show'])->middleware('permission:read_goods_receipt')->name('procurement.receipt.show');
         });
     });
 

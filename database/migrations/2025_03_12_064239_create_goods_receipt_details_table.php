@@ -16,7 +16,6 @@ return new class extends Migration
             $table->foreignId('goods_receipt_purchase_order_id')->constrained('goods_receipt_purchase_order')->onDelete('cascade');
             $table->foreignId('purchase_order_detail_id')->constrained('purchase_order_details');
             $table->decimal('received_quantity', 15, 2);
-            $table->decimal('shipping_cost', 15, 2);
             $table->decimal('price_per_unit', 15, 2);
             $table->decimal('total_price', 15, 2);
             $table->decimal('cogs', 15, 2);

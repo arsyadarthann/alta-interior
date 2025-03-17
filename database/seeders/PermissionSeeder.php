@@ -78,6 +78,8 @@ class PermissionSeeder extends Seeder
             'create_purchase_order',
             'update_purchase_order',
             'delete_purchase_order',
+            'read_goods_receipt',
+            'create_goods_receipt',
         ];
 
         foreach ($permissions as $permission) {

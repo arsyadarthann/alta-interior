@@ -15,10 +15,9 @@ return new class extends Migration
             $table->id();
             $table->string('code', 100)->unique();
             $table->date('date');
-            $table->unsignedSmallInteger('branch_id');
             $table->foreignId('supplier_id')->constrained('suppliers');
             $table->string('received_by', 100)->nullable();
-            $table->decimal('shipping_cost', 15, 2);
+            $table->enum('status', ['not_invoiced', 'invoiced'])->default('not_invoiced');
             $table->timestamps();
         });
     }
