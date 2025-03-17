@@ -8,6 +8,8 @@ interface CustomerInterface
 
     public function getById(int $id);
 
+    public function showById(int $id);
+
     public function store(array $data);
 
     public function update(int $id, array $data);

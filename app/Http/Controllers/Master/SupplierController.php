@@ -14,7 +14,7 @@ class SupplierController extends Controller
     public function index()
     {
         return Inertia::render('master/suppliers/index', [
-            'suppliers' => $this->supplier->getAll()
+            'suppliers' => $this->supplier->getAllPaginate()
         ]);
     }
 

@@ -1,4 +1,5 @@
 import { DataTable } from '@/components/data-table'; // Adjust the import path as needed
+import { createNumberColumn } from '@/components/data-table/columns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency } from '@/lib/utils';
 import { ColumnDef } from '@tanstack/react-table';
@@ -40,6 +41,14 @@ interface BatchItem {
     stock: number;
 }
 
+interface BatchItemsResponse {
+    data: BatchItem[];
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+}
+
 interface BatchItemsTableProps {
     itemId: number | string;
     sourceAbleId: number | string;
@@ -50,6 +59,9 @@ export function BatchItemsTable({ itemId, sourceAbleId, sourceAbleType }: BatchI
     const [batchItems, setBatchItems] = useState<BatchItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [lastPage, setLastPage] = useState(1);
+    const [totalItems, setTotalItems] = useState(0);
 
     // Format tanggal dan waktu
     const formatDateTime = (dateTimeStr: string) => {
@@ -74,68 +86,90 @@ export function BatchItemsTable({ itemId, sourceAbleId, sourceAbleType }: BatchI
         }
     };
 
-    useEffect(() => {
-        const fetchBatchItems = async () => {
-            setIsLoading(true);
-            try {
-                const response = await fetch(
-                    route('item.getItemBatch', {
-                        item_id: itemId,
-                        source_able_id: sourceAbleId,
-                        source_able_type: sourceAbleType,
-                    }),
-                    {
-                        headers: {
-                            Accept: 'application/json',
-                            'X-Requested-With': 'XMLHttpRequest',
-                        },
+    const fetchBatchItems = async (page = 1) => {
+        setIsLoading(true);
+        try {
+            const response = await fetch(
+                route('item.getItemBatch', {
+                    item_id: itemId,
+                    source_able_id: sourceAbleId,
+                    source_able_type: sourceAbleType,
+                    page: page,
+                }),
+                {
+                    headers: {
+                        Accept: 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
                     },
-                );
+                },
+            );
 
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('Server response:', errorText);
-                    throw new Error(`Failed to fetch batch items: ${response.status}`);
-                }
-
-                const data = await response.json();
-
-                // Add validation for the expected data structure
-                let items = Array.isArray(data.data) ? data.data : Array.isArray(data) ? data : [];
-
-                // Ensure each item has the required nested properties and add row number
-                items = items.map((item, index) => ({
-                    ...item,
-                    rowNumber: index + 1,
-                    item: item.item || { name: 'Unknown', itemUnit: { name: '' }, itemCategory: {} },
-                    source_able: item.source_able || { name: 'Unknown' },
-                }));
-
-                setBatchItems(items);
-            } catch (err) {
-                console.error('Error fetching batch items:', err);
-                setError('Failed to load batch items. Please try again.');
-            } finally {
-                setIsLoading(false);
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Server response:', errorText);
+                throw new Error(`Failed to fetch batch items: ${response.status}`);
             }
-        };
 
+            const responseData = await response.json();
+            console.log('API Response:', responseData);
+
+            let paginationData: BatchItemsResponse;
+
+            if (Array.isArray(responseData) && responseData.length > 0) {
+                const firstItem = responseData[0];
+                if (firstItem && firstItem.data) {
+                    paginationData = firstItem as BatchItemsResponse;
+                } else {
+                    throw new Error('Unexpected response format');
+                }
+            } else if (responseData && responseData.data) {
+                paginationData = responseData as BatchItemsResponse;
+            } else {
+                console.error('Unexpected response format:', responseData);
+                throw new Error('Unexpected response format');
+            }
+
+            const items = paginationData.data.map((item, index) => ({
+                ...item,
+                rowNumber: (paginationData.current_page - 1) * paginationData.per_page + index + 1,
+                item: item.item || {
+                    name: 'Unknown',
+                    item_unit: { abbreviation: '' },
+                    item_category: {},
+                },
+                source_able: item.source_able || { name: 'Unknown' },
+            }));
+
+            setBatchItems(items);
+            setCurrentPage(paginationData.current_page);
+            setLastPage(paginationData.last_page);
+            setTotalItems(paginationData.total);
+        } catch (err) {
+            console.error('Error fetching batch items:', err);
+            setError('Failed to load batch items. Please try again.');
+            setBatchItems([]);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
         if (itemId && sourceAbleId && sourceAbleType) {
-            fetchBatchItems();
+            fetchBatchItems(1);
         } else {
             setIsLoading(false);
             setError('Missing required parameters');
         }
     }, [itemId, sourceAbleId, sourceAbleType]);
 
+    const handlePageChange = (page: number) => {
+        fetchBatchItems(page);
+    };
+
     // Define columns for the DataTable
     const columns = useMemo<ColumnDef<BatchItem, any>[]>(
         () => [
-            {
-                accessorKey: 'rowNumber',
-                header: '#',
-                cell: ({ row }) => row.index + 1,
-            },
+            createNumberColumn(),
             {
                 accessorKey: 'sku',
                 header: 'SKU',
@@ -166,7 +200,7 @@ export function BatchItemsTable({ itemId, sourceAbleId, sourceAbleType }: BatchI
                 cell: ({ row }) => formatDateTime(row.original.received_at),
             },
         ],
-        [],
+        [currentPage],
     );
 
     if (error) {
@@ -195,5 +229,16 @@ export function BatchItemsTable({ itemId, sourceAbleId, sourceAbleType }: BatchI
         );
     }
 
-    return <DataTable data={batchItems} columns={columns} pageSize={10} />;
+    return (
+        <DataTable
+            data={batchItems}
+            columns={columns}
+            serverPagination={{
+                pageCount: lastPage,
+                currentPage: currentPage,
+                totalItems: totalItems,
+                onPageChange: handlePageChange,
+            }}
+        />
+    );
 }

@@ -30,14 +30,39 @@ class ItemRepository implements ItemInterface
         return $query->orderBy('id')->get();
     }
 
+    public function getAllPaginate($sourceId = null, $sourceType = null)
+    {
+        $query = $this->item->with(['itemCategory:id,name', 'itemUnit:id,name,abbreviation']);
+
+        $query->selectRaw('items.*, COALESCE((
+        SELECT SUM(stock)
+        FROM item_batches
+        WHERE item_batches.item_id = items.id' .
+            ($sourceId ? ' AND item_batches.source_able_id = ' . $sourceId .
+                ' AND item_batches.source_able_type = \'' . $sourceType . '\'' : '') .
+            '), 0) as stock');
+
+        return $query->orderBy('id')->paginate(10);
+    }
+
     public function getAllByBranch($branchId = null)
     {
         return $this->getAll($branchId, Branch::class);
     }
 
+    public function getAllPaginateByBranch($branchId = null)
+    {
+        return $this->getAllPaginate($branchId, Branch::class);
+    }
+
     public function getAllByWarehouse($warehouseId = null)
     {
         return $this->getAll($warehouseId, Warehouse::class);
+    }
+
+    public function getAllPaginateByWarehouse($warehouseId = null)
+    {
+        return $this->getAllPaginate($warehouseId, Warehouse::class);
     }
 
     public function getById(int $id)
@@ -98,6 +123,25 @@ class ItemRepository implements ItemInterface
     public function sumStockByWarehouse(int $itemId, int $warehouseId)
     {
         return $this->sumStock($itemId, $warehouseId, Warehouse::class);
+    }
+
+    public function getPaginateBatch(int $itemId, int $sourceAbleId, string $sourceAbleType, bool $withWhereStockGreaterThanZero = true)
+    {
+        $mappedType = match ($sourceAbleType) {
+            'Branch' => Branch::class,
+            'Warehouse' => Warehouse::class,
+            default => $sourceAbleType
+        };
+
+        return $this->itemBatch->with([
+            'source_able:id,name', 'item.itemCategory', 'item.itemUnit'
+        ])
+            ->where('item_id', $itemId)
+            ->where('source_able_id', $sourceAbleId)
+            ->where('source_able_type', $mappedType)
+            ->when($withWhereStockGreaterThanZero, fn($query) => $query->where('stock', '>', 0))
+            ->orderBy('received_at')
+            ->paginate(10);
     }
 
     public function getBatch(int $itemId, int $sourceAbleId, string $sourceAbleType, bool $withWhereStockGreaterThanZero = true)

@@ -26,7 +26,13 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 interface Props {
-    stockAdjustments: StockAdjustment[];
+    stockAdjustments: {
+        data: StockAdjustment[];
+        current_page: number;
+        last_page: number;
+        per_page: number;
+        total: number;
+    };
     branches: Branch[];
     warehouses: Warehouse[];
     selectedSourceAbleId?: string;
@@ -64,7 +70,7 @@ export default function Index({ stockAdjustments, branches, warehouses, selected
     const { auth } = usePage().props as unknown as {
         auth: { user: { branch_id: number } };
     };
-
+    const [isLoading, setIsLoading] = useState(false);
     const initialLoadComplete = useRef(false);
 
     const getDefaultSourceValue = () => {
@@ -120,6 +126,7 @@ export default function Index({ stockAdjustments, branches, warehouses, selected
         }
 
         setCurrentSource(value);
+        setIsLoading(true);
 
         let params = {};
         if (value !== 'all') {
@@ -134,6 +141,29 @@ export default function Index({ stockAdjustments, branches, warehouses, selected
             preserveState: true,
             preserveScroll: true,
             only: ['stockAdjustments', 'branches', 'warehouses', 'selectedSourceAbleId', 'selectedSourceAbleType'],
+            onFinish: () => setIsLoading(false),
+        });
+    };
+
+    const handlePageChange = (page: number) => {
+        setIsLoading(true);
+        let params: any = { page };
+
+        // Maintain source filtering when changing pages
+        if (currentSource !== 'all' && !auth.user.branch_id) {
+            const [type, id] = currentSource.split(':');
+            params.source_able_id = id;
+            params.source_able_type = type;
+        } else if (auth.user.branch_id) {
+            params.source_able_id = auth.user.branch_id;
+            params.source_able_type = 'Branch';
+        }
+
+        router.get(route('stock.adjustment.index'), params, {
+            preserveState: true,
+            preserveScroll: true,
+            only: ['stockAdjustments'],
+            onFinish: () => setIsLoading(false),
         });
     };
 
@@ -170,7 +200,7 @@ export default function Index({ stockAdjustments, branches, warehouses, selected
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Stock Audit" />
+            <Head title="Stock Adjustment" />
 
             <div className="rounded-lg bg-white px-8 py-6">
                 <Heading title="Stock Adjustment" description="Manage your stock adjustments." />
@@ -219,7 +249,16 @@ export default function Index({ stockAdjustments, branches, warehouses, selected
                     )}
                 </div>
 
-                <DataTable columns={columns} data={stockAdjustments} />
+                <DataTable
+                    columns={columns}
+                    data={stockAdjustments.data}
+                    serverPagination={{
+                        pageCount: stockAdjustments.last_page,
+                        currentPage: stockAdjustments.current_page,
+                        totalItems: stockAdjustments.total,
+                        onPageChange: handlePageChange,
+                    }}
+                />
             </div>
         </AppLayout>
     );

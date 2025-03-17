@@ -21,9 +21,15 @@ class StockAdjustmentController extends Controller
         $sourceAbleType = $request->query('source_able_type');
 
         if ($sourceAbleType === 'Branch') {
-            $stockAdjustments = $this->stockAdjustment->getAllByBranch($sourceAbleId);
+            $stockAdjustments = $this->stockAdjustment->getAllByBranch($sourceAbleId)->appends([
+                'source_able_id' => $sourceAbleId,
+                'source_able_type' => $sourceAbleType,
+            ]);
         } elseif ($sourceAbleType === 'Warehouse') {
-            $stockAdjustments = $this->stockAdjustment->getAllByWarehouse($sourceAbleId);
+            $stockAdjustments = $this->stockAdjustment->getAllByWarehouse($sourceAbleId)->appends([
+                'source_able_id' => $sourceAbleId,
+                'source_able_type' => $sourceAbleType,
+            ]);
         } else {
             $stockAdjustments = $this->stockAdjustment->getAll();
         }

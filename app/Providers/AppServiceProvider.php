@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Interface\BranchInterface;
 use App\Interface\CustomerInterface;
+use App\Interface\GoodsReceiptInterface;
 use App\Interface\ItemCategoryInterface;
 use App\Interface\ItemInterface;
 use App\Interface\ItemUnitInterface;
@@ -21,6 +22,7 @@ use App\Interface\UserInterface;
 use App\Interface\WarehouseInterface;
 use App\Repositories\BranchRepository;
 use App\Repositories\CustomerRepository;
+use App\Repositories\GoodsReceiptRepository;
 use App\Repositories\ItemCategoryRepository;
 use App\Repositories\ItemRepository;
 use App\Repositories\ItemUnitRepository;
@@ -62,6 +64,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(StockAdjustmentInterface::class, StockAdjustmentRepository::class);
         $this->app->bind(StockTransferInterface::class, StockTransferRepository::class);
         $this->app->bind(PurchaseOrderInterface::class, PurchaseOrderRepository::class);
+        $this->app->bind(GoodsReceiptInterface::class, GoodsReceiptRepository::class);
     }
 
     /**

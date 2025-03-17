@@ -21,9 +21,15 @@ class StockAuditController extends Controller
         $sourceAbleType = $request->query('source_able_type');
 
         if ($sourceAbleType === 'Branch') {
-            $stockAudits = $this->stockAudit->getAllByBranch($sourceAbleId);
+            $stockAudits = $this->stockAudit->getAllByBranch($sourceAbleId)->appends([
+                'source_able_id' => $sourceAbleId,
+                'source_able_type' => $sourceAbleType,
+            ]);
         } elseif ($sourceAbleType === 'Warehouse') {
-            $stockAudits = $this->stockAudit->getAllByWarehouse($sourceAbleId);
+            $stockAudits = $this->stockAudit->getAllByWarehouse($sourceAbleId)->appends([
+                'source_able_id' => $sourceAbleId,
+                'source_able_type' => $sourceAbleType,
+            ]);
         } else {
             $stockAudits = $this->stockAudit->getAll();
         }

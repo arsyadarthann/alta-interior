@@ -10,6 +10,7 @@ import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
 import { type ColumnDef, Row } from '@tanstack/react-table';
 import { Eye, Pencil, Plus, Printer, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -23,7 +24,13 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 interface Props {
-    purchaseOrders: PurchaseOrder[];
+    purchaseOrders: {
+        data: PurchaseOrder[];
+        current_page: number;
+        last_page: number;
+        per_page: number;
+        total: number;
+    };
 }
 
 type PurchaseOrder = {
@@ -41,6 +48,7 @@ type PurchaseOrder = {
 export default function Index({ purchaseOrders }: Props) {
     useToastNotification();
     const { hasPermission } = usePermissions();
+    const [isLoading, setIsLoading] = useState(false);
 
     const columns: ColumnDef<PurchaseOrder>[] = [
         createNumberColumn<PurchaseOrder>(),
@@ -176,7 +184,27 @@ export default function Index({ purchaseOrders }: Props) {
                     )}
                 </div>
 
-                <DataTable columns={columns} data={purchaseOrders} />
+                <DataTable
+                    columns={columns}
+                    data={purchaseOrders.data}
+                    serverPagination={{
+                        pageCount: purchaseOrders.last_page,
+                        currentPage: purchaseOrders.current_page,
+                        totalItems: purchaseOrders.total,
+                        onPageChange: (page) => {
+                            router.get(
+                                route('procurement.order.index'),
+                                { page },
+                                {
+                                    preserveState: true,
+                                    preserveScroll: true,
+                                    only: ['purchaseOrders'],
+                                    onFinish: () => setIsLoading(false),
+                                },
+                            );
+                        },
+                    }}
+                />
             </div>
         </AppLayout>
     );

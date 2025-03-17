@@ -12,12 +12,25 @@ class CustomerRepository implements CustomerInterface
 
     public function getAll()
     {
-        return $this->customer->orderBy('id')->get();
+        return $this->customer->orderBy('id')->paginate(10);
     }
 
     public function getById(int $id)
     {
-        return $this->customer->with('customerPrices.item')->find($id);
+        return $this->customer->find($id);
+    }
+
+    public function showById(int $id)
+    {
+        $customer = $this->getById($id);
+
+        $customerPrices = $customer->customerPrices()
+            ->with('item')
+            ->paginate(10);
+
+        $customer->setRelation('customerPrices', $customerPrices);
+
+        return $customer;
     }
 
     public function store(array $data)

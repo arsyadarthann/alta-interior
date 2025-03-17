@@ -27,7 +27,7 @@ class StockAuditRepository implements StockAuditInterface
                 return $query->where('source_able_id', $sourceId)
                     ->where('source_able_type', $sourceType);
             })
-            ->orderByDesc('id')->orderByDesc('date')->get();
+            ->orderByDesc('id')->orderByDesc('date')->paginate(10);
     }
 
     public function getAllByBranch($branchId)
@@ -66,7 +66,7 @@ class StockAuditRepository implements StockAuditInterface
                 ]);
             }
 
-            TransactionCode::confirmTransactionCode('Stock Audit', $data['code'], $data['source_able_id'], $data['source_able_type']);
+            TransactionCode::confirmTransactionCode('Stock Audit', $data['code'], self::sourceAbleTypeMap[$data['source_able_type']], $data['source_able_id']);
         });
     }
 

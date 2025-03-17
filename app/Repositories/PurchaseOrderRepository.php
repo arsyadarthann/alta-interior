@@ -20,7 +20,7 @@ class PurchaseOrderRepository implements PurchaseOrderInterface
         return $this->purchaseOrder
             ->with(self::GENERAL_RELATIONSHIPS)
             ->orderBy('code', 'desc')
-            ->get();
+            ->paginate(10);
     }
 
     public function getById(int $id)

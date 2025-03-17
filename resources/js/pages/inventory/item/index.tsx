@@ -58,7 +58,13 @@ type SourceItem = {
 };
 
 interface Props {
-    items: Item[];
+    items: {
+        data: Item[];
+        current_page: number;
+        last_page: number;
+        per_page: number;
+        total: number;
+    };
     itemCategories: ItemCategory[];
     itemUnits: ItemUnit[];
     warehouses: Warehouse[];
@@ -83,6 +89,7 @@ export default function Item({
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedItem, setSelectedItem] = useState<Item | undefined>();
     const { auth } = usePage().props as unknown as { auth: { user: { branch_id: number | null } } };
+    const [isLoading, setIsLoading] = useState(false);
 
     const getSourceFromSelectedValue = (value: string): { id: number; type: string } => {
         const [type, id] = value.split(':');
@@ -140,6 +147,7 @@ export default function Item({
     // Fetch items based on selected source
     useEffect(() => {
         if (selectedSource && selectedSource !== 'all') {
+            setIsLoading(true);
             const [type, id] = selectedSource.split(':');
             router.get(
                 route('item.index'),
@@ -150,16 +158,19 @@ export default function Item({
                 {
                     preserveState: true,
                     preserveScroll: true,
+                    onFinish: () => setIsLoading(false),
                 },
             );
         } else {
             // Fetch all items when "all" is selected
+            setIsLoading(true);
             router.get(
                 route('item.index'),
                 {},
                 {
                     preserveState: true,
                     preserveScroll: true,
+                    onFinish: () => setIsLoading(false),
                 },
             );
         }
@@ -352,6 +363,26 @@ export default function Item({
         },
     ];
 
+    // Handle page change for server-side pagination
+    const handlePageChange = (page: number) => {
+        setIsLoading(true);
+        let params: any = { page };
+
+        // Add source filter parameters if a source is selected
+        if (selectedSource && selectedSource !== 'all') {
+            const [type, id] = selectedSource.split(':');
+            params.source_able_id = id;
+            params.source_able_type = type;
+        }
+
+        router.get(route('item.index'), params, {
+            preserveState: true,
+            preserveScroll: true,
+            only: ['items'],
+            onFinish: () => setIsLoading(false),
+        });
+    };
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Items" />
@@ -396,7 +427,16 @@ export default function Item({
                         )}
                     </div>
 
-                    <DataTable columns={columns} data={items} />
+                    <DataTable
+                        columns={columns}
+                        data={items.data}
+                        serverPagination={{
+                            pageCount: items.last_page,
+                            currentPage: items.current_page,
+                            totalItems: items.total,
+                            onPageChange: handlePageChange,
+                        }}
+                    />
 
                     <FormDialog
                         title={`Item Batch - ${selectedItem?.name || 'Item'} ${

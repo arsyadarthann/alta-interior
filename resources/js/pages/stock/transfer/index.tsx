@@ -10,6 +10,7 @@ import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
 import { type ColumnDef } from '@tanstack/react-table';
 import { Eye, Plus } from 'lucide-react';
+import { useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -23,7 +24,13 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 interface Props {
-    stockTransfers: StockTransfer[];
+    stockTransfers: {
+        data: StockTransfer[];
+        current_page: number;
+        last_page: number;
+        per_page: number;
+        total: number;
+    };
 }
 
 type StockTransfer = {
@@ -46,8 +53,22 @@ type StockTransfer = {
 
 export default function Index({ stockTransfers }: Props) {
     useToastNotification();
-
     const { hasPermission } = usePermissions();
+    const [isLoading, setIsLoading] = useState(false);
+
+    const handlePageChange = (page: number) => {
+        setIsLoading(true);
+        router.get(
+            route('stock.transfer.index'),
+            { page },
+            {
+                preserveState: true,
+                preserveScroll: true,
+                only: ['stockTransfers'],
+                onFinish: () => setIsLoading(false),
+            },
+        );
+    };
 
     const columns: ColumnDef<StockTransfer>[] = [
         createNumberColumn<StockTransfer>(),
@@ -102,7 +123,16 @@ export default function Index({ stockTransfers }: Props) {
                     )}
                 </div>
 
-                <DataTable columns={columns} data={stockTransfers} />
+                <DataTable
+                    columns={columns}
+                    data={stockTransfers.data}
+                    serverPagination={{
+                        pageCount: stockTransfers.last_page,
+                        currentPage: stockTransfers.current_page,
+                        totalItems: stockTransfers.total,
+                        onPageChange: handlePageChange,
+                    }}
+                />
             </div>
         </AppLayout>
     );

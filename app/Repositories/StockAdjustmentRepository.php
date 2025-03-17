@@ -27,7 +27,7 @@ class StockAdjustmentRepository implements StockAdjustmentInterface
                 return $query->where('source_able_id', $sourceId)
                     ->where('source_able_type', $sourceType);
             })
-            ->orderByDesc('code')->get();
+            ->orderByDesc('code')->paginate(10);
     }
 
     public function getAllByBranch($branchId)

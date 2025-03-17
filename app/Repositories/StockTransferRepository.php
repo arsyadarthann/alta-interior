@@ -23,7 +23,7 @@ class StockTransferRepository implements StockTransferInterface
     {
         return $this->stockTransfer
             ->with(self::GENERAL_RELATIONSHIPS)
-            ->orderByDesc('code')->get();
+            ->orderByDesc('code')->paginate(10);
     }
 
     public function getById(int $id)

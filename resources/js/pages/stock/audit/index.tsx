@@ -26,7 +26,13 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 interface Props {
-    stockAudits: StockAudit[];
+    stockAudits: {
+        data: StockAudit[];
+        current_page: number;
+        last_page: number;
+        per_page: number;
+        total: number;
+    };
     branches: Branch[];
     warehouses: Warehouse[];
     selectedSourceAbleId?: string;
@@ -65,7 +71,7 @@ export default function Index({ stockAudits, branches, warehouses, selectedSourc
     const { auth } = usePage().props as unknown as {
         auth: { user: { branch_id: number } };
     };
-
+    const [isLoading, setIsLoading] = useState(false);
     const initialLoadComplete = useRef(false);
 
     const getDefaultSourceValue = () => {
@@ -122,6 +128,7 @@ export default function Index({ stockAudits, branches, warehouses, selectedSourc
         }
 
         setCurrentSource(value);
+        setIsLoading(true);
 
         let params = {};
         if (value !== 'all') {
@@ -136,6 +143,29 @@ export default function Index({ stockAudits, branches, warehouses, selectedSourc
             preserveState: true,
             preserveScroll: true,
             only: ['stockAudits', 'branches', 'warehouses', 'selectedSourceAbleId', 'selectedSourceAbleType'],
+            onFinish: () => setIsLoading(false),
+        });
+    };
+
+    const handlePageChange = (page: number) => {
+        setIsLoading(true);
+        let params: any = { page };
+
+        // Maintain source filtering when changing pages
+        if (currentSource !== 'all' && !auth.user.branch_id) {
+            const [type, id] = currentSource.split(':');
+            params.source_able_id = id;
+            params.source_able_type = type;
+        } else if (auth.user.branch_id) {
+            params.source_able_id = auth.user.branch_id;
+            params.source_able_type = 'Branch';
+        }
+
+        router.get(route('stock.audit.index'), params, {
+            preserveState: true,
+            preserveScroll: true,
+            only: ['stockAudits'],
+            onFinish: () => setIsLoading(false),
         });
     };
 
@@ -281,7 +311,16 @@ export default function Index({ stockAudits, branches, warehouses, selectedSourc
                     )}
                 </div>
 
-                <DataTable columns={columns} data={stockAudits} />
+                <DataTable
+                    columns={columns}
+                    data={stockAudits.data}
+                    serverPagination={{
+                        pageCount: stockAudits.last_page,
+                        currentPage: stockAudits.current_page,
+                        totalItems: stockAudits.total,
+                        onPageChange: handlePageChange,
+                    }}
+                />
             </div>
         </AppLayout>
     );

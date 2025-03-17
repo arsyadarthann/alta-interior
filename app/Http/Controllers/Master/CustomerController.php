@@ -60,7 +60,7 @@ class CustomerController extends Controller
 
     public function show($id)
     {
-        $customer = $this->customer->getById($id);
+        $customer = $this->customer->showById($id);
 
         if (!$customer) {
             return Inertia::render('errors/error-page', [
@@ -85,6 +85,12 @@ class CustomerController extends Controller
 
         return Inertia::render('master/customers/show', [
             'customer' => $customer,
+            'customerPricesPagination' => [
+                'current_page' => $customer->customerPrices->currentPage(),
+                'last_page' => $customer->customerPrices->lastPage(),
+                'per_page' => $customer->customerPrices->perPage(),
+                'total' => $customer->customerPrices->total(),
+            ]
         ]);
     }
 

@@ -23,15 +23,18 @@ class ItemController extends Controller
         $sourceAbleId = $request->query('source_able_id');
         $sourceAbleType = $request->query('source_able_type');
         if ($sourceAbleType === 'Branch') {
-            $items = $this->item->getAllByBranch($sourceAbleId);
+            $items = $this->item->getAllPaginateByBranch($sourceAbleId);
         } elseif ($sourceAbleType === 'Warehouse') {
-            $items = $this->item->getAllByWarehouse($sourceAbleId);
+            $items = $this->item->getAllPaginateByWarehouse($sourceAbleId);
         } else {
-            $items = $this->item->getAll();
+            $items = $this->item->getAllPaginate();
         }
 
         return Inertia::render('inventory/item/index', [
-            'items' => $items,
+            'items' => $items->appends([
+                'source_able_id' => $sourceAbleId,
+                'source_able_type' => $sourceAbleType,
+            ]),
             'itemCategories' => $this->itemCategory->getAll(),
             'itemUnits' => $this->itemUnit->getAll(),
             'warehouses' => $this->warehouse->getAll(),
@@ -123,9 +126,11 @@ class ItemController extends Controller
             $itemId = $request->query('item_id');
             $sourceAbleId = $request->query('source_able_id');
             $sourceAbleType = $request->query('source_able_type');
-
-            return response()->json([
-                'data' => $this->item->getBatch($itemId, $sourceAbleId, $sourceAbleType)
+            $results = $this->item->getPaginateBatch($itemId, $sourceAbleId, $sourceAbleType);
+            return $results->appends([
+                'item_id' => $itemId,
+                'source_able_id' => $sourceAbleId,
+                'source_able_type' => $sourceAbleType,
             ]);
         }
 
