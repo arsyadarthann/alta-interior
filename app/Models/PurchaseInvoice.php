@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class PurchaseInvoice extends Model
 {
@@ -18,7 +19,6 @@ class PurchaseInvoice extends Model
         'code',
         'date',
         'due_date',
-        'branch_id',
         'supplier_id',
         'total_amount',
         'tax_rate_id',
@@ -39,11 +39,6 @@ class PurchaseInvoice extends Model
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(Supplier::class, 'supplier_id', 'id');
-    }
-
-    public function branch(): BelongsTo
-    {
-        return $this->belongsTo(Branch::class, 'branch_id', 'id');
     }
 
     public function taxRate(): BelongsTo
@@ -69,6 +64,18 @@ class PurchaseInvoice extends Model
     public function goodsReceipts(): BelongsToMany
     {
         return $this->belongsToMany(GoodsReceipt::class, 'purchase_invoice_goods_receipt', 'purchase_invoice_id', 'goods_receipt_id')->withTimestamps();
+    }
+
+    public function purchaseInvoiceDetails(): HasManyThrough
+    {
+        return $this->hasManyThrough(
+            PurchaseInvoiceDetail::class,
+            PurchaseInvoiceGoodsReceipt::class,
+            'purchase_invoice_id',
+            'purchase_invoice_goods_receipt_id',
+            'id',
+            'id'
+        );
     }
 
     public function purchaseInvoicePayments(): HasMany

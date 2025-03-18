@@ -205,6 +205,10 @@ class PurchaseOrderController extends Controller
             $transactionCode = TransactionCode::generateTransactionCode('Purchase Order');
             return response()->json(['code' => $transactionCode]);
         }
+
+        return Inertia::render('errors/error-page', [
+            'status' => 404,
+        ]);
     }
 
     public function generatePdf($id)

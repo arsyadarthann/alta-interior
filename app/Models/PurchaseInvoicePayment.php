@@ -16,7 +16,6 @@ class PurchaseInvoicePayment extends Model
         'code',
         'date',
         'user_id',
-        'branch_id',
         'purchase_invoice_id',
         'payment_method_id',
         'amount',

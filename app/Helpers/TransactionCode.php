@@ -28,8 +28,8 @@ class TransactionCode
             throw new \Exception('Kode transaksi tidak tersedia.');
         }
 
-        $isSourceAbleSpecific = in_array($transactionType, ['Stock Audit', 'Stock Adjustment', 'Purchase Invoice Payment', 'Sales Order', 'Waybill', 'Sales Invoice', 'Sales Invoice Payment', 'Expense']);
-        $isNoSourceAble = in_array($transactionType, ['Stock Transfer', 'Purchase Order']);
+        $isSourceAbleSpecific = in_array($transactionType, ['Stock Audit', 'Stock Adjustment', 'Sales Order', 'Waybill', 'Sales Invoice', 'Sales Invoice Payment', 'Expense']);
+        $isNoSourceAble = in_array($transactionType, ['Stock Transfer', 'Purchase Order', 'Purchase Invoice Payment']);
 
         if ($isSourceAbleSpecific) {
             if (!request()->has('source_able_type') || !request()->has('source_able_id')) {

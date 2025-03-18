@@ -31,11 +31,6 @@ class Branch extends Model
         return $this->morphMany(ItemBatch::class, 'source_able');
     }
 
-    public function purchaseInvoicePayments(): HasMany
-    {
-        return $this->hasMany(PurchaseInvoicePayment::class, 'branch_id', 'id');
-    }
-
     public function stockMovements(): MorphMany
     {
         return $this->morphMany(StockMovement::class, 'source_able');

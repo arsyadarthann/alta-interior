@@ -58,8 +58,35 @@ class GoodsReceiptController extends Controller
 
     public function show($id)
     {
+        $goodsReceipt = $this->goodsReceipt->getById($id);
+
+        if (!$goodsReceipt) {
+            return Inertia::render('errors/error-page', [
+                'status' => 404,
+                'customTitle' => 'Goods Receipt Not Found',
+                'customDescription' => 'The goods receipt you are looking for could not be found.',
+                'customBreadcrumbs' => [
+                    [
+                        'title' => 'Procurement',
+                        'href' => '#',
+                    ],
+                    [
+                        'title' => 'Goods Receipt',
+                        'href' => route('procurement.receipt.index'),
+                    ],
+                    [
+                        'title' => 'Show',
+                        'href' => route('procurement.receipt.show', $id),
+                    ],
+                    [
+                        'title' => 'Goods Receipt Not Found',
+                    ]
+                ]
+            ]);
+        }
+
         return Inertia::render('procurement/goods-receipt/show', [
-            'goodsReceipt' => $this->goodsReceipt->getById($id),
+            'goodsReceipt' => $goodsReceipt,
         ]);
     }
 

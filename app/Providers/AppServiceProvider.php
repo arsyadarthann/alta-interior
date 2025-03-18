@@ -10,6 +10,8 @@ use App\Interface\ItemInterface;
 use App\Interface\ItemUnitInterface;
 use App\Interface\PaymentMethodInterface;
 use App\Interface\PermissionInterface;
+use App\Interface\PurchaseInvoiceInterface;
+use App\Interface\PurchaseInvoicePaymentInterface;
 use App\Interface\PurchaseOrderInterface;
 use App\Interface\RoleInterface;
 use App\Interface\StockAdjustmentInterface;
@@ -28,6 +30,8 @@ use App\Repositories\ItemRepository;
 use App\Repositories\ItemUnitRepository;
 use App\Repositories\PaymentMethodRepository;
 use App\Repositories\PermissionRepository;
+use App\Repositories\PurchaseInvoicePaymentRepository;
+use App\Repositories\PurchaseInvoiceRepository;
 use App\Repositories\PurchaseOrderRepository;
 use App\Repositories\RoleRepository;
 use App\Repositories\StockAdjustmentRepository;
@@ -65,6 +69,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(StockTransferInterface::class, StockTransferRepository::class);
         $this->app->bind(PurchaseOrderInterface::class, PurchaseOrderRepository::class);
         $this->app->bind(GoodsReceiptInterface::class, GoodsReceiptRepository::class);
+        $this->app->bind(PurchaseInvoiceInterface::class, PurchaseInvoiceRepository::class);
+        $this->app->bind(PurchaseInvoicePaymentInterface::class, PurchaseInvoicePaymentRepository::class);
     }
 
     /**

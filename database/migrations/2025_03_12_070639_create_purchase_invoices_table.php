@@ -16,7 +16,6 @@ return new class extends Migration
             $table->string('code', 100)->unique();
             $table->date('date');
             $table->date('due_date');
-            $table->unsignedSmallInteger('branch_id');
             $table->foreignId('supplier_id')->constrained('suppliers');
             $table->decimal('total_amount', 15, 2);
             $table->unsignedSmallInteger('tax_rate_id')->nullable();

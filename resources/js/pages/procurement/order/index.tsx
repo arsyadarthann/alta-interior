@@ -103,7 +103,7 @@ export default function Index({ purchaseOrders }: Props) {
 
                 if (status === 'pending') {
                     variant = 'outline';
-                    classes = 'bg-green-100 text-green-800 hover:bg-green-100 border-green-200';
+                    classes = 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-yellow-200';
                     label = 'Pending';
                 } else if (status === 'partially_received') {
                     variant = 'outline';

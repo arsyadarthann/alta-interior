@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Master\CustomerController;
 use App\Http\Controllers\Master\SupplierController;
+use App\Http\Controllers\Procurement\PurchaseInvoiceController;
+use App\Http\Controllers\Procurement\PurchaseInvoicePaymentController;
 use App\Http\Controllers\Procurement\PurchaseOrderController;
 use App\Http\Controllers\Procurement\GoodsReceiptController;
 use App\Http\Controllers\Stock\StockAdjustmentController;
@@ -92,6 +94,28 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/', [GoodsReceiptController::class, 'store'])->middleware('permission:create_goods_receipt')->name('procurement.receipt.store');
             Route::get('/get-unreceived-purchase-order-details', [GoodsReceiptController::class, 'getUnreceivedPurchaseOrderDetails'])->middleware('permission:read_goods_receipt')->name('procurement.receipt.getUnreceivedPurchaseOrderDetails');
             Route::get('/{id}', [GoodsReceiptController::class, 'show'])->middleware('permission:read_goods_receipt')->name('procurement.receipt.show');
+        });
+
+        Route::group(['prefix' => 'invoices'], function () {
+            Route::get('/', [PurchaseInvoiceController::class, 'index'])->middleware('permission:read_purchase_invoice')->name('procurement.invoice.index');
+            Route::get('/create', [PurchaseInvoiceController::class, 'create'])->middleware('permission:create_purchase_invoice')->name('procurement.invoice.create');
+            Route::get('/getNotInvoicedGoodsReceipts', [PurchaseInvoiceController::class, 'getNotInvoicedGoodsReceipts'])->middleware('permission:create_purchase_invoice')->name('procurement.invoice.getNotInvoicedGoodsReceipts');
+            Route::get('/getGoodsReceiptData', [PurchaseInvoiceController::class, 'getGoodsReceiptData'])->middleware('permission:read_purchase_invoice')->name('procurement.invoice.getGoodsReceiptData');
+            Route::post('/', [PurchaseInvoiceController::class, 'store'])->middleware('permission:create_purchase_invoice')->name('procurement.invoice.store');
+            Route::get('/{id}/edit', [PurchaseInvoiceController::class, 'edit'])->middleware('permission:update_purchase_invoice')->name('procurement.invoice.edit');
+            Route::put('/{id}', [PurchaseInvoiceController::class, 'update'])->middleware('permission:update_purchase_invoice')->name('procurement.invoice.update');
+            Route::get('/{id}', [PurchaseInvoiceController::class, 'show'])->middleware('permission:read_purchase_invoice')->name('procurement.invoice.show');
+            Route::delete('/{id}', [PurchaseInvoiceController::class, 'destroy'])->middleware('permission:delete_purchase_invoice')->name('procurement.invoice.destroy');
+        });
+
+        Route::group(['prefix' => 'payments'], function () {
+            Route::get('/', [PurchaseInvoicePaymentController::class, 'index'])->middleware('permission:read_purchase_invoice_payment')->name('procurement.payment.index');
+            Route::get('/create', [PurchaseInvoicePaymentController::class, 'create'])->middleware('permission:create_purchase_invoice_payment')->name('procurement.payment.create');
+            Route::get('/getCode', [PurchaseInvoicePaymentController::class, 'getCode'])->middleware('permission:read_purchase_invoice_payment')->name('procurement.payment.getCode');
+            Route::get('/getNotPaidPurchaseInvoice', [PurchaseInvoicePaymentController::class, 'getNotPaidPurchaseInvoice'])->middleware('permission:read_purchase_invoice_payment')->name('procurement.payment.getNotPaidInvoice');
+            Route::get('/getPurchaseInvoiceData', [PurchaseInvoicePaymentController::class, 'getPurchaseInvoiceData'])->middleware('permission:read_purchase_invoice_payment')->name('procurement.payment.getPurchaseInvoiceData');
+            Route::post('/', [PurchaseInvoicePaymentController::class, 'store'])->middleware('permission:create_purchase_invoice_payment')->name('procurement.payment.store');
+            Route::get('/{id}', [PurchaseInvoicePaymentController::class, 'show'])->middleware('permission:read_purchase_invoice_payment')->name('procurement.payment.show');
         });
     });
 
