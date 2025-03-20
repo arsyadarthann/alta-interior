@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\SequenceStatus;
+use Carbon\Carbon;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
@@ -27,7 +28,7 @@ class RevertSequenceJob implements ShouldQueue
     {
         $sequence = SequenceStatus::find($this->sequenceId);
 
-        if ($sequence && $sequence->isReserved() && $sequence->expires_at <= now()) {
+        if ($sequence && $sequence->isReserved() && Carbon::parse($sequence->expires_at)->lessThanOrEqualTo(now())) {
             $sequence->update([
                 'status' => 'available',
                 'user_id' => null,

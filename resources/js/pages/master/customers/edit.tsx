@@ -1,23 +1,17 @@
-import React, { useState } from 'react';
-import { Head, router, useForm, Link } from "@inertiajs/react";
-import AppLayout from "@/layouts/app-layout";
-import { type BreadcrumbItem } from "@/types";
-import Heading from "@/components/heading";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { PlusCircle, Trash2, ArrowLeft } from "lucide-react";
-import { useToastNotification } from "@/hooks/use-toast-notification";
-import { Card } from "@/components/ui/card";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
+import Heading from '@/components/heading';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Combobox } from '@/components/ui/combobox';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { useToastNotification } from '@/hooks/use-toast-notification';
+import AppLayout from '@/layouts/app-layout';
+import { type BreadcrumbItem } from '@/types';
+import { Head, Link, router, useForm } from '@inertiajs/react';
+import { ArrowLeft, PlusCircle, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 
 // Interfaces
 interface Item {
@@ -48,7 +42,9 @@ interface EditProps {
 
 export default function Edit({ customer, items = [] }: EditProps) {
     const { showErrorToast } = useToastNotification();
-    const [showSpecialPrices, setShowSpecialPrices] = useState(customer.customer_prices.length > 0);
+    // Fix error by checking if customer_prices exists and is an array before accessing length
+    const hasCustomerPrices = Array.isArray(customer.customer_prices) && customer.customer_prices.length > 0;
+    const [showSpecialPrices, setShowSpecialPrices] = useState(hasCustomerPrices);
 
     const breadcrumbs: BreadcrumbItem[] = [
         {
@@ -57,9 +53,12 @@ export default function Edit({ customer, items = [] }: EditProps) {
         },
         {
             title: customer.name,
-            href: route('customers.edit', customer.id)
-        }
+            href: route('customers.edit', customer.id),
+        },
     ];
+
+    // Ensure customer_prices is an array
+    const customerPrices = Array.isArray(customer.customer_prices) ? customer.customer_prices : [];
 
     const { data, setData, put, processing, errors } = useForm({
         name: customer.name,
@@ -67,67 +66,55 @@ export default function Edit({ customer, items = [] }: EditProps) {
         email: customer.email || '',
         phone: customer.phone,
         address: customer.address,
-        customer_prices: customer.customer_prices.map(price => ({
+        customer_prices: customerPrices.map((price) => ({
             id: price.id,
             item_id: price.item_id,
-            price: price.price
+            price: price.price,
         })),
     });
 
-    const handleSubmit = (e: { preventDefault: () => void; }) => {
+    const handleSubmit = (e: { preventDefault: () => void }) => {
         e.preventDefault();
 
         put(route('customers.update', customer.id), {
             preserveScroll: true,
-            onError: showErrorToast
+            onError: showErrorToast,
         });
-    }
+    };
 
     const addSpecialPrice = () => {
-        setData('customer_prices', [
-            ...data.customer_prices,
-            { id: undefined, item_id: 0, price: '' }
-        ]);
-    }
+        setData('customer_prices', [...data.customer_prices, { id: undefined, item_id: 0, price: '' }]);
+    };
 
     const removeSpecialPrice = (index: number) => {
         const updatedPrices = [...data.customer_prices];
         updatedPrices.splice(index, 1);
         setData('customer_prices', updatedPrices);
-    }
+    };
 
-    const updateSpecialPrice = (
-        index: number,
-        field: 'item_id' | 'price',
-        value: string | number
-    ) => {
+    const updateSpecialPrice = (index: number, field: 'item_id' | 'price', value: string | number) => {
         const updatedPrices = [...data.customer_prices];
         updatedPrices[index] = {
             ...updatedPrices[index],
-            [field]: field === 'item_id' ? Number(value) : value
+            [field]: field === 'item_id' ? Number(value) : value,
         };
         setData('customer_prices', updatedPrices);
-    }
+    };
 
     // Get available items for a specific row index
     const getAvailableItems = (currentIndex: number) => {
-        return items.filter(item => {
+        return items.filter((item) => {
             // The item is either not selected anywhere or is selected in the current row
-            return !data.customer_prices.some(
-                (priceItem, i) => i !== currentIndex && priceItem.item_id === item.id
-            );
+            return !data.customer_prices.some((priceItem, i) => i !== currentIndex && priceItem.item_id === item.id);
         });
     };
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Edit Customer - ${customer.name}`} />
-            <div className="bg-white rounded-lg px-8 py-6">
-                <div className="flex justify-between items-center mb-6">
-                    <Heading
-                        title={`Edit Customer: ${customer.name}`}
-                        description="Update customer information and special pricing."
-                    />
+            <div className="rounded-lg bg-white px-8 py-6">
+                <div className="mb-6 flex items-center justify-between">
+                    <Heading title={`Edit Customer: ${customer.name}`} description="Update customer information and special pricing." />
                     <div className="flex gap-3">
                         <Link href={route('customers.index')}>
                             <Button variant="outline" className="flex items-center gap-2">
@@ -138,93 +125,81 @@ export default function Edit({ customer, items = [] }: EditProps) {
                 </div>
 
                 <form onSubmit={handleSubmit}>
-                    <div className="relative grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="relative grid grid-cols-1 gap-6 lg:grid-cols-3">
                         {/* Customer Information Card - Fixed position */}
-                        <div className="lg:col-span-1 lg:sticky lg:top-6 lg:self-start">
-                            <Card className="border-0 shadow-sm h-full">
+                        <div className="lg:sticky lg:top-6 lg:col-span-1 lg:self-start">
+                            <Card className="h-full border-0 shadow-sm">
                                 <div className="p-6">
-                                    <h2 className="text-base font-semibold text-gray-900 mb-4">Customer Information</h2>
+                                    <h2 className="mb-4 text-base font-semibold text-gray-900">Customer Information</h2>
                                     <div className="space-y-4">
-                                        <div className="space-y-2 relative grid gap-2">
+                                        <div className="relative grid gap-2 space-y-2">
                                             <Label htmlFor="name">
                                                 Company Name <span className="text-red-500">*</span>
                                             </Label>
                                             <Input
                                                 id="name"
                                                 value={data.name}
-                                                onChange={e => setData('name', e.target.value)}
+                                                onChange={(e) => setData('name', e.target.value)}
                                                 placeholder="Enter company name"
-                                                className={`${errors.name ? "border-red-500 ring-red-100" : ""}`}
+                                                className={`${errors.name ? 'border-red-500 ring-red-100' : ''}`}
                                             />
-                                            {errors.name && (
-                                                <p className="text-xs text-red-500 mt-1">{errors.name}</p>
-                                            )}
+                                            {errors.name && <p className="mt-1 text-xs text-red-500">{errors.name}</p>}
                                         </div>
 
-                                        <div className="space-y-2 relative grid gap-2">
+                                        <div className="relative grid gap-2 space-y-2">
                                             <Label htmlFor="contact_name">
                                                 Contact Person <span className="text-red-500">*</span>
                                             </Label>
                                             <Input
                                                 id="contact_name"
                                                 value={data.contact_name}
-                                                onChange={e => setData('contact_name', e.target.value)}
+                                                onChange={(e) => setData('contact_name', e.target.value)}
                                                 placeholder="Enter contact person name"
-                                                className={`${errors.contact_name ? "border-red-500 ring-red-100" : ""}`}
+                                                className={`${errors.contact_name ? 'border-red-500 ring-red-100' : ''}`}
                                             />
-                                            {errors.contact_name && (
-                                                <p className="text-xs text-red-500 mt-1">{errors.contact_name}</p>
-                                            )}
+                                            {errors.contact_name && <p className="mt-1 text-xs text-red-500">{errors.contact_name}</p>}
                                         </div>
 
-                                        <div className="space-y-2 relative grid gap-2">
-                                            <Label htmlFor="email">
-                                                Email Address
-                                            </Label>
+                                        <div className="relative grid gap-2 space-y-2">
+                                            <Label htmlFor="email">Email Address</Label>
                                             <Input
                                                 id="email"
                                                 type="email"
                                                 value={data.email}
-                                                onChange={e => setData('email', e.target.value)}
+                                                onChange={(e) => setData('email', e.target.value)}
                                                 placeholder="contact@company.com"
-                                                className={`${errors.email ? "border-red-500 ring-red-100" : ""}`}
+                                                className={`${errors.email ? 'border-red-500 ring-red-100' : ''}`}
                                             />
-                                            {errors.email && (
-                                                <p className="text-xs text-red-500 mt-1">{errors.email}</p>
-                                            )}
+                                            {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email}</p>}
                                         </div>
 
-                                        <div className="space-y-2 relative grid gap-2">
+                                        <div className="relative grid gap-2 space-y-2">
                                             <Label htmlFor="phone">
                                                 Phone Number <span className="text-red-500">*</span>
                                             </Label>
                                             <Input
                                                 id="phone"
                                                 value={data.phone}
-                                                onChange={e => setData('phone', e.target.value)}
+                                                onChange={(e) => setData('phone', e.target.value)}
                                                 placeholder="6281234567890"
-                                                className={`${errors.phone ? "border-red-500 ring-red-100" : ""}`}
+                                                className={`${errors.phone ? 'border-red-500 ring-red-100' : ''}`}
                                             />
-                                            {errors.phone && (
-                                                <p className="text-xs text-red-500 mt-1">{errors.phone}</p>
-                                            )}
+                                            {errors.phone && <p className="mt-1 text-xs text-red-500">{errors.phone}</p>}
                                         </div>
 
-                                        <div className="space-y-2 relative grid gap-2">
+                                        <div className="relative grid gap-2 space-y-2">
                                             <Label htmlFor="address">
                                                 Complete Address <span className="text-red-500">*</span>
                                             </Label>
                                             <Textarea
                                                 id="address"
                                                 value={data.address}
-                                                onChange={e => setData('address', e.target.value)}
+                                                onChange={(e) => setData('address', e.target.value)}
                                                 placeholder="Enter complete address"
                                                 rows={4}
-                                                className={`${errors.address ? "border-red-500 ring-red-100" : ""}`}
+                                                className={`${errors.address ? 'border-red-500 ring-red-100' : ''}`}
                                             />
-                                            {errors.address && (
-                                                <p className="text-xs text-red-500 mt-1">{errors.address}</p>
-                                            )}
+                                            {errors.address && <p className="mt-1 text-xs text-red-500">{errors.address}</p>}
                                         </div>
                                     </div>
                                 </div>
@@ -234,7 +209,7 @@ export default function Edit({ customer, items = [] }: EditProps) {
                         <div className="lg:col-span-2">
                             <Card className="border-0 shadow-sm">
                                 <div className="p-6">
-                                    <div className="flex items-center mb-4">
+                                    <div className="mb-4 flex items-center">
                                         <h2 className="text-base font-semibold text-gray-900">Special Pricing</h2>
                                     </div>
 
@@ -250,63 +225,63 @@ export default function Edit({ customer, items = [] }: EditProps) {
                                                     }
                                                 }}
                                             />
-                                            <Label htmlFor="show_special_prices">
-                                                Set special prices for this customer
-                                            </Label>
+                                            <Label htmlFor="show_special_prices">Set special prices for this customer</Label>
                                         </div>
 
                                         {showSpecialPrices ? (
                                             <div className="space-y-4">
-                                                <p className="text-sm text-gray-500">
-                                                    Add special pricing for specific items for this customer.
-                                                </p>
+                                                <p className="text-sm text-gray-500">Add special pricing for specific items for this customer.</p>
 
                                                 <div className="max-h-[calc(70vh-260px)] overflow-y-auto pr-2 pl-1">
                                                     {data.customer_prices.map((priceItem, index) => (
-                                                        <div key={index} className="flex flex-wrap items-end gap-3 border-b border-gray-100 pb-4 mb-4">
-                                                            <div className="flex-1 min-w-[200px] relative grid gap-2">
+                                                        <div
+                                                            key={index}
+                                                            className="mb-4 flex flex-wrap items-end gap-3 border-b border-gray-100 pb-4"
+                                                        >
+                                                            <div className="relative grid min-w-[200px] flex-1 gap-2">
                                                                 <Label htmlFor={`item_id_${index}`}>
                                                                     Item <span className="text-red-500">*</span>
                                                                 </Label>
-                                                                <Select
-                                                                    value={priceItem.item_id ? String(priceItem.item_id) : ""}
+                                                                <Combobox
+                                                                    value={priceItem.item_id ? String(priceItem.item_id) : ''}
                                                                     onValueChange={(value) => updateSpecialPrice(index, 'item_id', value)}
-                                                                >
-                                                                    <SelectTrigger
-                                                                        id={`item_id_${index}`}
-                                                                        className={`w-full ${(errors as Record<string, string>)[`customer_prices.${index}.item_id`] ? "border-red-500 ring-red-100" : ""}`}
-                                                                    >
-                                                                        <SelectValue placeholder="Select an item" />
-                                                                    </SelectTrigger>
-                                                                    <SelectContent>
-                                                                        {getAvailableItems(index).map((item) => (
-                                                                            <SelectItem key={item.id} value={String(item.id)}>
-                                                                                {item.name}
-                                                                            </SelectItem>
-                                                                        ))}
-                                                                    </SelectContent>
-                                                                </Select>
+                                                                    options={getAvailableItems(index).map((item) => ({
+                                                                        value: String(item.id),
+                                                                        label: item.name,
+                                                                    }))}
+                                                                    placeholder="Select an item"
+                                                                    searchPlaceholder="Search items..."
+                                                                    className={
+                                                                        (errors as Record<string, string>)[`customer_prices.${index}.item_id`]
+                                                                            ? 'border-red-500 ring-red-100'
+                                                                            : ''
+                                                                    }
+                                                                />
                                                                 {(errors as Record<string, string>)[`customer_prices.${index}.item_id`] && (
-                                                                    <p className="text-xs text-red-500 mt-1">{(errors as Record<string, string>)[`customer_prices.${index}.item_id`]}</p>
+                                                                    <p className="mt-1 text-xs text-red-500">
+                                                                        {(errors as Record<string, string>)[`customer_prices.${index}.item_id`]}
+                                                                    </p>
                                                                 )}
                                                             </div>
-                                                            <div className="flex-1 min-w-[200px] relative grid gap-2">
+                                                            <div className="relative grid min-w-[200px] flex-1 gap-2">
                                                                 <Label htmlFor={`price_${index}`}>
                                                                     Special Price <span className="text-red-500">*</span>
                                                                 </Label>
                                                                 <div className="flex items-center gap-2">
-                                                                    <span className="text-sm text-muted-foreground">Rp</span>
+                                                                    <span className="text-muted-foreground text-sm">Rp</span>
                                                                     <Input
                                                                         id={`price_${index}`}
                                                                         type="number"
                                                                         value={priceItem.price}
                                                                         onChange={(e) => updateSpecialPrice(index, 'price', e.target.value)}
                                                                         placeholder="Enter price"
-                                                                        className={`${(errors as Record<string, string>)[`customer_prices.${index}.price`] ? "border-red-500 ring-red-100" : ""}`}
+                                                                        className={`${(errors as Record<string, string>)[`customer_prices.${index}.price`] ? 'border-red-500 ring-red-100' : ''}`}
                                                                     />
                                                                 </div>
                                                                 {(errors as Record<string, string>)[`customer_prices.${index}.price`] && (
-                                                                    <p className="text-xs text-red-500 mt-1">{(errors as Record<string, string>)[`customer_prices.${index}.price`]}</p>
+                                                                    <p className="mt-1 text-xs text-red-500">
+                                                                        {(errors as Record<string, string>)[`customer_prices.${index}.price`]}
+                                                                    </p>
                                                                 )}
                                                             </div>
                                                             <div className="flex items-end pb-[2px]">
@@ -324,14 +299,8 @@ export default function Edit({ customer, items = [] }: EditProps) {
                                                     ))}
                                                 </div>
 
-                                                <Button
-                                                    type="button"
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={addSpecialPrice}
-                                                    className="mt-2"
-                                                >
-                                                    <PlusCircle className="h-4 w-4 mr-2" /> Add Special Price
+                                                <Button type="button" variant="outline" size="sm" onClick={addSpecialPrice} className="mt-2">
+                                                    <PlusCircle className="mr-2 h-4 w-4" /> Add Special Price
                                                 </Button>
                                             </div>
                                         ) : (
@@ -345,19 +314,11 @@ export default function Edit({ customer, items = [] }: EditProps) {
                         </div>
                     </div>
 
-                    <div className="flex justify-end gap-3 py-4 mt-6">
-                        <Button
-                            variant="outline"
-                            type="button"
-                            onClick={() => router.visit(route('customers.index'))}
-                        >
+                    <div className="mt-6 flex justify-end gap-3 py-4">
+                        <Button variant="outline" type="button" onClick={() => router.visit(route('customers.index'))}>
                             Cancel
                         </Button>
-                        <Button
-                            type="submit"
-                            disabled={processing}
-                            className="px-8"
-                        >
+                        <Button type="submit" disabled={processing} className="px-8">
                             {processing ? 'Saving...' : 'Save Changes'}
                         </Button>
                     </div>

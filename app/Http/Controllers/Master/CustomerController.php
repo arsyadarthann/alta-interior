@@ -96,7 +96,7 @@ class CustomerController extends Controller
 
     public function edit($id)
     {
-        $customer = $this->customer->getById($id);
+        $customer = $this->customer->editById($id);
 
         if (!$customer) {
             return Inertia::render('errors/error-page', [

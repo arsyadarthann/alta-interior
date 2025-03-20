@@ -2,6 +2,7 @@ import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Card } from '@/components/ui/card';
+import { Combobox } from '@/components/ui/combobox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -344,53 +345,50 @@ export default function Create({ code = '', suppliers = [], paymentMethods = [] 
                                             {errors.date && <p className="mt-1 text-xs text-red-500">{errors.date}</p>}
                                         </div>
 
-                                        <div className="space-y-2">
+                                        <div className="relative grid gap-2 space-y-2">
                                             <Label htmlFor="supplier_id">
                                                 Supplier <span className="text-red-500">*</span>
                                             </Label>
-                                            <Select value={data.supplier_id || undefined} onValueChange={handleSupplierChange}>
-                                                <SelectTrigger className={errors.supplier_id ? 'border-red-500' : ''}>
-                                                    <SelectValue placeholder="Select supplier" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {suppliers.map((supplier) => (
-                                                        <SelectItem key={supplier.id} value={supplier.id.toString()}>
-                                                            {supplier.name}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
+                                            <Combobox
+                                                value={data.supplier_id ? data.supplier_id : ''}
+                                                onValueChange={handleSupplierChange}
+                                                options={suppliers.map((supplier) => ({
+                                                    value: supplier.id.toString(),
+                                                    label: supplier.name,
+                                                }))}
+                                                placeholder="Select supplier"
+                                                searchPlaceholder="Search suppliers..."
+                                                initialDisplayCount={5}
+                                                className={errors.supplier_id ? 'border-red-500' : ''}
+                                            />
                                             {errors.supplier_id && <p className="text-sm text-red-500">{errors.supplier_id}</p>}
                                             {loading && data.supplier_id && <p className="text-sm text-blue-600">Loading unpaid invoices...</p>}
                                         </div>
 
-                                        <div className="space-y-2">
+                                        <div className="relative grid gap-2 space-y-2">
                                             <Label htmlFor="purchase_invoice_id">
                                                 Invoice <span className="text-red-500">*</span>
                                             </Label>
-                                            <Select
-                                                value={data.purchase_invoice_id || undefined}
+                                            <Combobox
+                                                value={data.purchase_invoice_id ? data.purchase_invoice_id.toString() : ''}
                                                 onValueChange={handlePurchaseInvoiceChange}
+                                                options={notPaidInvoices.map((invoice) => ({
+                                                    value: invoice.id.toString(),
+                                                    label: `${invoice.code} - ${formatCurrency(invoice.remaining_amount)}`,
+                                                }))}
+                                                placeholder={loading ? 'Loading...' : 'Select invoice'}
+                                                searchPlaceholder="Search invoices..."
+                                                initialDisplayCount={5}
                                                 disabled={loading || notPaidInvoices.length === 0}
-                                            >
-                                                <SelectTrigger className={errors.purchase_invoice_id ? 'border-red-500' : ''}>
-                                                    <SelectValue placeholder={loading ? 'Loading...' : 'Select invoice'} />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {notPaidInvoices.map((invoice) => (
-                                                        <SelectItem key={invoice.id} value={invoice.id.toString()}>
-                                                            {invoice.code} - {formatCurrency(invoice.remaining_amount)}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
+                                                className={errors.purchase_invoice_id ? 'border-red-500' : ''}
+                                            />
                                             {errors.purchase_invoice_id && <p className="text-sm text-red-500">{errors.purchase_invoice_id}</p>}
                                             {data.supplier_id && !loading && notPaidInvoices.length === 0 && (
                                                 <p className="text-sm text-amber-600">No unpaid invoices found for this supplier.</p>
                                             )}
                                         </div>
 
-                                        <div className="space-y-2">
+                                        <div className="relative grid gap-2 space-y-2">
                                             <Label htmlFor="payment_method_id">
                                                 Payment Method <span className="text-red-500">*</span>
                                             </Label>

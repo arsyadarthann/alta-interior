@@ -410,9 +410,14 @@ export default function Show({ purchaseInvoice }: PurchaseInvoiceProps) {
                                                 <span className="text-sm font-medium">{formatCurrency(purchaseInvoice.total_amount)}</span>
                                             </div>
 
-                                            {purchaseInvoice.tax_rate && (
+                                            {purchaseInvoice.tax_rate ? (
                                                 <div className="flex justify-between">
                                                     <span className="text-sm text-gray-600">Tax ({purchaseInvoice.tax_rate.rate}%)</span>
+                                                    <span className="text-sm font-medium">{formatCurrency(purchaseInvoice.tax_amount)}</span>
+                                                </div>
+                                            ) : (
+                                                <div className="flex justify-between">
+                                                    <span className="text-sm text-gray-600">Tax (0%)</span>
                                                     <span className="text-sm font-medium">{formatCurrency(purchaseInvoice.tax_amount)}</span>
                                                 </div>
                                             )}

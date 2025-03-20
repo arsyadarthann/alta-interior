@@ -119,6 +119,12 @@ Route::middleware(['auth'])->group(function () {
         });
     });
 
+    Route::group(['prefix' => 'sales'], function () {
+        Route::group(['prefix' => 'orders'], function () {
+
+        });
+    });
+
     Route::fallback(function () {
         return Inertia::render('errors/error-page', [
             'status' => 404

@@ -2,10 +2,10 @@ import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Card } from '@/components/ui/card';
+import { Combobox } from '@/components/ui/combobox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToastNotification } from '@/hooks/use-toast-notification';
 import AppLayout from '@/layouts/app-layout';
 import { cn } from '@/lib/utils';
@@ -382,7 +382,7 @@ export default function Create({ branches = [], warehouses = [] }: { branches?: 
                     <Label htmlFor={`item_id_${index}`}>
                         Item <span className="text-red-500">*</span>
                     </Label>
-                    <Select
+                    <Combobox
                         value={selectedItemId ? String(selectedItemId) : ''}
                         onValueChange={(value) => {
                             if (isAddingNew) {
@@ -417,27 +417,21 @@ export default function Create({ branches = [], warehouses = [] }: { branches?: 
                                 updateAdjustmentItem(index, 'item_id', value);
                             }
                         }}
-                    >
-                        <SelectTrigger
-                            id={`item_id_${index}`}
-                            className={`w-full ${
-                                isAddingNew && errors[`new_item.item_id` as keyof typeof errors]
-                                    ? 'border-red-500 ring-red-100'
-                                    : !isAddingNew && errors[`stock_adjustment_details.${index}.item_id` as keyof typeof errors]
-                                      ? 'border-red-500 ring-red-100'
-                                      : ''
-                            }`}
-                        >
-                            <SelectValue placeholder="Select an item" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {getAvailableItems(isAddingNew ? -1 : index).map((item) => (
-                                <SelectItem key={item.id} value={String(item.id)}>
-                                    {item.name} ({item.code})
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                        options={getAvailableItems(isAddingNew ? -1 : index).map((item) => ({
+                            value: String(item.id),
+                            label: `${item.name} (${item.code})`,
+                        }))}
+                        placeholder="Select an item"
+                        searchPlaceholder="Search items..."
+                        initialDisplayCount={5}
+                        className={
+                            isAddingNew && errors[`new_item.item_id` as keyof typeof errors]
+                                ? 'border-red-500 ring-red-100'
+                                : !isAddingNew && errors[`stock_adjustment_details.${index}.item_id` as keyof typeof errors]
+                                  ? 'border-red-500 ring-red-100'
+                                  : ''
+                        }
+                    />
                 </div>
                 <div className="relative grid min-w-[140px] flex-1 gap-2">
                     <Label htmlFor={`before_adjustment_quantity_${index}`}>Before</Label>
@@ -697,11 +691,11 @@ export default function Create({ branches = [], warehouses = [] }: { branches?: 
                                             {errors.code && <p className="mt-1 text-xs text-red-500">{errors.code}</p>}
                                         </div>
 
-                                        <div className="space-y-2">
+                                        <div className="relative grid gap-2 space-y-2">
                                             <Label htmlFor="source">
                                                 Adjustment Source <span className="text-red-500">*</span>
                                             </Label>
-                                            <Select
+                                            <Combobox
                                                 value={
                                                     data.source_able_id && data.source_able_type
                                                         ? `${data.source_able_type}-${data.source_able_id}`
@@ -716,54 +710,30 @@ export default function Create({ branches = [], warehouses = [] }: { branches?: 
                                                         stock_adjustment_details: [],
                                                     }));
                                                 }}
+                                                options={
+                                                    !auth?.user?.branch_id
+                                                        ? [
+                                                              ...warehouses.map((warehouse) => ({
+                                                                  value: `warehouse-${warehouse.id}`,
+                                                                  label: warehouse.name,
+                                                              })),
+                                                              ...branches.map((branch) => ({
+                                                                  value: `branch-${branch.id}`,
+                                                                  label: branch.name,
+                                                              })),
+                                                          ]
+                                                        : branches
+                                                              .filter((branch) => branch.id === auth.user.branch_id)
+                                                              .map((branch) => ({
+                                                                  value: `branch-${branch.id}`,
+                                                                  label: branch.name,
+                                                              }))
+                                                }
+                                                placeholder="Select adjustment source"
+                                                searchPlaceholder="Search sources..."
                                                 disabled={!!auth?.user?.branch_id}
-                                            >
-                                                <SelectTrigger className={errors.source_able_id || errors.source_able_type ? 'border-red-500' : ''}>
-                                                    <SelectValue placeholder="Select adjustment source" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {!auth?.user?.branch_id && (
-                                                        <>
-                                                            {warehouses.length > 0 && (
-                                                                <SelectGroup>
-                                                                    {warehouses.map((warehouse) => (
-                                                                        <SelectItem
-                                                                            key={`warehouse-${warehouse.id}`}
-                                                                            value={`warehouse-${warehouse.id}`}
-                                                                        >
-                                                                            {warehouse.name}
-                                                                        </SelectItem>
-                                                                    ))}
-                                                                </SelectGroup>
-                                                            )}
-                                                            {branches.length > 0 && (
-                                                                <SelectGroup>
-                                                                    {branches.map((branch) => (
-                                                                        <SelectItem key={`branch-${branch.id}`} value={`branch-${branch.id}`}>
-                                                                            {branch.name}
-                                                                        </SelectItem>
-                                                                    ))}
-                                                                </SelectGroup>
-                                                            )}
-                                                        </>
-                                                    )}
-
-                                                    {auth?.user?.branch_id && (
-                                                        <SelectGroup>
-                                                            {branches.map((branch) => {
-                                                                if (branch.id === auth.user.branch_id) {
-                                                                    return (
-                                                                        <SelectItem key={`branch-${branch.id}`} value={`branch-${branch.id}`}>
-                                                                            {branch.name}
-                                                                        </SelectItem>
-                                                                    );
-                                                                }
-                                                                return null;
-                                                            })}
-                                                        </SelectGroup>
-                                                    )}
-                                                </SelectContent>
-                                            </Select>
+                                                className={errors.source_able_id || errors.source_able_type ? 'border-red-500' : ''}
+                                            />
                                             {(errors.source_able_id || errors.source_able_type) && (
                                                 <p className="text-sm text-red-500">{errors.source_able_id || errors.source_able_type}</p>
                                             )}

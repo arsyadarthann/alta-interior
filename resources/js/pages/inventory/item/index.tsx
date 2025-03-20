@@ -5,9 +5,9 @@ import { createNumberColumn } from '@/components/data-table/columns';
 import { FormDialog } from '@/components/form-dialog';
 import HeadingSmall from '@/components/heading-small';
 import { Button } from '@/components/ui/button';
+import { Combobox } from '@/components/ui/combobox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useToastNotification } from '@/hooks/use-toast-notification';
 import AppLayout from '@/layouts/app-layout';
@@ -397,18 +397,16 @@ export default function Item({
                                 <Label htmlFor="source" className="whitespace-nowrap">
                                     Location Filter:
                                 </Label>
-                                <Select value={selectedSource} onValueChange={handleSourceChange}>
-                                    <SelectTrigger className="w-[200px]">
-                                        <SelectValue placeholder="Filter by location" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {sources.map((source) => (
-                                            <SelectItem key={`${source.type}-${source.id}`} value={`${source.type}:${source.id}`}>
-                                                {source.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <Combobox
+                                    value={selectedSource}
+                                    onValueChange={handleSourceChange}
+                                    options={sources.map((source) => ({
+                                        value: `${source.type}:${source.id}`,
+                                        label: source.name,
+                                    }))}
+                                    placeholder="Filter by location"
+                                    searchPlaceholder="Search locations..."
+                                />
                             </div>
                         ) : (
                             <div className="flex items-center gap-2">
@@ -502,39 +500,38 @@ export default function Item({
                                 <Label htmlFor="item_category_id">
                                     Category <span className="text-red-500">*</span>
                                 </Label>
-                                <Select
+                                <Combobox
                                     value={createForm.data.item_category_id}
                                     onValueChange={(value) => createForm.setData('item_category_id', value)}
-                                >
-                                    <SelectTrigger className={createForm.errors.item_category_id ? 'border-red-500 ring-red-100' : ''}>
-                                        <SelectValue placeholder="Select a category" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {itemCategories.map((category) => (
-                                            <SelectItem key={category.id} value={category.id.toString()}>
-                                                {category.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                    options={itemCategories.map((category) => ({
+                                        value: category.id.toString(),
+                                        label: category.name,
+                                    }))}
+                                    placeholder="Select a category"
+                                    searchPlaceholder="Search categories..."
+                                    className={createForm.errors.item_category_id ? 'border-red-500 ring-red-100' : ''}
+                                />
+                                {createForm.errors.item_category_id && (
+                                    <p className="mt-1 text-xs text-red-500">{createForm.errors.item_category_id}</p>
+                                )}
                             </div>
 
                             <div className="relative grid gap-2 space-y-2">
                                 <Label htmlFor="item_unit_id">
                                     Unit <span className="text-red-500">*</span>
                                 </Label>
-                                <Select value={createForm.data.item_unit_id} onValueChange={(value) => createForm.setData('item_unit_id', value)}>
-                                    <SelectTrigger className={createForm.errors.item_unit_id ? 'border-red-500 ring-red-100' : ''}>
-                                        <SelectValue placeholder="Select a unit" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {itemUnits.map((unit) => (
-                                            <SelectItem key={unit.id} value={unit.id.toString()}>
-                                                {unit.name} ({unit.abbreviation})
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <Combobox
+                                    value={createForm.data.item_unit_id}
+                                    onValueChange={(value) => createForm.setData('item_unit_id', value)}
+                                    options={itemUnits.map((unit) => ({
+                                        value: unit.id.toString(),
+                                        label: `${unit.name} (${unit.abbreviation})`,
+                                    }))}
+                                    placeholder="Select a unit"
+                                    searchPlaceholder="Search units..."
+                                    className={createForm.errors.item_unit_id ? 'border-red-500 ring-red-100' : ''}
+                                />
+                                {createForm.errors.item_unit_id && <p className="mt-1 text-xs text-red-500">{createForm.errors.item_unit_id}</p>}
                             </div>
                         </div>
 
@@ -594,40 +591,42 @@ export default function Item({
                             />
                         </div>
 
-                        <div className="relative grid gap-2 space-y-2">
-                            <Label htmlFor="edit_item_category_id">
-                                Category <span className="text-red-500">*</span>
-                            </Label>
-                            <Select value={editForm.data.item_category_id} onValueChange={(value) => editForm.setData('item_category_id', value)}>
-                                <SelectTrigger className={editForm.errors.item_category_id ? 'border-red-500 ring-red-100' : ''}>
-                                    <SelectValue placeholder="Select a category" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {itemCategories.map((category) => (
-                                        <SelectItem key={category.id} value={category.id.toString()}>
-                                            {category.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="relative grid gap-2 space-y-2">
+                                <Label htmlFor="edit_item_category_id">
+                                    Category <span className="text-red-500">*</span>
+                                </Label>
+                                <Combobox
+                                    value={editForm.data.item_category_id}
+                                    onValueChange={(value) => editForm.setData('item_category_id', value)}
+                                    options={itemCategories.map((category) => ({
+                                        value: category.id.toString(),
+                                        label: category.name,
+                                    }))}
+                                    placeholder="Select a category"
+                                    searchPlaceholder="Search categories..."
+                                    className={editForm.errors.item_category_id ? 'border-red-500 ring-red-100' : ''}
+                                />
+                                {editForm.errors.item_category_id && <p className="mt-1 text-xs text-red-500">{editForm.errors.item_category_id}</p>}
+                            </div>
 
-                        <div className="relative grid gap-2 space-y-2">
-                            <Label htmlFor="edit_item_unit_id">
-                                Unit <span className="text-red-500">*</span>
-                            </Label>
-                            <Select value={editForm.data.item_unit_id} onValueChange={(value) => editForm.setData('item_unit_id', value)}>
-                                <SelectTrigger className={editForm.errors.item_unit_id ? 'border-red-500 ring-red-100' : ''}>
-                                    <SelectValue placeholder="Select a unit" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {itemUnits.map((unit) => (
-                                        <SelectItem key={unit.id} value={unit.id.toString()}>
-                                            {unit.name} ({unit.abbreviation})
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <div className="relative grid gap-2 space-y-2">
+                                <Label htmlFor="edit_item_unit_id">
+                                    Unit <span className="text-red-500">*</span>
+                                </Label>
+                                <Combobox
+                                    value={editForm.data.item_unit_id}
+                                    onValueChange={(value) => editForm.setData('item_unit_id', value)}
+                                    options={itemUnits.map((unit) => ({
+                                        value: unit.id.toString(),
+                                        label: `${unit.name} (${unit.abbreviation})`,
+                                    }))}
+                                    placeholder="Select a unit"
+                                    searchPlaceholder="Search units..."
+                                    className={editForm.errors.item_unit_id ? 'border-red-500 ring-red-100' : ''}
+                                />
+                                {editForm.errors.item_unit_id && <p className="mt-1 text-xs text-red-500">{editForm.errors.item_unit_id}</p>}
+                            </div>
                         </div>
 
                         <div className="relative grid gap-2 space-y-2">

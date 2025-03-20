@@ -2,6 +2,7 @@ import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Card } from '@/components/ui/card';
+import { Combobox } from '@/components/ui/combobox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -127,8 +128,8 @@ export default function Edit({ purchaseInvoice, suppliers = [], taxRates = [] }:
     const [notInvoicedGoodsReceipts, setNotInvoicedGoodsReceipts] = useState<GoodsReceipt[]>([]);
     const [goodsReceiptDetails, setGoodsReceiptDetails] = useState<GoodsReceiptDetail[]>([]);
     const [selectedGoodsReceipt, setSelectedGoodsReceipt] = useState<string>('');
-    const [calculatingTotals, setCalculatingTotals] = useState(false);
-    const [originalInvoiceDetails, setOriginalInvoiceDetails] = useState<Record<number, boolean>>({});
+    const [, setCalculatingTotals] = useState(false);
+    const [, setOriginalInvoiceDetails] = useState<Record<number, boolean>>({});
 
     const latestGoodsReceiptsRef = useRef<GoodsReceipt[]>([]);
     const initialLoadCompletedRef = useRef(false);
@@ -673,18 +674,19 @@ export default function Edit({ purchaseInvoice, suppliers = [], taxRates = [] }:
                                             <Label htmlFor="supplier_id">
                                                 Supplier <span className="text-red-500">*</span>
                                             </Label>
-                                            <Select value={data.supplier_id || undefined} disabled>
-                                                <SelectTrigger className={errors.supplier_id ? 'border-red-500' : ''}>
-                                                    <SelectValue placeholder="Select supplier" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {suppliers.map((supplier) => (
-                                                        <SelectItem key={supplier.id} value={supplier.id.toString()}>
-                                                            {supplier.name}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
+                                            <Combobox
+                                                value={data.supplier_id ? data.supplier_id.toString() : ''}
+                                                onValueChange={() => {}} // Empty function since it's disabled
+                                                options={suppliers.map((supplier) => ({
+                                                    value: supplier.id.toString(),
+                                                    label: supplier.name,
+                                                }))}
+                                                placeholder="Select supplier"
+                                                searchPlaceholder="Search suppliers..."
+                                                initialDisplayCount={5}
+                                                disabled={true}
+                                                className={errors.supplier_id ? 'border-red-500' : ''}
+                                            />
                                             {errors.supplier_id && <p className="text-sm text-red-500">{errors.supplier_id}</p>}
                                         </div>
 
@@ -809,21 +811,19 @@ export default function Edit({ purchaseInvoice, suppliers = [], taxRates = [] }:
                                                 </div>
                                             ) : (
                                                 <>
-                                                    {/* Goods Receipt Selection Dropdown */}
                                                     <div className="space-y-2">
                                                         <Label htmlFor="goods_receipt">Add Additional Goods Receipt</Label>
-                                                        <Select value={selectedGoodsReceipt} onValueChange={handleSelectedGoodsReceiptChange}>
-                                                            <SelectTrigger>
-                                                                <SelectValue placeholder="Select goods receipt" />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                {getAvailableGoodsReceipts().map((receipt) => (
-                                                                    <SelectItem key={receipt.id} value={receipt.id.toString()}>
-                                                                        {receipt.code} ({formatDate(receipt.date)})
-                                                                    </SelectItem>
-                                                                ))}
-                                                            </SelectContent>
-                                                        </Select>
+                                                        <Combobox
+                                                            value={selectedGoodsReceipt ? selectedGoodsReceipt.toString() : ''}
+                                                            onValueChange={handleSelectedGoodsReceiptChange}
+                                                            options={getAvailableGoodsReceipts().map((receipt) => ({
+                                                                value: receipt.id.toString(),
+                                                                label: `${receipt.code} (${formatDate(receipt.date)})`,
+                                                            }))}
+                                                            placeholder="Select goods receipt"
+                                                            searchPlaceholder="Search goods receipts..."
+                                                            initialDisplayCount={5}
+                                                        />
                                                         {getAvailableGoodsReceipts().length === 0 &&
                                                             data.supplier_id &&
                                                             receiptsToDisplay.length > 0 && (
@@ -833,7 +833,6 @@ export default function Edit({ purchaseInvoice, suppliers = [], taxRates = [] }:
                                                             )}
                                                     </div>
 
-                                                    {/* Items from Selected Goods Receipt */}
                                                     {selectedGoodsReceipt && (
                                                         <div className="rounded-md border p-4">
                                                             <div className="mb-2 flex items-center justify-between">

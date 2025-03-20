@@ -3,8 +3,8 @@ import { ActionColumn } from '@/components/data-table/action-column';
 import { createNumberColumn } from '@/components/data-table/columns';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
+import { Combobox } from '@/components/ui/combobox';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useToastNotification } from '@/hooks/use-toast-notification';
 import AppLayout from '@/layouts/app-layout';
@@ -273,24 +273,24 @@ export default function Index({ stockAudits, branches, warehouses, selectedSourc
                             <Label htmlFor="source" className="whitespace-nowrap">
                                 Location Filter:
                             </Label>
-                            <Select value={currentSource} onValueChange={handleSourceChange}>
-                                <SelectTrigger className="w-[200px]">
-                                    <SelectValue placeholder="Select source" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Locations</SelectItem>
-                                    {warehouses.map((warehouse) => (
-                                        <SelectItem key={`warehouse-${warehouse.id}`} value={`Warehouse:${warehouse.id}`}>
-                                            {warehouse.name}
-                                        </SelectItem>
-                                    ))}
-                                    {branches.map((branch) => (
-                                        <SelectItem key={`branch-${branch.id}`} value={`Branch:${branch.id}`}>
-                                            {branch.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <Combobox
+                                value={currentSource}
+                                onValueChange={handleSourceChange}
+                                options={[
+                                    { value: 'all', label: 'All Locations' },
+                                    ...warehouses.map((warehouse) => ({
+                                        value: `Warehouse:${warehouse.id}`,
+                                        label: warehouse.name,
+                                    })),
+                                    ...branches.map((branch) => ({
+                                        value: `Branch:${branch.id}`,
+                                        label: branch.name,
+                                    })),
+                                ]}
+                                placeholder="Select source"
+                                searchPlaceholder="Search locations..."
+                                className="w-[200px]"
+                            />
                         </div>
                     ) : (
                         <div className="flex items-center gap-2">

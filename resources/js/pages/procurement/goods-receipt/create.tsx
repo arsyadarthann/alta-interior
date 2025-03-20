@@ -2,10 +2,10 @@ import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Card } from '@/components/ui/card';
+import { Combobox } from '@/components/ui/combobox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToastNotification } from '@/hooks/use-toast-notification';
 import AppLayout from '@/layouts/app-layout';
 import { cn } from '@/lib/utils';
@@ -65,7 +65,7 @@ interface Props {
 export default function Create({ suppliers = [] }: Props) {
     const { showErrorToast } = useToastNotification();
     const [loading, setLoading] = useState(false);
-    const [unreceivedDetails, setUnreceivedDetails] = useState<UnreceivedPurchaseOrderDetail[]>([]);
+    const [, setUnreceivedDetails] = useState<UnreceivedPurchaseOrderDetail[]>([]);
     const [groupedPurchaseOrders, setGroupedPurchaseOrders] = useState<GroupedPurchaseOrder[]>([]);
     const [selectedPO, setSelectedPO] = useState<string>('');
     const [receiptQuantities, setReceiptQuantities] = useState<Record<number, string>>({});
@@ -128,25 +128,6 @@ export default function Create({ suppliers = [] }: Props) {
             preserveScroll: true,
             onError: showErrorToast,
         });
-    };
-
-    // Format date strings safely
-    const formatDate = (dateString: string | null | undefined): string => {
-        if (!dateString) return 'N/A';
-
-        try {
-            const date = new Date(dateString);
-
-            // Check if date is valid
-            if (isNaN(date.getTime())) {
-                return 'Invalid date';
-            }
-
-            return format(date, 'dd MMM yyyy');
-        } catch (error) {
-            console.error('Error formatting date:', error);
-            return 'Invalid date';
-        }
     };
 
     const fetchUnreceivedPurchaseOrders = useCallback(
@@ -417,18 +398,18 @@ export default function Create({ suppliers = [] }: Props) {
                                             <Label htmlFor="supplier_id">
                                                 Supplier <span className="text-red-500">*</span>
                                             </Label>
-                                            <Select value={data.supplier_id} onValueChange={handleSupplierChange}>
-                                                <SelectTrigger className={errors.supplier_id ? 'border-red-500' : ''}>
-                                                    <SelectValue placeholder="Select supplier" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {suppliers.map((supplier) => (
-                                                        <SelectItem key={supplier.id} value={supplier.id.toString()}>
-                                                            {supplier.name}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
+                                            <Combobox
+                                                value={data.supplier_id ? data.supplier_id.toString() : ''}
+                                                onValueChange={handleSupplierChange}
+                                                options={suppliers.map((supplier) => ({
+                                                    value: supplier.id.toString(),
+                                                    label: supplier.name,
+                                                }))}
+                                                placeholder="Select supplier"
+                                                searchPlaceholder="Search suppliers..."
+                                                initialDisplayCount={5}
+                                                className={errors.supplier_id ? 'border-red-500' : ''}
+                                            />
                                             {errors.supplier_id && <p className="text-sm text-red-500">{errors.supplier_id}</p>}
                                         </div>
 
@@ -506,18 +487,17 @@ export default function Create({ suppliers = [] }: Props) {
                                                     {/* Purchase Order Selection Dropdown */}
                                                     <div className="space-y-2">
                                                         <Label htmlFor="purchase_order">Purchase Order</Label>
-                                                        <Select value={selectedPO} onValueChange={handleSelectedPOChange}>
-                                                            <SelectTrigger>
-                                                                <SelectValue placeholder="Select purchase order" />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                {groupedPurchaseOrders.map((po) => (
-                                                                    <SelectItem key={po.id} value={po.id.toString()}>
-                                                                        {po.code} ({po.details.length} items)
-                                                                    </SelectItem>
-                                                                ))}
-                                                            </SelectContent>
-                                                        </Select>
+                                                        <Combobox
+                                                            value={selectedPO ? selectedPO.toString() : ''}
+                                                            onValueChange={handleSelectedPOChange}
+                                                            options={groupedPurchaseOrders.map((po) => ({
+                                                                value: po.id.toString(),
+                                                                label: `${po.code} (${po.details.length} items)`,
+                                                            }))}
+                                                            placeholder="Select purchase order"
+                                                            searchPlaceholder="Search purchase orders..."
+                                                            initialDisplayCount={5}
+                                                        />
                                                     </div>
 
                                                     {/* Items from Selected PO */}

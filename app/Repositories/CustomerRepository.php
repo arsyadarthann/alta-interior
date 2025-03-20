@@ -20,6 +20,11 @@ class CustomerRepository implements CustomerInterface
         return $this->customer->find($id);
     }
 
+    public function editById(int $id)
+    {
+        return $this->customer->with('customerPrices')->find($id);
+    }
+
     public function showById(int $id)
     {
         $customer = $this->getById($id);

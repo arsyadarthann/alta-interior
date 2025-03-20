@@ -2,6 +2,7 @@ import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Card } from '@/components/ui/card';
+import { Combobox } from '@/components/ui/combobox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -406,11 +407,11 @@ export default function EditPurchaseOrder({ suppliers = [], taxRates = [], purch
         return (
             <div className="mb-4 rounded-md border bg-gray-50 p-4">
                 <div className="flex flex-wrap items-start gap-3">
-                    <div className="relative grid min-w-[300px] flex-1 gap-2">
+                    <div className="relative grid min-w-[250px] flex-1 gap-2">
                         <Label htmlFor={`item_id_${index}`}>
                             Item <span className="text-red-500">*</span>
                         </Label>
-                        <Select
+                        <Combobox
                             value={selectedItemId ? String(selectedItemId) : ''}
                             onValueChange={(value) => {
                                 if (isAddingNew) {
@@ -442,27 +443,21 @@ export default function EditPurchaseOrder({ suppliers = [], taxRates = [], purch
                                     updatePurchaseOrderItem(index, 'item_id', value);
                                 }
                             }}
-                        >
-                            <SelectTrigger
-                                id={`item_id_${index}`}
-                                className={`w-full ${
-                                    isAddingNew && errors[`new_item.item_id` as keyof typeof errors]
-                                        ? 'border-red-500 ring-red-100'
-                                        : !isAddingNew && errors[`purchase_order_details.${index}.item_id` as keyof typeof errors]
-                                          ? 'border-red-500 ring-red-100'
-                                          : ''
-                                }`}
-                            >
-                                <SelectValue placeholder="Select an item" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {getAvailableItems(isAddingNew ? -1 : index).map((itm) => (
-                                    <SelectItem key={itm.id} value={String(itm.id)}>
-                                        {itm.name} ({itm.code})
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                            options={getAvailableItems(isAddingNew ? -1 : index).map((itm) => ({
+                                value: String(itm.id),
+                                label: `${itm.name} (${itm.code})`,
+                            }))}
+                            placeholder="Select an item"
+                            searchPlaceholder="Search items..."
+                            initialDisplayCount={5}
+                            className={
+                                isAddingNew && errors[`new_item.item_id` as keyof typeof errors]
+                                    ? 'border-red-500 ring-red-100'
+                                    : !isAddingNew && errors[`purchase_order_details.${index}.item_id` as keyof typeof errors]
+                                      ? 'border-red-500 ring-red-100'
+                                      : ''
+                            }
+                        />
                     </div>
                     <div className="relative grid min-w-[150px] flex-1 gap-2">
                         <Label htmlFor={`quantity_${index}`}>
@@ -653,22 +648,22 @@ export default function EditPurchaseOrder({ suppliers = [], taxRates = [], purch
                                             {errors.code && <p className="mt-1 text-xs text-red-500">{errors.code}</p>}
                                         </div>
 
-                                        <div className="space-y-2">
+                                        <div className="relative grid gap-2 space-y-2">
                                             <Label htmlFor="supplier_id">
                                                 Supplier <span className="text-red-500">*</span>
                                             </Label>
-                                            <Select value={data.supplier_id} onValueChange={(value) => setData('supplier_id', value)}>
-                                                <SelectTrigger className={errors.supplier_id ? 'border-red-500' : ''}>
-                                                    <SelectValue placeholder="Select supplier" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {suppliers.map((supplier) => (
-                                                        <SelectItem key={supplier.id} value={supplier.id.toString()}>
-                                                            {supplier.name}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
+                                            <Combobox
+                                                value={data.supplier_id ? data.supplier_id.toString() : ''}
+                                                onValueChange={(value) => setData('supplier_id', value)}
+                                                options={suppliers.map((supplier) => ({
+                                                    value: supplier.id.toString(),
+                                                    label: supplier.name,
+                                                }))}
+                                                placeholder="Select supplier"
+                                                searchPlaceholder="Search suppliers..."
+                                                initialDisplayCount={5}
+                                                className={errors.supplier_id ? 'border-red-500' : ''}
+                                            />
                                             {errors.supplier_id && <p className="text-sm text-red-500">{errors.supplier_id}</p>}
                                         </div>
 
