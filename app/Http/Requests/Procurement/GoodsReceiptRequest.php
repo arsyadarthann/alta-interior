@@ -18,6 +18,8 @@ class GoodsReceiptRequest extends FormRequest
             'goods_receipt_purchase_order.*.goods_receipt_details' => 'required|array',
             'goods_receipt_purchase_order.*.goods_receipt_details.*.purchase_order_detail_id' => 'required|exists:purchase_order_details,id',
             'goods_receipt_purchase_order.*.goods_receipt_details.*.received_quantity' => 'required|numeric|min:1',
+            'goods_receipt_purchase_order.*.goods_receipt_details.*.price_per_unit' => 'required|numeric|min:1',
+            'goods_receipt_purchase_order.*.goods_receipt_details.*.total_price' => 'required|numeric|min:1',
         ];
     }
 

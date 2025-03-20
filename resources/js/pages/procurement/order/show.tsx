@@ -27,8 +27,6 @@ interface OrderDetail {
     purchase_order_id: number;
     item_id: number;
     quantity: number | string;
-    unit_price: number;
-    total_price: number;
     item: {
         id: number;
         name: string;
@@ -40,9 +38,35 @@ interface OrderDetail {
     };
 }
 
-interface TaxRate {
+interface ReceiptDetail {
     id: number;
-    rate: number;
+    goods_receipt_purchase_order_id: number;
+    purchase_order_detail_id: number;
+    received_quantity: string;
+    price_per_unit: string;
+    total_price: string;
+    cogs: string;
+    created_at: string;
+    updated_at: string;
+    laravel_through_key: number;
+}
+
+interface GoodsReceipt {
+    id: number;
+    code: string;
+    date: string;
+    supplier_id: number;
+    received_by: string;
+    status: string;
+    created_at: string;
+    updated_at: string;
+    pivot: {
+        purchase_order_id: number;
+        goods_receipt_id: number;
+        created_at: string;
+        updated_at: string;
+    };
+    goods_receipt_details: ReceiptDetail[];
 }
 
 interface PurchaseOrderProps {
@@ -53,20 +77,16 @@ interface PurchaseOrderProps {
         supplier_id: number;
         expected_delivery_date: string;
         status: string;
-        total_amount: number;
-        tax_rate_id: number | null;
-        tax_amount: number;
-        grand_total: number;
         supplier: {
             id: number;
             name: string;
         };
-        tax_rate: TaxRate | null;
         user: {
             id: number;
             name: string;
         };
         purchase_order_details: OrderDetail[];
+        goods_receipts: GoodsReceipt[];
     };
 }
 
@@ -92,8 +112,9 @@ export default function Show({ purchaseOrder }: PurchaseOrderProps) {
         router.visit(route('procurement.order.edit', purchaseOrder.id));
     };
 
-    const formatCurrency = (value: number): string => {
-        const rounded = Math.round(value * 100) / 100;
+    const formatCurrency = (value: string | number): string => {
+        const numValue = typeof value === 'string' ? parseFloat(value) : value;
+        const rounded = Math.round(numValue * 100) / 100;
 
         const parts = rounded.toString().split('.');
 
@@ -125,21 +146,48 @@ export default function Show({ purchaseOrder }: PurchaseOrderProps) {
                 className: 'text-center',
             },
         },
+    ];
+
+    // Column definition for receipt history table
+    const receiptColumns: ColumnDef<GoodsReceipt>[] = [
+        createNumberColumn<GoodsReceipt>(),
         {
-            accessorKey: 'unit_price',
-            header: 'Unit Price',
-            cell: ({ row }) => {
-                return formatCurrency(parseFloat(row.getValue('unit_price')));
-            },
+            accessorKey: 'code',
+            header: 'Receipt Code',
+            cell: ({ row }) => (
+                <Link href={route('procurement.receipt.show', row.original.id)} className="text-blue-600 hover:text-blue-800">
+                    {row.original.code}
+                </Link>
+            ),
+        },
+        {
+            accessorKey: 'date',
+            header: 'Date',
+            cell: ({ row }) => formatDate(row.original.date),
+        },
+        {
+            accessorKey: 'received_by',
+            header: 'Received By',
+        },
+        {
+            accessorKey: 'status',
+            header: 'Status',
+            cell: ({ row }) => <div>{getReceiptStatusBadge(row.original.status)}</div>,
+        },
+        {
+            accessorKey: 'items_count',
+            header: 'Items',
+            cell: ({ row }) => `${row.original.goods_receipt_details.length} items`,
             meta: {
-                className: 'text-right',
+                className: 'text-center',
             },
         },
         {
-            accessorKey: 'total_price',
-            header: 'Total Price',
+            accessorKey: 'total_amount',
+            header: 'Total Amount',
             cell: ({ row }) => {
-                return formatCurrency(parseFloat(row.getValue('total_price')));
+                const total = row.original.goods_receipt_details.reduce((sum, detail) => sum + parseFloat(detail.total_price), 0);
+                return formatCurrency(total);
             },
             meta: {
                 className: 'text-right font-medium',
@@ -176,6 +224,33 @@ export default function Show({ purchaseOrder }: PurchaseOrderProps) {
                 variant = 'outline';
                 classes = 'bg-green-100 text-green-800 hover:bg-green-100 border-green-200';
                 label = 'Received';
+                break;
+            default:
+                label = status.charAt(0).toUpperCase() + status.slice(1);
+        }
+
+        return (
+            <Badge variant={variant as never} className={classes}>
+                {label}
+            </Badge>
+        );
+    };
+
+    const getReceiptStatusBadge = (status: string) => {
+        let variant = 'outline';
+        let classes = '';
+        let label = '';
+
+        switch (status) {
+            case 'not_invoiced':
+                variant = 'outline';
+                classes = 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-yellow-200';
+                label = 'Not Invoiced';
+                break;
+            case 'invoiced':
+                variant = 'outline';
+                classes = 'bg-green-100 text-green-800 hover:bg-green-100 border-green-200';
+                label = 'Invoiced';
                 break;
             default:
                 label = status.charAt(0).toUpperCase() + status.slice(1);
@@ -250,26 +325,6 @@ export default function Show({ purchaseOrder }: PurchaseOrderProps) {
                                             </div>
                                         </div>
                                     )}
-
-                                    <div className="mt-4 border-t border-gray-100 pt-4">
-                                        <h3 className="mb-3 text-sm font-semibold text-gray-900">Order Summary</h3>
-                                        <div className="space-y-2">
-                                            <div className="flex justify-between">
-                                                <span className="text-sm text-gray-600">Subtotal</span>
-                                                <span className="text-sm font-medium">{formatCurrency(purchaseOrder.total_amount)}</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-sm text-gray-600">
-                                                    Tax {purchaseOrder.tax_rate ? `(${purchaseOrder.tax_rate.rate}%)` : ''}
-                                                </span>
-                                                <span className="text-sm font-medium">{formatCurrency(purchaseOrder.tax_amount)}</span>
-                                            </div>
-                                            <div className="mt-2 flex justify-between border-t pt-2">
-                                                <span className="font-medium">Grand Total</span>
-                                                <span className="font-bold text-gray-900">{formatCurrency(purchaseOrder.grand_total)}</span>
-                                            </div>
-                                        </div>
-                                    </div>
                                 </div>
                             </div>
                         </Card>
@@ -295,6 +350,30 @@ export default function Show({ purchaseOrder }: PurchaseOrderProps) {
                             </div>
                         </Card>
                     </div>
+                </div>
+
+                {/* Goods Receipt History Section */}
+                <div className="mt-6">
+                    <Card className="border-0 shadow-sm">
+                        <div className="p-6">
+                            <div className="mb-4 flex items-center justify-between">
+                                <div className="flex items-center">
+                                    <h2 className="text-base font-semibold text-gray-900">Receipt History</h2>
+                                    <Badge variant="secondary" className="ml-2">
+                                        {purchaseOrder.goods_receipts?.length || 0} receipts
+                                    </Badge>
+                                </div>
+                            </div>
+
+                            {purchaseOrder.goods_receipts && purchaseOrder.goods_receipts.length > 0 ? (
+                                <DataTable data={purchaseOrder.goods_receipts} columns={receiptColumns} pageSize={5} />
+                            ) : (
+                                <div className="py-8 text-center text-gray-500">
+                                    <p>No receipt history found for this purchase order</p>
+                                </div>
+                            )}
+                        </div>
+                    </Card>
                 </div>
             </div>
         </AppLayout>

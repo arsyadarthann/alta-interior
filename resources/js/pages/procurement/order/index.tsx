@@ -107,7 +107,7 @@ export default function Index({ purchaseOrders }: Props) {
                     label = 'Pending';
                 } else if (status === 'partially_received') {
                     variant = 'outline';
-                    classes = 'bg-green-100 text-green-800 hover:bg-green-100 border-green-200';
+                    classes = 'bg-blue-100 text-blue-800 hover:bg-blue-100 border-blue-200';
                     label = 'Partially Received';
                 } else if (status === 'received') {
                     variant = 'outline';

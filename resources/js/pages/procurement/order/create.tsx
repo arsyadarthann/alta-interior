@@ -6,7 +6,6 @@ import { Combobox } from '@/components/ui/combobox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToastNotification } from '@/hooks/use-toast-notification';
 import AppLayout from '@/layouts/app-layout';
 import { cn } from '@/lib/utils';
@@ -58,22 +57,15 @@ type Item = {
     item_unit?: ItemUnit;
 };
 
-type TaxRate = {
-    id: number;
-    rate: number;
-};
-
 interface Props {
     suppliers?: Supplier[];
-    taxRates?: TaxRate[];
 }
 
-export default function Create({ suppliers = [], taxRates = [] }: Props) {
+export default function Create({ suppliers = [] }: Props) {
     const { showErrorToast } = useToastNotification();
     const [items, setItems] = useState<Item[]>([]);
     const [selectedItemNames, setSelectedItemNames] = useState<Record<number, string>>({});
     const [selectedItemUnits, setSelectedItemUnits] = useState<Record<number, string>>({});
-    const [selectedItemPrices, setSelectedItemPrices] = useState<Record<number, number>>({});
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
     const [addingItem, setAddingItem] = useState<boolean>(false);
     const [, setInitialized] = useState(false);
@@ -83,78 +75,15 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
         date: new Date(),
         supplier_id: '',
         expected_delivery_date: new Date(),
-        total_amount: 0,
-        tax_rate_id: null,
-        tax_amount: 0,
-        grand_total: 0,
         purchase_order_details: [] as {
             item_id: number;
             quantity: number | string;
-            unit_price: number;
-            total_price: number;
         }[],
         new_item: {
             item_id: 0,
             quantity: '',
-            unit_price: 0,
-            total_price: 0,
         },
     });
-
-    const formatCurrency = (value: number): string => {
-        const rounded = Math.round(value * 100) / 100;
-
-        const parts = rounded.toString().split('.');
-
-        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-
-        if (parts.length > 1 && parts[1] !== '00' && parseInt(parts[1]) !== 0) {
-            return 'Rp ' + parts[0] + ',' + (parts[1].length === 1 ? parts[1] + '0' : parts[1]);
-        }
-
-        return 'Rp ' + parts[0];
-    };
-
-    const formatTaxRate = (value: number): string => {
-        const rounded = Math.round(value * 100) / 100;
-
-        const parts = rounded.toString().split('.');
-
-        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-
-        if (parts.length > 1 && parts[1] !== '00' && parseInt(parts[1]) !== 0) {
-            return parts[0] + ',' + (parts[1].length === 1 ? parts[1] + '0' : parts[1]);
-        }
-
-        return parts[0];
-    };
-
-    useEffect(() => {
-        const calculateTotals = () => {
-            const totalAmount = data.purchase_order_details.reduce((sum, item) => sum + Number(item.total_price || 0), 0);
-
-            let taxAmount = 0;
-            if (data.tax_rate_id) {
-                const selectedTaxRate = taxRates.find((tax) => tax.id.toString() === data.tax_rate_id);
-                if (selectedTaxRate) {
-                    taxAmount = totalAmount * (selectedTaxRate.rate / 100);
-                }
-            }
-
-            const grandTotal = totalAmount + taxAmount;
-
-            if (data.total_amount !== totalAmount || data.tax_amount !== taxAmount || data.grand_total !== grandTotal) {
-                setData((prevData) => ({
-                    ...prevData,
-                    total_amount: totalAmount,
-                    tax_amount: taxAmount,
-                    grand_total: grandTotal,
-                }));
-            }
-        };
-
-        calculateTotals();
-    }, [data.purchase_order_details, data.tax_rate_id, taxRates, setData]);
 
     const fetchPurchaseOrderCode = useCallback(() => {
         fetch(route('procurement.order.getCode'), {
@@ -244,8 +173,6 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
         setData('new_item', {
             item_id: 0,
             quantity: '',
-            unit_price: 0,
-            total_price: 0,
         });
     };
 
@@ -264,8 +191,6 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
                 setData('new_item', {
                     item_id: 0,
                     quantity: '',
-                    unit_price: 0,
-                    total_price: 0,
                 });
             } else {
                 showErrorToast(['Please select an item']);
@@ -278,38 +203,32 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
 
         const newSelectedItemNames = { ...selectedItemNames };
         const newSelectedItemUnits = { ...selectedItemUnits };
-        const newSelectedItemPrices = { ...selectedItemPrices };
 
         delete newSelectedItemNames[index];
         delete newSelectedItemUnits[index];
-        delete newSelectedItemPrices[index];
 
         updatedItems.splice(index, 1);
         setData('purchase_order_details', updatedItems);
 
         const updatedSelectedItemNames: Record<number, string> = {};
         const updatedSelectedItemUnits: Record<number, string> = {};
-        const updatedSelectedItemPrices: Record<number, number> = {};
 
         Object.keys(newSelectedItemNames).forEach((key) => {
             const keyNum = parseInt(key, 10);
             if (keyNum > index) {
                 updatedSelectedItemNames[keyNum - 1] = newSelectedItemNames[keyNum];
                 updatedSelectedItemUnits[keyNum - 1] = newSelectedItemUnits[keyNum];
-                updatedSelectedItemPrices[keyNum - 1] = newSelectedItemPrices[keyNum];
             } else {
                 updatedSelectedItemNames[keyNum] = newSelectedItemNames[keyNum];
                 updatedSelectedItemUnits[keyNum] = newSelectedItemUnits[keyNum];
-                updatedSelectedItemPrices[keyNum] = newSelectedItemPrices[keyNum];
             }
         });
 
         setSelectedItemNames(updatedSelectedItemNames);
         setSelectedItemUnits(updatedSelectedItemUnits);
-        setSelectedItemPrices(updatedSelectedItemPrices);
     };
 
-    const updatePurchaseOrderItem = (index: number, field: 'item_id' | 'quantity' | 'unit_price', value: string | number) => {
+    const updatePurchaseOrderItem = (index: number, field: 'item_id' | 'quantity', value: string | number) => {
         const updatedItems = [...data.purchase_order_details];
 
         if (field === 'item_id') {
@@ -325,14 +244,9 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
                 newSelectedItemUnits[index] = selectedItem.item_unit?.abbreviation || '';
                 setSelectedItemUnits(newSelectedItemUnits);
 
-                const newSelectedItemPrices = { ...selectedItemPrices };
-                setSelectedItemPrices(newSelectedItemPrices);
-
                 updatedItems[index] = {
                     ...updatedItems[index],
                     item_id: itemId,
-                    unit_price: '',
-                    total_price: 0,
                 };
 
                 setData('purchase_order_details', updatedItems);
@@ -342,25 +256,9 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
 
             if (typeof qty === 'number' && qty < 1) qty = 1;
 
-            const unitPrice = updatedItems[index].unit_price || 0;
-            const totalPrice = typeof qty === 'number' ? unitPrice * qty : 0;
-
             updatedItems[index] = {
                 ...updatedItems[index],
                 quantity: qty,
-                total_price: totalPrice,
-            };
-
-            setData('purchase_order_details', updatedItems);
-        } else if (field === 'unit_price') {
-            const unitPrice = value === '' ? '' : Number(value);
-            const quantity = Number(updatedItems[index].quantity || 0);
-            const totalPrice = unitPrice === '' ? 0 : unitPrice * quantity;
-
-            updatedItems[index] = {
-                ...updatedItems[index],
-                unit_price: unitPrice,
-                total_price: totalPrice,
             };
 
             setData('purchase_order_details', updatedItems);
@@ -377,8 +275,6 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
         orderItem: {
             item_id: number;
             quantity: number | string;
-            unit_price: number;
-            total_price: number;
         } | null = null,
         index: number = -1,
         isAddingNew: boolean = false,
@@ -404,8 +300,6 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
                                         const tempItem = {
                                             item_id: itemId,
                                             quantity: data.new_item.quantity,
-                                            unit_price: '',
-                                            total_price: 0,
                                         };
 
                                         const newSelectedItemNames = { ...selectedItemNames };
@@ -415,9 +309,6 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
                                         const newSelectedItemUnits = { ...selectedItemUnits };
                                         newSelectedItemUnits[data.purchase_order_details.length] = selectedItem.item_unit?.abbreviation || '';
                                         setSelectedItemUnits(newSelectedItemUnits);
-
-                                        const newSelectedItemPrices = { ...selectedItemPrices };
-                                        setSelectedItemPrices(newSelectedItemPrices);
 
                                         setData('new_item', tempItem);
                                     }
@@ -458,13 +349,9 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
                                     if (qty !== '' && typeof qty === 'number' && qty < 1) qty = 1;
 
                                     if (isAddingNew) {
-                                        const unitPrice = data.new_item.unit_price || 0;
-                                        const totalPrice = typeof qty === 'number' ? unitPrice * qty : 0;
-
                                         setData('new_item', {
                                             ...data.new_item,
                                             quantity: qty,
-                                            total_price: totalPrice,
                                         });
                                     } else {
                                         updatePurchaseOrderItem(index, 'quantity', qty);
@@ -487,50 +374,6 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
                             <p className="mt-1 text-xs text-red-500">{errors[`purchase_order_details.${index}.quantity` as keyof typeof errors]}</p>
                         )}
                     </div>
-                    <div className="relative grid min-w-[150px] flex-1 gap-2">
-                        <Label htmlFor={`unit_price_${index}`}>
-                            Unit Price <span className="text-red-500">*</span>
-                        </Label>
-                        <Input
-                            id={`unit_price_${index}`}
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={item.unit_price === 0 || item.unit_price === '' ? '' : item.unit_price}
-                            onChange={(e) => {
-                                const value = e.target.value;
-                                const unitPrice = value === '' ? '' : Number(value);
-
-                                if (isAddingNew) {
-                                    const quantity = Number(data.new_item.quantity || 0);
-                                    const totalPrice = unitPrice === '' ? 0 : unitPrice * quantity;
-
-                                    setData('new_item', {
-                                        ...data.new_item,
-                                        unit_price: unitPrice,
-                                        total_price: totalPrice,
-                                    });
-                                } else {
-                                    updatePurchaseOrderItem(index, 'unit_price', unitPrice);
-                                }
-                            }}
-                            placeholder="Enter unit price"
-                            className={`[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${
-                                isAddingNew && errors[`new_item.unit_price` as keyof typeof errors]
-                                    ? 'border-red-500 ring-red-100'
-                                    : !isAddingNew && errors[`purchase_order_details.${index}.unit_price` as keyof typeof errors]
-                                      ? 'border-red-500 ring-red-100'
-                                      : ''
-                            }`}
-                        />
-                        {!isAddingNew && errors[`purchase_order_details.${index}.unit_price` as keyof typeof errors] && (
-                            <p className="mt-1 text-xs text-red-500">{errors[`purchase_order_details.${index}.unit_price` as keyof typeof errors]}</p>
-                        )}
-                    </div>
-                    <div className="relative grid min-w-[150px] flex-1 gap-2">
-                        <Label htmlFor={`total_price_${index}`}>Total Price</Label>
-                        <Input id={`total_price_${index}`} type="number" value={Number(item.total_price || 0)} disabled className="bg-gray-100" />
-                    </div>
                     <div className="flex-none self-end pb-[2px]">
                         <Button
                             type="button"
@@ -551,8 +394,6 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
         orderItem: {
             item_id: number;
             quantity: number | string;
-            unit_price: number;
-            total_price: number;
         },
         index: number,
     ) => {
@@ -568,12 +409,6 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
                         <div className="flex flex-wrap gap-2">
                             <span className="rounded-full bg-gray-100 px-2 py-0.5 text-sm text-gray-600">
                                 Quantity: {orderItem.quantity} {itemUnit}
-                            </span>
-                            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-sm text-gray-800">
-                                Unit Price: {formatCurrency(Number(orderItem.unit_price))}
-                            </span>
-                            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-sm font-medium text-gray-800">
-                                Total: {formatCurrency(Number(orderItem.total_price))}
                             </span>
                         </div>
                     </div>
@@ -720,33 +555,6 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
                                                 <p className="mt-1 text-xs text-red-500">{errors.expected_delivery_date}</p>
                                             )}
                                         </div>
-
-                                        <div className="space-y-2">
-                                            <Label htmlFor="tax_rate_id">Tax Rate</Label>
-                                            <Select
-                                                value={data.tax_rate_id === null || data.tax_rate_id === '' ? '0' : data.tax_rate_id}
-                                                onValueChange={(value) => {
-                                                    if (value === '0') {
-                                                        setData('tax_rate_id', null);
-                                                    } else {
-                                                        setData('tax_rate_id', value);
-                                                    }
-                                                }}
-                                            >
-                                                <SelectTrigger className={errors.tax_rate_id ? 'border-red-500' : ''}>
-                                                    <SelectValue placeholder="Select tax rate (optional)" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="0">No Tax</SelectItem>
-                                                    {taxRates.map((taxRate) => (
-                                                        <SelectItem key={taxRate.id} value={taxRate.id.toString()}>
-                                                            {formatTaxRate(taxRate.rate)}%
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                            {errors.tax_rate_id && <p className="text-sm text-red-500">{errors.tax_rate_id}</p>}
-                                        </div>
                                     </div>
                                 </div>
                             </Card>
@@ -796,26 +604,6 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
                                         )}
                                     </div>
                                 </div>
-
-                                {data.purchase_order_details.length > 0 && (
-                                    <div className="border-t p-6">
-                                        <h3 className="mb-3 text-sm font-semibold text-gray-900">Order Summary</h3>
-                                        <div className="space-y-2">
-                                            <div className="flex justify-between">
-                                                <span className="text-sm text-gray-600">Subtotal</span>
-                                                <span className="text-sm font-medium">{formatCurrency(data.total_amount)}</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-sm text-gray-600">Tax</span>
-                                                <span className="text-sm font-medium">{formatCurrency(data.tax_amount)}</span>
-                                            </div>
-                                            <div className="mt-2 flex justify-between border-t pt-2">
-                                                <span className="font-medium">Grand Total</span>
-                                                <span className="font-bold text-gray-900">{formatCurrency(data.grand_total)}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
                             </Card>
                         </div>
                     </div>

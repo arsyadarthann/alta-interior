@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\DB;
 class PurchaseOrderRepository implements PurchaseOrderInterface
 {
     const GENERAL_RELATIONSHIPS = [
-        'supplier', 'taxRate:id,rate'
+        'supplier'
     ];
 
     public function __construct(private PurchaseOrder $purchaseOrder) {}
@@ -26,7 +26,7 @@ class PurchaseOrderRepository implements PurchaseOrderInterface
     public function getById(int $id)
     {
         return $this->purchaseOrder
-            ->with([...self::GENERAL_RELATIONSHIPS, 'purchaseOrderDetails.item.itemUnit'])
+            ->with([...self::GENERAL_RELATIONSHIPS, 'purchaseOrderDetails.item.itemUnit', 'goodsReceipts.goodsReceiptDetails'])
             ->find($id);
     }
 
@@ -38,18 +38,12 @@ class PurchaseOrderRepository implements PurchaseOrderInterface
                 'date' => $data['date'],
                 'supplier_id' => $data['supplier_id'],
                 'expected_delivery_date' => $data['expected_delivery_date'],
-                'total_amount' => $data['total_amount'],
-                'tax_rate_id' => $data['tax_rate_id'] ?? null,
-                'tax_amount' => $data['tax_amount'],
-                'grand_total' => $data['grand_total'],
             ]);
 
             foreach ($data['purchase_order_details'] as $purchaseOrderDetail) {
                 $purchaseOrder->purchaseOrderDetails()->create([
                     'item_id' => $purchaseOrderDetail['item_id'],
                     'quantity' => $purchaseOrderDetail['quantity'],
-                    'unit_price' => $purchaseOrderDetail['unit_price'],
-                    'total_price' => $purchaseOrderDetail['total_price'],
                 ]);
             }
 
@@ -66,10 +60,6 @@ class PurchaseOrderRepository implements PurchaseOrderInterface
                 'date' => $data['date'],
                 'supplier_id' => $data['supplier_id'],
                 'expected_delivery_date' => $data['expected_delivery_date'],
-                'total_amount' => $data['total_amount'],
-                'tax_rate_id' => $data['tax_rate_id'] ?? null,
-                'tax_amount' => $data['tax_amount'],
-                'grand_total' => $data['grand_total'],
             ]);
 
             $submittedIds = collect($data['purchase_order_details'])->pluck('id')->filter()->toArray();
@@ -82,8 +72,6 @@ class PurchaseOrderRepository implements PurchaseOrderInterface
                 ], [
                     'item_id' => $purchaseOrderDetail['item_id'],
                     'quantity' => $purchaseOrderDetail['quantity'],
-                    'unit_price' => $purchaseOrderDetail['unit_price'],
-                    'total_price' => $purchaseOrderDetail['total_price'],
                 ]);
             }
         });

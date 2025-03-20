@@ -45,8 +45,6 @@ type UnreceivedPurchaseOrderDetail = {
     item_code: string;
     item_abbreviation: string;
     ordered_quantity: string | number;
-    unit_price: string | number;
-    total_price: string | number;
     received_quantity: string | number;
     remaining_quantity: string | number;
 };
@@ -69,6 +67,8 @@ export default function Create({ suppliers = [] }: Props) {
     const [groupedPurchaseOrders, setGroupedPurchaseOrders] = useState<GroupedPurchaseOrder[]>([]);
     const [selectedPO, setSelectedPO] = useState<string>('');
     const [receiptQuantities, setReceiptQuantities] = useState<Record<number, string>>({});
+    const [receiptPrices, setReceiptPrices] = useState<Record<number, string>>({});
+    const [receiptTotals, setReceiptTotals] = useState<Record<number, string>>({});
 
     const { data, setData, post, processing, errors } = useForm({
         code: '',
@@ -85,6 +85,8 @@ export default function Create({ suppliers = [] }: Props) {
                 ordered_quantity: number;
                 remaining_quantity: number;
                 received_quantity: number;
+                price_per_unit: number;
+                total_price: number;
                 item_unit: string;
             }[];
         }[],
@@ -105,6 +107,15 @@ export default function Create({ suppliers = [] }: Props) {
 
         // Otherwise, display with up to 2 decimal places
         return numValue.toFixed(2).replace(/\.?0+$/, '');
+    };
+
+    const calculateTotal = (quantity: string, price: string) => {
+        const qty = parseFloat(quantity || '0');
+        const prc = parseFloat(price || '0');
+
+        if (isNaN(qty) || isNaN(prc)) return '0';
+
+        return (qty * prc).toString();
     };
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -189,6 +200,8 @@ export default function Create({ suppliers = [] }: Props) {
                     // Reset the selection state
                     setSelectedPO('');
                     setReceiptQuantities({});
+                    setReceiptPrices({});
+                    setReceiptTotals({});
 
                     // Reset the goods receipt purchase orders
                     setData('goods_receipt_purchase_order', []);
@@ -214,38 +227,99 @@ export default function Create({ suppliers = [] }: Props) {
     const handleSelectedPOChange = (poId: string) => {
         setSelectedPO(poId);
 
-        // Initialize empty receipt quantities for this PO's items
+        // Initialize empty receipt quantities and prices for this PO's items
         if (poId) {
             const po = groupedPurchaseOrders.find((p) => p.id.toString() === poId);
             if (po) {
                 const newQuantities = { ...receiptQuantities };
+                const newPrices = { ...receiptPrices };
+                const newTotals = { ...receiptTotals };
+
                 po.details.forEach((detail) => {
-                    // Initialize with empty string (not pre-filled)
+                    // Initialize with empty strings (not pre-filled)
                     newQuantities[detail.purchase_order_detail_id] = '';
+                    newPrices[detail.purchase_order_detail_id] = '';
+                    newTotals[detail.purchase_order_detail_id] = '';
                 });
+
                 setReceiptQuantities(newQuantities);
+                setReceiptPrices(newPrices);
+                setReceiptTotals(newTotals);
             }
         }
     };
 
-    const handleReceiptQuantityChange = (poDetailId: number, value: string) => {
+    const handleReceiptQuantityChange = (poDetailId: number, value: string, maxQuantity: number) => {
         // Allow empty string for blank input
         if (value === '') {
             setReceiptQuantities({
                 ...receiptQuantities,
                 [poDetailId]: value,
             });
+            // Update total when quantity changes
+            const updatedTotal = calculateTotal(value, receiptPrices[poDetailId] || '0');
+            setReceiptTotals({
+                ...receiptTotals,
+                [poDetailId]: updatedTotal,
+            });
             return;
         }
 
         // Otherwise validate as number
-        const quantity = Number(value);
+        let quantity = Number(value);
         if (isNaN(quantity) || quantity < 0) return;
+
+        // Enforce maximum quantity (remaining quantity)
+        if (quantity > maxQuantity) {
+            quantity = maxQuantity;
+            value = quantity.toString();
+        }
 
         // Update the receipt quantities
         setReceiptQuantities({
             ...receiptQuantities,
             [poDetailId]: value,
+        });
+
+        // Update total when quantity changes
+        const updatedTotal = calculateTotal(value, receiptPrices[poDetailId] || '0');
+        setReceiptTotals({
+            ...receiptTotals,
+            [poDetailId]: updatedTotal,
+        });
+    };
+
+    const handleReceiptPriceChange = (poDetailId: number, value: string) => {
+        // Allow empty string for blank input
+        if (value === '') {
+            setReceiptPrices({
+                ...receiptPrices,
+                [poDetailId]: value,
+            });
+            // Update total when price changes
+            const updatedTotal = calculateTotal(receiptQuantities[poDetailId] || '0', value);
+            setReceiptTotals({
+                ...receiptTotals,
+                [poDetailId]: updatedTotal,
+            });
+            return;
+        }
+
+        // Otherwise validate as number
+        const price = Number(value);
+        if (isNaN(price) || price < 0) return;
+
+        // Update the receipt prices
+        setReceiptPrices({
+            ...receiptPrices,
+            [poDetailId]: value,
+        });
+
+        // Update total when price changes
+        const updatedTotal = calculateTotal(receiptQuantities[poDetailId] || '0', value);
+        setReceiptTotals({
+            ...receiptTotals,
+            [poDetailId]: updatedTotal,
         });
     };
 
@@ -253,6 +327,7 @@ export default function Create({ suppliers = [] }: Props) {
         const poId = detail.purchase_order_id;
         const poDetailId = detail.purchase_order_detail_id;
         const quantityStr = receiptQuantities[poDetailId] || '';
+        const priceStr = receiptPrices[poDetailId] || '';
 
         // Skip if quantity is empty or 0
         if (quantityStr === '' || Number(quantityStr) <= 0) {
@@ -260,64 +335,73 @@ export default function Create({ suppliers = [] }: Props) {
             return;
         }
 
+        // Skip if price is empty or 0
+        if (priceStr === '' || Number(priceStr) <= 0) {
+            showErrorToast(['Please enter a valid price']);
+            return;
+        }
+
         const quantity = Number(quantityStr);
+        const price = Number(priceStr);
+        const total = quantity * price;
+
+        // Make a deep copy of the current POs
+        const updatedPOs = [...data.goods_receipt_purchase_order];
 
         // Check if we already have this PO in our form
-        let poIndex = data.goods_receipt_purchase_order.findIndex((po) => po.purchase_order_id === poId);
+        let poIndex = updatedPOs.findIndex((po) => po.purchase_order_id === poId);
 
         // If not, add it
         if (poIndex === -1) {
+            // Create the new PO object with empty details array
             const newPO = {
                 purchase_order_id: poId,
                 purchase_order_code: detail.purchase_order_code,
                 goods_receipt_details: [],
             };
 
-            setData('goods_receipt_purchase_order', [...data.goods_receipt_purchase_order, newPO]);
-
-            poIndex = data.goods_receipt_purchase_order.length;
+            // Add it to our array
+            updatedPOs.push(newPO);
+            poIndex = updatedPOs.length - 1;
         }
 
-        // Check if we already have this detail
-        const formPO = data.goods_receipt_purchase_order[poIndex];
-        const detailIndex = formPO?.goods_receipt_details.findIndex((d) => d.purchase_order_detail_id === poDetailId);
+        // Now we can safely access the PO
+        const updatedPO = updatedPOs[poIndex];
 
-        if (detailIndex !== -1 && detailIndex !== undefined) {
+        // Create the new detail
+        const newDetail = {
+            purchase_order_detail_id: poDetailId,
+            item_name: `${detail.item_name} (${detail.item_code})`,
+            item_code: detail.item_code,
+            ordered_quantity: Number(detail.ordered_quantity),
+            remaining_quantity: Number(detail.remaining_quantity),
+            received_quantity: Math.min(quantity, Number(detail.remaining_quantity)),
+            price_per_unit: price,
+            total_price: total,
+            item_unit: detail.item_abbreviation,
+        };
+
+        // Check if this detail already exists
+        const detailIndex = updatedPO.goods_receipt_details.findIndex((d) => d.purchase_order_detail_id === poDetailId);
+
+        if (detailIndex !== -1) {
             // Update existing detail
-            const updatedPOs = [...data.goods_receipt_purchase_order];
-            const updatedPO = { ...updatedPOs[poIndex] };
-            const updatedDetails = [...updatedPO.goods_receipt_details];
-
-            updatedDetails[detailIndex] = {
-                ...updatedDetails[detailIndex],
+            updatedPO.goods_receipt_details[detailIndex] = {
+                ...updatedPO.goods_receipt_details[detailIndex],
                 received_quantity: Math.min(quantity, Number(detail.remaining_quantity)),
+                price_per_unit: price,
+                total_price: total,
             };
-
-            updatedPO.goods_receipt_details = updatedDetails;
-            updatedPOs[poIndex] = updatedPO;
-
-            setData('goods_receipt_purchase_order', updatedPOs);
         } else {
             // Add new detail
-            const newDetail = {
-                purchase_order_detail_id: poDetailId,
-                item_name: `${detail.item_name} (${detail.item_code})`,
-                item_code: detail.item_code,
-                ordered_quantity: Number(detail.ordered_quantity),
-                remaining_quantity: Number(detail.remaining_quantity),
-                received_quantity: Math.min(quantity, Number(detail.remaining_quantity)),
-                item_unit: detail.item_abbreviation,
-            };
-
-            const updatedPOs = [...data.goods_receipt_purchase_order];
-            const updatedPO = { ...updatedPOs[poIndex] };
-
-            updatedPO.goods_receipt_details = [...updatedPO.goods_receipt_details, newDetail];
-
-            updatedPOs[poIndex] = updatedPO;
-
-            setData('goods_receipt_purchase_order', updatedPOs);
+            updatedPO.goods_receipt_details.push(newDetail);
         }
+
+        // Update the state with all changes at once
+        setData('goods_receipt_purchase_order', updatedPOs);
+
+        // Force a re-render by updating the selected PO
+        setSelectedPO(selectedPO);
     };
 
     const removeItemFromReceipt = (poDetailId: number) => {
@@ -332,8 +416,29 @@ export default function Create({ suppliers = [] }: Props) {
         setData('goods_receipt_purchase_order', updatedPOs);
     };
 
-    // Get the currently selected purchase order
-    const currentPO = selectedPO ? groupedPurchaseOrders.find((po) => po.id.toString() === selectedPO) : null;
+    // Get the currently selected purchase order with filtered items
+    const isItemInReceipt = (poDetailId: number): boolean => {
+        return data.goods_receipt_purchase_order.some((po) =>
+            po.goods_receipt_details.some((detail) => detail.purchase_order_detail_id === poDetailId),
+        );
+    };
+
+    // Get the currently selected purchase order with filtered items
+    const getCurrentPOWithFilteredItems = () => {
+        if (!selectedPO) return null;
+
+        const po = groupedPurchaseOrders.find((p) => p.id.toString() === selectedPO);
+        if (!po) return null;
+
+        // Create a copy with filtered details
+        return {
+            ...po,
+            details: po.details.filter((detail) => !isItemInReceipt(detail.purchase_order_detail_id)),
+        };
+    };
+
+    // Get the currently selected purchase order with filtered items
+    const filteredCurrentPO = getCurrentPOWithFilteredItems();
 
     // Get items that are in the receipt already
     const getReceiptItems = () => {
@@ -346,11 +451,20 @@ export default function Create({ suppliers = [] }: Props) {
         );
     };
 
-    // Check if an item is already in the receipt
-    const isItemInReceipt = (poDetailId: number) => {
-        return data.goods_receipt_purchase_order.some((po) =>
-            po.goods_receipt_details.some((detail) => detail.purchase_order_detail_id === poDetailId),
-        );
+    // Format currency for display
+    const formatCurrency = (value: number | string): string => {
+        const numValue = typeof value === 'string' ? parseFloat(value) : value;
+        if (isNaN(numValue)) return 'Rp 0';
+
+        const rounded = Math.round(numValue * 100) / 100;
+        const parts = rounded.toString().split('.');
+        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+
+        if (parts.length > 1 && parts[1] !== '00' && parseInt(parts[1]) !== 0) {
+            return 'Rp ' + parts[0] + ',' + (parts[1].length === 1 ? parts[1] + '0' : parts[1]);
+        }
+
+        return 'Rp ' + parts[0];
     };
 
     // Calculate if the form can be submitted
@@ -501,9 +615,9 @@ export default function Create({ suppliers = [] }: Props) {
                                                     </div>
 
                                                     {/* Items from Selected PO */}
-                                                    {currentPO && (
+                                                    {filteredCurrentPO && (
                                                         <div className="rounded-md border p-4">
-                                                            <h3 className="mb-2 font-medium">Items from PO: {currentPO.code}</h3>
+                                                            <h3 className="mb-2 font-medium">Items from PO: {filteredCurrentPO.code}</h3>
 
                                                             <div className="max-h-[300px] overflow-y-auto">
                                                                 <table className="w-full border-collapse text-sm">
@@ -513,11 +627,13 @@ export default function Create({ suppliers = [] }: Props) {
                                                                             <th className="px-2 py-2 text-center">Ordered</th>
                                                                             <th className="px-2 py-2 text-center">Remaining</th>
                                                                             <th className="px-2 py-2 text-center">Quantity</th>
+                                                                            <th className="px-2 py-2 text-center">Price</th>
+                                                                            <th className="px-2 py-2 text-center">Total</th>
                                                                             <th className="px-2 py-2 text-center">Actions</th>
                                                                         </tr>
                                                                     </thead>
                                                                     <tbody>
-                                                                        {currentPO.details.map((detail) => {
+                                                                        {filteredCurrentPO.details.map((detail) => {
                                                                             const isAdded = isItemInReceipt(detail.purchase_order_detail_id);
                                                                             return (
                                                                                 <tr
@@ -550,42 +666,51 @@ export default function Create({ suppliers = [] }: Props) {
                                                                                                     handleReceiptQuantityChange(
                                                                                                         detail.purchase_order_detail_id,
                                                                                                         e.target.value,
+                                                                                                        Number(detail.remaining_quantity),
                                                                                                     )
                                                                                                 }
                                                                                                 placeholder="Enter qty"
+                                                                                                className="w-20 [appearance:textfield] text-center [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                                                                            />
+                                                                                        </div>
+                                                                                    </td>
+                                                                                    <td className="px-2 py-2">
+                                                                                        <div className="flex items-center justify-center">
+                                                                                            <Input
+                                                                                                type="number"
+                                                                                                min="0"
+                                                                                                step="1"
+                                                                                                value={
+                                                                                                    receiptPrices[detail.purchase_order_detail_id] ||
+                                                                                                    ''
+                                                                                                }
+                                                                                                onChange={(e) =>
+                                                                                                    handleReceiptPriceChange(
+                                                                                                        detail.purchase_order_detail_id,
+                                                                                                        e.target.value,
+                                                                                                    )
+                                                                                                }
+                                                                                                placeholder="Enter price"
                                                                                                 className="w-24 [appearance:textfield] text-center [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                                                                                             />
-                                                                                            {/*<span className="ml-2 text-sm text-gray-500">*/}
-                                                                                            {/*    {detail.item_abbreviation}*/}
-                                                                                            {/*</span>*/}
                                                                                         </div>
+                                                                                    </td>
+                                                                                    <td className="px-2 py-2 text-right">
+                                                                                        {formatCurrency(
+                                                                                            receiptTotals[detail.purchase_order_detail_id] || '0',
+                                                                                        )}
                                                                                     </td>
                                                                                     <td className="px-2 py-2 text-center">
                                                                                         <Button
                                                                                             type="button"
                                                                                             size="sm"
-                                                                                            variant={isAdded ? 'outline' : 'default'}
-                                                                                            className={
-                                                                                                isAdded ? 'border-green-500 text-green-600' : ''
-                                                                                            }
-                                                                                            onClick={() => {
-                                                                                                if (isAdded) {
-                                                                                                    removeItemFromReceipt(
-                                                                                                        detail.purchase_order_detail_id,
-                                                                                                    );
-                                                                                                } else {
-                                                                                                    addItemToReceipt(detail);
-                                                                                                }
-                                                                                            }}
+                                                                                            variant="default"
+                                                                                            onClick={() => addItemToReceipt(detail)}
                                                                                         >
-                                                                                            {isAdded ? (
-                                                                                                'Remove'
-                                                                                            ) : (
-                                                                                                <>
-                                                                                                    <Plus className="mr-1 h-4 w-4" />
-                                                                                                    Add
-                                                                                                </>
-                                                                                            )}
+                                                                                            <>
+                                                                                                <Plus className="mr-1 h-4 w-4" />
+                                                                                                Add
+                                                                                            </>
                                                                                         </Button>
                                                                                     </td>
                                                                                 </tr>
@@ -617,6 +742,8 @@ export default function Create({ suppliers = [] }: Props) {
                                                             <th className="px-2 py-2 text-left">Item</th>
                                                             <th className="px-2 py-2 text-left">PO</th>
                                                             <th className="px-2 py-2 text-center">Quantity</th>
+                                                            <th className="px-2 py-2 text-right">Price</th>
+                                                            <th className="px-2 py-2 text-right">Total</th>
                                                             <th className="px-2 py-2 text-center">Actions</th>
                                                         </tr>
                                                     </thead>
@@ -628,6 +755,8 @@ export default function Create({ suppliers = [] }: Props) {
                                                                 <td className="px-2 py-2 text-center">
                                                                     {formatDecimal(item.received_quantity)} {item.item_unit}
                                                                 </td>
+                                                                <td className="px-2 py-2 text-right">{formatCurrency(item.price_per_unit)}</td>
+                                                                <td className="px-2 py-2 text-right">{formatCurrency(item.total_price)}</td>
                                                                 <td className="px-2 py-2 text-center">
                                                                     <Button
                                                                         type="button"

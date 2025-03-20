@@ -284,7 +284,7 @@ export default function Show({ goodsReceipt }: GoodsReceiptProps) {
                                         </div>
                                         <div className="flex-1">
                                             <h3 className="text-sm font-medium text-gray-500">Status</h3>
-                                            <p className="mt-1 text-sm text-gray-900">{getStatusBadge(goodsReceipt.status)}</p>
+                                            <div className="mt-1">{getStatusBadge(goodsReceipt.status)}</div>
                                         </div>
                                     </div>
                                     <div className="flex items-center">

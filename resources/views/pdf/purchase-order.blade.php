@@ -12,6 +12,18 @@
             font-family: Arial, sans-serif;
             font-size: 10pt;
             line-height: 1.4;
+            position: relative;
+            min-height: 100%;
+        }
+        .footer {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            border-top: 1px solid #ddd;
+            padding-top: 2mm;
+            font-size: 8pt;
+            color: #777;
+            text-align: center;
         }
         .header {
             text-align: center;
@@ -87,8 +99,6 @@
         <th>Item description / Part Number</th>
         <th>Qty</th>
         <th>UOM</th>
-        <th>Unit Price</th>
-        <th>Line Total</th>
     </tr>
     </thead>
     <tbody>
@@ -98,37 +108,9 @@
             <td>{{ $item->item->name }} ({{ $item->item->code }})</td>
             <td>{{ $item->quantity }}</td>
             <td>{{ $item->item->item_unit->abbreviation }}</td>
-            <td>Rp {{ substr(number_format($item->unit_price, 2, ',', '.'), -3) === ',00' ? number_format($item->unit_price, 0, '', '.') : number_format($item->unit_price, 2, ',', '.') }}</td>
-            <td>Rp {{ substr(number_format($item->total_price, 2, ',', '.'), -3) === ',00' ? number_format($item->total_price, 0, '', '.') : number_format($item->total_price, 2, ',', '.') }}</td>
         </tr>
     @endforeach
     </tbody>
-</table>
-
-<table style="width: 100%; border: none; margin-bottom: 5mm;">
-    <tr>
-        <td style="width: 65%; border: none;"></td>
-        <td style="width: 15%; text-align: right; border: none; font-weight: bold;">Sub-Total:</td>
-        <td style="width: 20%; text-align: right; border: none;">Rp {{ substr(number_format($purchaseOrder->total_amount, 2, ',', '.'), -3) === ',00' ? number_format($purchaseOrder->total_amount, 0, '', '.') : number_format($purchaseOrder->total_amount, 2, ',', '.') }}</td>
-    </tr>
-    @if(isset($purchaseOrder->tax_rate) && $purchaseOrder->tax_rate)
-        <tr>
-            <td style="border: none;"></td>
-            <td style="text-align: right; border: none; font-weight: bold;">Tax {{ $purchaseOrder->tax_rate->rate }}%:</td>
-            <td style="text-align: right; border: none;">Rp {{ substr(number_format($purchaseOrder->tax_amount, 2, ',', '.'), -3) === ',00' ? number_format($purchaseOrder->tax_amount, 0, '', '.') : number_format($purchaseOrder->tax_amount, 2, ',', '.') }}</td>
-        </tr>
-    @else
-        <tr>
-            <td style="border: none;"></td>
-            <td style="text-align: right; border: none; font-weight: bold;">Tax 0%:</td>
-            <td style="text-align: right; border: none;">Rp 0</td>
-        </tr>
-    @endif
-    <tr>
-        <td style="border: none;"></td>
-        <td style="text-align: right; border: none; font-weight: bold;">TOTAL:</td>
-        <td style="text-align: right; border: none; font-weight: bold;">Rp {{ substr(number_format($purchaseOrder->grand_total, 2, ',', '.'), -3) === ',00' ? number_format($purchaseOrder->grand_total, 0, '', '.') : number_format($purchaseOrder->grand_total, 2, ',', '.') }}</td>
-    </tr>
 </table>
 
 <table style="width: 100%; border: none; margin-bottom: 5mm;">
@@ -145,6 +127,10 @@
         </td>
     </tr>
 </table>
+
+<div class="footer">
+    This document was printed on {{ date('d M Y') }} at {{ date('H:i') }} by {{ auth()->user()->name ?? 'System' }}
+</div>
 
 </body>
 </html>

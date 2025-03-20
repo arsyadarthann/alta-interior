@@ -28,7 +28,6 @@ class PurchaseOrderController extends Controller
     {
         return Inertia::render('procurement/order/create', [
             'suppliers' => $this->supplier->getAll(),
-            'taxRates' => $this->taxRate->getAll(),
         ]);
     }
 

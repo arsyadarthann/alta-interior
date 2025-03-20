@@ -13,3 +13,12 @@ export function formatCurrency(amount: number): string {
         maximumFractionDigits: 0,
     }).format(amount);
 }
+
+export function formatDecimal(value: number): string {
+    const rounded = Math.round(value * 100) / 100;
+    const parts = rounded.toString().split('.');
+    if (!parts[1] || parseInt(parts[1]) === 0) {
+        return parts[0];
+    }
+    return rounded.toString();
+}

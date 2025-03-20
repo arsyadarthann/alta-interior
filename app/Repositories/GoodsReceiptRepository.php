@@ -40,8 +40,6 @@ class GoodsReceiptRepository implements GoodsReceiptInterface
                 'items.code as item_code',
                 'item_units.abbreviation as item_abbreviation',
                 'purchase_order_details.quantity as ordered_quantity',
-                'purchase_order_details.unit_price', // Added unit price
-                'purchase_order_details.total_price', // Added total price
                 DB::raw('COALESCE(SUM(goods_receipt_details.received_quantity), 0) as received_quantity'),
                 DB::raw('purchase_order_details.quantity - COALESCE(SUM(goods_receipt_details.received_quantity), 0) as remaining_quantity')
             ])
@@ -59,11 +57,9 @@ class GoodsReceiptRepository implements GoodsReceiptInterface
                 'purchase_orders.code',
                 'purchase_order_details.item_id',
                 'items.name',
-                'items.code', // Added item code to group by
+                'items.code',
                 'item_units.abbreviation',
                 'purchase_order_details.quantity',
-                'purchase_order_details.unit_price', // Added to group by
-                'purchase_order_details.total_price', // Added to group by
             ])
             ->havingRaw('COALESCE(SUM(goods_receipt_details.received_quantity), 0) < purchase_order_details.quantity')
             ->get();
@@ -96,9 +92,9 @@ class GoodsReceiptRepository implements GoodsReceiptInterface
                         'goods_receipt_purchase_order_id' => $pivotId,
                         'purchase_order_detail_id' => $purchaseOrderDetail->id,
                         'received_quantity' => $goodsReceiptDetail['received_quantity'],
-                        'price_per_unit' => $purchaseOrderDetail->unit_price,
-                        'total_price' => $purchaseOrderDetail->unit_price * $goodsReceiptDetail['received_quantity'],
-                        'cogs' => $purchaseOrderDetail->unit_price,
+                        'price_per_unit' => $goodsReceiptDetail['price_per_unit'],
+                        'total_price' => $goodsReceiptDetail['total_price'],
+                        'cogs' => $goodsReceiptDetail['price_per_unit'],
                     ]);
 
                     $item = $purchaseOrderDetail->item;
@@ -111,7 +107,7 @@ class GoodsReceiptRepository implements GoodsReceiptInterface
                         'source_able_type' => Warehouse::class,
                         'item_id' => $item->id,
                         'stock' => $goodsReceiptDetail['received_quantity'],
-                        'cogs' => $purchaseOrderDetail->unit_price,
+                        'cogs' => $goodsReceiptDetail['price_per_unit'],
                     ]);
 
                     $dataQuantity = [

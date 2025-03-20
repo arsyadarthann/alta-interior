@@ -17,8 +17,6 @@ class PurchaseOrderDetail extends Model
         'purchase_order_id',
         'item_id',
         'quantity',
-        'unit_price',
-        'total_price'
     ];
 
     public function purchaseOrder(): BelongsTo
