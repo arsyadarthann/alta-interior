@@ -61,9 +61,9 @@ class Branch extends Model
         return $this->hasMany(SalesOrder::class, 'branch_id', 'id');
     }
 
-    public function salesOrderDetailsAsItemSource(): HasMany
+    public function salesOrderDetailsAsItemSource(): MorphMany
     {
-        return $this->hasMany(SalesOrderDetail::class, 'item_from_branch_id', 'id');
+        return $this->morphMany(SalesOrderDetail::class, 'item_source_able');
     }
 
     public function waybills(): HasMany

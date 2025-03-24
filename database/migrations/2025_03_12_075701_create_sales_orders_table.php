@@ -19,8 +19,15 @@ return new class extends Migration
             $table->unsignedSmallInteger('branch_id');
             $table->foreignId('customer_id')->nullable()->constrained('customers');
             $table->string('customer_name', 100)->nullable();
+            $table->decimal('total_amount', 15, 2);
+            $table->unsignedSmallInteger('tax_rate_id')->nullable();
+            $table->decimal('tax_amount', 15, 2);
+            $table->decimal('grand_total', 15, 2);
             $table->enum('status', ['pending', 'processed', 'completed', 'cancelled'])->default('pending');
             $table->timestamps();
+
+            $table->foreign('branch_id')->references('id')->on('branches');
+            $table->foreign('tax_rate_id')->references('id')->on('tax_rates');
         });
     }
 

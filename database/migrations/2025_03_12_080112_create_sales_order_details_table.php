@@ -15,13 +15,12 @@ return new class extends Migration
             $table->id();
             $table->foreignId('sales_order_id')->constrained('sales_orders');
             $table->foreignId('item_id')->constrained('items');
-            $table->unsignedSmallInteger('item_from_branch_id')->comment('Item From Branch ID');
+            $table->unsignedBigInteger('item_source_able_id');
+            $table->unsignedBigInteger('item_source_able_type');
             $table->decimal('quantity', 15, 2);
             $table->decimal('unit_price', 15, 2);
             $table->decimal('total_price', 15, 2);
             $table->timestamps();
-
-            $table->foreign('item_from_branch_id')->references('id')->on('branches');
         });
     }
 

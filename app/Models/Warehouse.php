@@ -53,4 +53,9 @@ class Warehouse extends Model
     {
         return $this->morphMany(StockAudit::class, 'source_able');
     }
+
+    public function salesOrderDetailsAsItemSource(): MorphMany
+    {
+        return $this->morphMany(SalesOrderDetail::class, 'item_source_able');
+    }
 }

@@ -20,6 +20,10 @@ class SalesOrder extends Model
         'branch_id',
         'customer_id',
         'customer_name',
+        'total_amount',
+        'tax_rate_id',
+        'tax_amount',
+        'grand_total',
         'status'
     ];
 

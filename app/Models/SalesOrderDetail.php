@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class SalesOrderDetail extends Model
 {
@@ -16,7 +17,8 @@ class SalesOrderDetail extends Model
     protected $fillable = [
         'sales_order_id',
         'item_id',
-        'item_from_branch_id',
+        'item_source_able_id',
+        'item_source_able_type',
         'quantity',
         'unit_price',
         'total_price'
@@ -32,9 +34,9 @@ class SalesOrderDetail extends Model
         return $this->belongsTo(Item::class, 'item_id', 'id');
     }
 
-    public function itemFromBranch(): BelongsTo
+    public function item_source_able(): MorphTo
     {
-        return $this->belongsTo(Branch::class, 'item_from_branch_id', 'id');
+        return $this->morphTo();
     }
 
     public function waybillDetails(): HasMany

@@ -15,6 +15,11 @@ class ItemRepository implements ItemInterface
 {
     public function __construct(private Item $item, private ItemBatch $itemBatch) {}
 
+    public function getAllOnlyItem()
+    {
+        return $this->item->with(['itemCategory:id,name', 'itemUnit:id,name,abbreviation'])->get();
+    }
+
     public function getAll($sourceId = null, $sourceType = null)
     {
         $query = $this->item->with(['itemCategory:id,name', 'itemUnit:id,name,abbreviation']);
@@ -107,10 +112,16 @@ class ItemRepository implements ItemInterface
 
     public function sumStock(int $itemId, int $sourceId, string $sourceType)
     {
+        $mappedType = match ($sourceType) {
+            'Branch' => Branch::class,
+            'Warehouse' => Warehouse::class,
+            default => $sourceType
+        };
+
         return $this->itemBatch
             ->where('item_id', $itemId)
             ->where('source_able_id', $sourceId)
-            ->where('source_able_type', $sourceType)
+            ->where('source_able_type', $mappedType)
             ->sum('stock');
     }
 

@@ -4,6 +4,7 @@ namespace App\Interface;
 
 interface ItemInterface
 {
+    public function getAllOnlyItem();
     public function getAll($sourceId = null, $sourceType = null);
     public function getAllPaginate($sourceId = null, $sourceType = null);
     public function getAllByBranch($branchId = null);

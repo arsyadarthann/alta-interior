@@ -6,6 +6,8 @@ use App\Http\Controllers\Procurement\PurchaseInvoiceController;
 use App\Http\Controllers\Procurement\PurchaseInvoicePaymentController;
 use App\Http\Controllers\Procurement\PurchaseOrderController;
 use App\Http\Controllers\Procurement\GoodsReceiptController;
+use App\Http\Controllers\Sales\SalesOrderController;
+use App\Http\Controllers\Sales\WaybillController;
 use App\Http\Controllers\Stock\StockAdjustmentController;
 use App\Http\Controllers\Stock\StockAuditController;
 use App\Http\Controllers\Stock\StockTransferController;
@@ -29,6 +31,7 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/', [CustomerController::class, 'index'])->middleware('permission:read_customer')->name('customers.index');
             Route::get('/create', [CustomerController::class, 'create'])->middleware('permission:create_customer')->name('customers.create');
             Route::post('/', [CustomerController::class, 'store'])->middleware('permission:create_customer')->name('customers.store');
+            Route::get('/getPrices', [CustomerController::class, 'getPrices'])->name('customers.getPrices');
             Route::get('/{id}', [CustomerController::class, 'show'])->middleware('permission:read_customer')->name('customers.show');
             Route::get('/{id}/edit', [CustomerController::class, 'edit'])->middleware('permission:update_customer')->name('customers.edit');
             Route::put('/{id}', [CustomerController::class, 'update'])->middleware('permission:update_customer')->name('customers.update');
@@ -121,7 +124,23 @@ Route::middleware(['auth'])->group(function () {
 
     Route::group(['prefix' => 'sales'], function () {
         Route::group(['prefix' => 'orders'], function () {
+            Route::get('/', [SalesOrderController::class, 'index'])->middleware('permission:read_sales_order')->name('sales.order.index');
+            Route::get('/create', [SalesOrderController::class, 'create'])->middleware('permission:create_sales_order')->name('sales.order.create');
+            Route::post('/', [SalesOrderController::class, 'store'])->middleware('permission:create_sales_order')->name('sales.order.store');
+            Route::get('/getCode', [SalesOrderController::class, 'getCode'])->middleware('permission:read_sales_order')->name('sales.order.getCode');
+            Route::get('/{id}', [SalesOrderController::class, 'show'])->middleware('permission:read_sales_order')->name('sales.order.show');
+            Route::get('/{id}/edit', [SalesOrderController::class, 'edit'])->middleware('permission:update_sales_order')->name('sales.order.edit');
+            Route::put('/{id}', [SalesOrderController::class, 'update'])->middleware('permission:update_sales_order')->name('sales.order.update');
+            Route::delete('/{id}', [SalesOrderController::class, 'destroy'])->middleware('permission:delete_sales_order')->name('sales.order.destroy');
+        });
 
+        Route::group(['prefix' => 'waybills'], function () {
+            Route::get('/', [WaybillController::class, 'index'])->middleware('permission:read_waybill')->name('sales.waybill.index');
+            Route::get('/create', [WaybillController::class, 'create'])->middleware('permission:create_waybill')->name('sales.waybill.create');
+            Route::post('/', [WaybillController::class, 'store'])->middleware('permission:create_waybill')->name('sales.waybill.store');
+            Route::get('/getSalesOrderData', [WaybillController::class, 'getSalesOrderData'])->middleware('permission:read_waybill')->name('sales.waybill.getSalesOrderData');
+            Route::get('/{id}', [WaybillController::class, 'show'])->middleware('permission:read_waybill')->name('sales.waybill.show');
+            Route::get('/{id}/generate-pdf', [WaybillController::class, 'generatePdf'])->middleware('permission:read_waybill')->name('sales.waybill.generate-pdf');
         });
     });
 

@@ -22,3 +22,27 @@ export function formatDecimal(value: number): string {
     }
     return rounded.toString();
 }
+
+export function formatDate(
+    dateString: string | Date,
+    options: Intl.DateTimeFormatOptions = {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+    },
+): string {
+    if (!dateString) return '-';
+
+    try {
+        const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+
+        if (isNaN(date.getTime())) {
+            return '-';
+        }
+
+        return new Intl.DateTimeFormat('id-Id', options).format(date);
+    } catch (error) {
+        console.error('Error formatting date:', error);
+        return '-';
+    }
+}

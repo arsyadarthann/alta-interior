@@ -89,7 +89,7 @@ export default function Item({
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedItem, setSelectedItem] = useState<Item | undefined>();
     const { auth } = usePage().props as unknown as { auth: { user: { branch_id: number | null } } };
-    const [isLoading, setIsLoading] = useState(false);
+    const [, setIsLoading] = useState(false);
 
     const getSourceFromSelectedValue = (value: string): { id: number; type: string } => {
         const [type, id] = value.split(':');
@@ -308,52 +308,51 @@ export default function Item({
                 return formatPrice(row.original.price);
             },
         },
-        (hasPermission('update_item') || hasPermission('delete_item')) &&
-            ActionColumn<Item>({
-                hasPermission: hasPermission,
-                actions: (item) => [
-                    {
-                        label: 'Batch',
-                        icon: <Boxes className="h-4 w-4" />,
-                        onClick: (data) => {
-                            setSelectedItem(data);
-                            setIsBatchModalOpen(true);
-                        },
+        ActionColumn<Item>({
+            hasPermission: hasPermission,
+            actions: (item) => [
+                {
+                    label: 'Batch',
+                    icon: <Boxes className="h-4 w-4" />,
+                    onClick: (data) => {
+                        setSelectedItem(data);
+                        setIsBatchModalOpen(true);
                     },
-                    {
-                        label: 'Edit',
-                        icon: <Pencil className="h-4 w-4" />,
-                        onClick: (data) => {
-                            setSelectedItem(data);
-                            editForm.setData({
-                                name: data.name,
-                                code: data.code,
-                                item_category_id: data.item_category_id.toString(),
-                                item_unit_id: data.item_unit_id.toString(),
-                                price: data.price.toString(),
-                            });
-                            setIsEditModalOpen(true);
-                        },
-                        permission: 'update_item',
+                },
+                {
+                    label: 'Edit',
+                    icon: <Pencil className="h-4 w-4" />,
+                    onClick: (data) => {
+                        setSelectedItem(data);
+                        editForm.setData({
+                            name: data.name,
+                            code: data.code,
+                            item_category_id: data.item_category_id.toString(),
+                            item_unit_id: data.item_unit_id.toString(),
+                            price: data.price.toString(),
+                        });
+                        setIsEditModalOpen(true);
                     },
-                    {
-                        label: 'Delete',
-                        icon: <Trash2 className="h-4 w-4" />,
-                        className: 'text-red-600',
-                        showConfirmDialog: true,
-                        confirmDialogProps: {
-                            title: 'Delete Item',
-                            description: `This action cannot be undone. This will permanently delete the "${item.name}" item.`,
-                        },
-                        onClick: (data) => {
-                            router.delete(route('item.destroy', data.id), {
-                                preserveScroll: true,
-                            });
-                        },
-                        permission: 'delete_item',
+                    permission: 'update_item',
+                },
+                {
+                    label: 'Delete',
+                    icon: <Trash2 className="h-4 w-4" />,
+                    className: 'text-red-600',
+                    showConfirmDialog: true,
+                    confirmDialogProps: {
+                        title: 'Delete Item',
+                        description: `This action cannot be undone. This will permanently delete the "${item.name}" item.`,
                     },
-                ],
-            }),
+                    onClick: (data) => {
+                        router.delete(route('item.destroy', data.id), {
+                            preserveScroll: true,
+                        });
+                    },
+                    permission: 'delete_item',
+                },
+            ],
+        }),
     ].filter(Boolean) as ColumnDef<Item>[];
 
     const breadcrumbs: BreadcrumbItem[] = [
@@ -392,30 +391,21 @@ export default function Item({
                     <HeadingSmall title="Items" description="Manage your inventory items." />
 
                     <div className="flex items-center justify-between">
-                        {!auth.user.branch_id ? (
-                            <div className="flex items-center gap-2">
-                                <Label htmlFor="source" className="whitespace-nowrap">
-                                    Location Filter:
-                                </Label>
-                                <Combobox
-                                    value={selectedSource}
-                                    onValueChange={handleSourceChange}
-                                    options={sources.map((source) => ({
-                                        value: `${source.type}:${source.id}`,
-                                        label: source.name,
-                                    }))}
-                                    placeholder="Filter by location"
-                                    searchPlaceholder="Search locations..."
-                                />
-                            </div>
-                        ) : (
-                            <div className="flex items-center gap-2">
-                                <Label className="whitespace-nowrap">Branch:</Label>
-                                <span className="text-sm font-medium">
-                                    {branches.find((branch) => branch.id === auth.user.branch_id)?.name || 'Unknown Branch'}
-                                </span>
-                            </div>
-                        )}
+                        <div className="flex items-center gap-2">
+                            <Label htmlFor="source" className="whitespace-nowrap">
+                                Location Filter:
+                            </Label>
+                            <Combobox
+                                value={selectedSource}
+                                onValueChange={handleSourceChange}
+                                options={sources.map((source) => ({
+                                    value: `${source.type}:${source.id}`,
+                                    label: source.name,
+                                }))}
+                                placeholder="Filter by location"
+                                searchPlaceholder="Search locations..."
+                            />
+                        </div>
 
                         {hasPermission('create_item') && (
                             <Button onClick={() => setIsCreateModalOpen(true)} className="flex items-center gap-2">

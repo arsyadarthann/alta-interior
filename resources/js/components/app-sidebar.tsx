@@ -47,63 +47,112 @@ export function AppSidebar() {
     ].filter(Boolean) as NavItem[];
 
     const inventoryAndStockItems: NavItemWithChildren[] = [
-        {
-            title: 'Inventory',
-            url: '/inventory',
-            icon: Warehouse,
-            matchPatch: ['/inventory', '/inventory/*'],
-        },
+        ...(hasPermission('read_item_category') || hasPermission('read_item_unit') || hasPermission('read_item')
+            ? [
+                  {
+                      title: 'Inventory',
+                      url: '/inventory',
+                      icon: Warehouse,
+                      matchPatch: ['/inventory', '/inventory/*'],
+                  },
+              ]
+            : []),
         {
             title: 'Stock Management',
             url: '',
             icon: ClipboardList,
             children: [
-                {
-                    title: 'Audit',
-                    url: '/stock/audit',
-                    matchPatch: ['/stock/audit', '/stock/audit/*', '/stock/audit?*'],
-                },
-                {
-                    title: 'Adjustment',
-                    url: '/stock/adjustment',
-                    matchPatch: ['/stock/adjustment', '/stock/adjustment/*', '/stock/adjustment?*'],
-                },
-                {
-                    title: 'Transfer',
-                    url: '/stock/transfer',
-                    matchPatch: ['/stock/transfer', '/stock/transfer/*', '/stock/transfer?*'],
-                },
-            ],
+                ...(hasPermission('read_stock_audit')
+                    ? [
+                          {
+                              title: 'Audit',
+                              url: '/stock/audit',
+                              matchPatch: ['/stock/audit', '/stock/audit/*', '/stock/audit?*'],
+                          },
+                      ]
+                    : []),
+                ...(hasPermission('read_stock_adjustment')
+                    ? [
+                          {
+                              title: 'Adjustment',
+                              url: '/stock/adjustment',
+                              matchPatch: ['/stock/adjustment', '/stock/adjustment/*', '/stock/adjustment?*'],
+                          },
+                      ]
+                    : []),
+                ...(hasPermission('read_stock_transfer')
+                    ? [
+                          {
+                              title: 'Transfer',
+                              url: '/stock/transfer',
+                              matchPatch: ['/stock/transfer', '/stock/transfer/*', '/stock/transfer?*'],
+                          },
+                      ]
+                    : []),
+            ].filter((item) => item !== undefined),
         },
-    ];
+    ].filter((item) => {
+        if (item.title === 'Stock Management') {
+            return item.children && item.children.length > 0;
+        }
+        return true;
+    });
 
     const procurementItems: NavItemWithChildren[] = [
-        {
-            title: 'Purchase Orders',
-            url: '/procurement/orders',
-            icon: ClipboardList,
-        },
-        {
-            title: 'Goods Receipts',
-            url: '/procurement/receipts',
-            icon: PackageCheck,
-        },
-        {
-            title: 'Payables',
-            url: '',
-            icon: Receipt,
-            children: [
-                {
-                    title: 'Supplier Invoice',
-                    url: '/procurement/invoices',
-                },
-                {
-                    title: 'Payments',
-                    url: '/procurement/payments',
-                },
-            ],
-        },
-    ];
+        ...(hasPermission('read_purchase_order')
+            ? [
+                  {
+                      title: 'Purchase Orders',
+                      url: '/procurement/orders',
+                      icon: ClipboardList,
+                  },
+              ]
+            : []),
+
+        ...(hasPermission('read_goods_receipt')
+            ? [
+                  {
+                      title: 'Goods Receipts',
+                      url: '/procurement/receipts',
+                      icon: PackageCheck,
+                  },
+              ]
+            : []),
+
+        ...(hasPermission('read_purchase_invoice') || hasPermission('read_purchase_invoice_payments')
+            ? [
+                  {
+                      title: 'Payables',
+                      url: '',
+                      icon: Receipt,
+                      children: [
+                          ...(hasPermission('read_purchase_invoice')
+                              ? [
+                                    {
+                                        title: 'Supplier Invoice',
+                                        url: '/procurement/invoices',
+                                    },
+                                ]
+                              : []),
+
+                          ...(hasPermission('read_purchase_invoice_payments')
+                              ? [
+                                    {
+                                        title: 'Payments',
+                                        url: '/procurement/payments',
+                                    },
+                                ]
+                              : []),
+                      ].filter((item) => item !== undefined),
+                  },
+              ]
+            : []),
+    ].filter((item) => {
+        if (item.title === 'Payables') {
+            return item.children && item.children.length > 0;
+        }
+        return true;
+    });
 
     const salesItems: NavItemWithChildren[] = [
         {
@@ -178,10 +227,16 @@ export function AppSidebar() {
                 {(hasPermission('read_customer') || hasPermission('read_supplier')) && (
                     <NavMain items={customersAndSuppliersItems} title="Customers & Suppliers" />
                 )}
-                {(hasPermission('read_item_category') || hasPermission('read_item_unit') || hasPermission('read_item')) && (
-                    <NavMainWithSubmenu items={inventoryAndStockItems} title="Inventory & Stock" />
-                )}
-                <NavMainWithSubmenu items={procurementItems} title="Procurement" />
+                {(hasPermission('read_item_category') ||
+                    hasPermission('read_item_unit') ||
+                    hasPermission('read_item') ||
+                    hasPermission('read_stock_audit') ||
+                    hasPermission('read_stock_adjustment') ||
+                    hasPermission('read_stock_transfer')) && <NavMainWithSubmenu items={inventoryAndStockItems} title="Inventory & Stock" />}
+                {(hasPermission('read_purchase_order') ||
+                    hasPermission('read_goods_receipt') ||
+                    hasPermission('read_purchase_invoice') ||
+                    hasPermission('read_purchase_invoice_payments')) && <NavMainWithSubmenu items={procurementItems} title="Procurement" />}
                 <NavMainWithSubmenu items={salesItems} title="Sales" />
                 <NavMain items={financeItems} title="Finance" />
                 <NavMain items={reportItems} title="Reports" />

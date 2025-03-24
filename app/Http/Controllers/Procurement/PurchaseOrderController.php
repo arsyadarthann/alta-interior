@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Procurement;
 use App\Helpers\TransactionCode;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Procurement\PurchaseOrderRequest;
-use App\Interface\BranchInterface;
 use App\Interface\PurchaseOrderInterface;
 use App\Interface\SupplierInterface;
 use App\Interface\TaxRateInterface;
@@ -227,7 +226,7 @@ class PurchaseOrderController extends Controller
             'defaultFont' => 'sans-serif'
         ]);
 
-        return $pdf->stream( 'res.pdf');
+        return $pdf->stream( $purchaseOrder->code . '.pdf');
     }
 
 }

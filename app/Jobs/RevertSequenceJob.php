@@ -28,7 +28,7 @@ class RevertSequenceJob implements ShouldQueue
     {
         $sequence = SequenceStatus::find($this->sequenceId);
 
-        if ($sequence && $sequence->isReserved() && Carbon::parse($sequence->expires_at)->lessThanOrEqualTo(now())) {
+        if ($sequence && $sequence->isReserved()) {
             $sequence->update([
                 'status' => 'available',
                 'user_id' => null,

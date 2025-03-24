@@ -65,40 +65,39 @@ export default function Index({ customers }: Props) {
             accessorKey: 'address',
             header: 'Address',
         },
-        (hasPermission('update_customer') || hasPermission('delete_customer')) &&
-            ActionColumn<Customer>({
-                hasPermission: hasPermission,
-                actions: (customer) => [
-                    {
-                        label: 'View Details',
-                        icon: <Eye className="h-4 w-4" />,
-                        onClick: (data) => router.visit(route('customers.show', data.id)),
-                        permission: 'read_customer',
+        ActionColumn<Customer>({
+            hasPermission: hasPermission,
+            actions: (customer) => [
+                {
+                    label: 'View Details',
+                    icon: <Eye className="h-4 w-4" />,
+                    onClick: (data) => router.visit(route('customers.show', data.id)),
+                    permission: 'read_customer',
+                },
+                {
+                    label: 'Edit',
+                    icon: <Pencil className="h-4 w-4" />,
+                    onClick: (data) => router.visit(route('customers.edit', data.id)),
+                    permission: 'update_customer',
+                },
+                {
+                    label: 'Delete',
+                    icon: <Trash2 className="h-4 w-4" />,
+                    className: 'text-red-600',
+                    showConfirmDialog: true,
+                    confirmDialogProps: {
+                        title: 'Delete Customer',
+                        description: `This action cannot be undone. This will permanently delete ${customer.name}.`,
                     },
-                    {
-                        label: 'Edit',
-                        icon: <Pencil className="h-4 w-4" />,
-                        onClick: (data) => router.visit(route('customers.edit', data.id)),
-                        permission: 'update_customer',
+                    onClick: (data) => {
+                        router.delete(route('customers.destroy', data.id), {
+                            preserveScroll: true,
+                        });
                     },
-                    {
-                        label: 'Delete',
-                        icon: <Trash2 className="h-4 w-4" />,
-                        className: 'text-red-600',
-                        showConfirmDialog: true,
-                        confirmDialogProps: {
-                            title: 'Delete Customer',
-                            description: `This action cannot be undone. This will permanently delete ${customer.name}.`,
-                        },
-                        onClick: (data) => {
-                            router.delete(route('customers.destroy', data.id), {
-                                preserveScroll: true,
-                            });
-                        },
-                        permission: 'delete_customer',
-                    },
-                ],
-            }),
+                    permission: 'delete_customer',
+                },
+            ],
+        }),
     ].filter(Boolean) as ColumnDef<Customer>[];
 
     return (

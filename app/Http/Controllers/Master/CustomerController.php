@@ -168,4 +168,16 @@ class CustomerController extends Controller
                 ]
             ]);
     }
+
+    public function getPrices(Request $request)
+    {
+        $customerId = $request->query('customer_id');
+        if ($request->wantsJson() || $request->header('X-Inertia')) {
+            return response()->json($this->customer->getCustomerPricesById($customerId));
+        }
+
+        return Inertia::render('errors/error-page', [
+            'status' => 404,
+        ]);
+    }
 }

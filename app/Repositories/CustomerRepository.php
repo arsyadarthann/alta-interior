@@ -15,9 +15,21 @@ class CustomerRepository implements CustomerInterface
         return $this->customer->orderBy('id')->paginate(10);
     }
 
+    public function getAllNoPaginate()
+    {
+        return $this->customer->orderBy('id')->get();
+    }
+
     public function getById(int $id)
     {
         return $this->customer->find($id);
+    }
+
+    public function getCustomerPricesById(int $id)
+    {
+        $customer = $this->customer->with('customerPrices')->find($id);
+
+        return $customer->customerPrices->toArray();
     }
 
     public function editById(int $id)

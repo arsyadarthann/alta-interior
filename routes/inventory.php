@@ -33,5 +33,6 @@ Route::middleware('auth')->group(function () {
         Route::get('/getItemStockByWarehouse', [ItemController::class, 'getItemStockByWarehouse'])->middleware('permission:read_item')->name('item.getItemStockByWarehouse');
         Route::get('/getItemStockByBranch', [ItemController::class, 'getItemStockByBranch'])->middleware('permission:read_item')->name('item.getItemStockByBranch');
         Route::get('/getItems', [ItemController::class, 'getItems'])->middleware('permission:read_item')->name('item.getItems');
+        Route::get('/getAllOnlyItems', [ItemController::class, 'getAllOnlyItems'])->middleware('permission:read_item')->name('item.getAllOnlyItems');
     });
 });

@@ -139,6 +139,17 @@ class ItemController extends Controller
         ]);
     }
 
+    public function getAllOnlyItems(Request $request)
+    {
+        if ($request->wantsJson() || $request->header('X-Inertia')) {
+            return response()->json($this->item->getAllOnlyItem());
+        }
+
+        return Inertia::render('errors/error-page', [
+            'status' => 404,
+        ]);
+    }
+
     public function getItems(Request $request)
     {
         if ($request->wantsJson() || $request->header('X-Inertia')) {
