@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 class WaybillRepository implements WaybillInterface
 {
     const GENERAL_RELATIONSHIPS = [
-        'user:id,name', 'branch:id,name', 'salesOrder'
+        'user:id,name', 'branch:id,name', 'salesOrder.customer'
     ];
 
     public function __construct(private Waybill $waybill, private WaybillDetail $waybillDetail, private SalesOrder $salesOrder, private SalesOrderDetail $salesOrderDetail) {}
@@ -32,7 +32,6 @@ class WaybillRepository implements WaybillInterface
     {
         return $this->waybill->with([
             ...self::GENERAL_RELATIONSHIPS,
-            'salesOrder.customer',
             'waybillDetails.salesOrderDetail.item_source_able',
             'waybillDetails.salesOrderDetail.item.itemUnit',
             ])->find($id);
@@ -65,6 +64,16 @@ class WaybillRepository implements WaybillInterface
         }
 
         return $result;
+    }
+
+    public function getWaybillNotInvoiced($branch_id)
+    {
+        return $this->waybill->with(self::GENERAL_RELATIONSHIPS)
+            ->where('branch_id', $branch_id)
+            ->where('status', '!=', 'invoiced')
+            ->orderBy('id', 'desc')
+            ->orderBy('code', 'desc')
+            ->get();
     }
 
     public function store(array $data)

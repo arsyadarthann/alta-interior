@@ -154,13 +154,13 @@ export default function Index({ purchaseInvoices }: Props) {
                 {
                     label: 'View Detail',
                     icon: <Eye className="h-4 w-4" />,
-                    onClick: (data) => router.visit(route('procurement.invoice.show', data.id)),
+                    onClick: (data) => router.visit(route('procurement.invoices.show', data.id)),
                     permission: 'read_purchase_invoice',
                 },
                 {
                     label: 'Edit',
                     icon: <Pencil className="h-4 w-4" />,
-                    onClick: (data) => router.visit(route('procurement.invoice.edit', data.id)),
+                    onClick: (data) => router.visit(route('procurement.invoices.edit', data.id)),
                     permission: 'update_purchase_invoice',
                     isHidden: (data) => data.status !== 'unpaid',
                 },
@@ -174,7 +174,7 @@ export default function Index({ purchaseInvoices }: Props) {
                         description: `This action cannot be undone. This will permanently delete purchase order ${purchaseInvoice.code}.`,
                     },
                     onClick: (data) => {
-                        router.delete(route('procurement.invoice.destroy', data.id), {
+                        router.delete(route('procurement.invoices.destroy', data.id), {
                             preserveScroll: true,
                         });
                     },
@@ -188,7 +188,7 @@ export default function Index({ purchaseInvoices }: Props) {
     const handlePageChange = (page: number) => {
         setIsLoading(true);
         router.get(
-            route('procurement.invoice.index'),
+            route('procurement.invoices.index'),
             { page },
             {
                 preserveState: true,
@@ -208,7 +208,7 @@ export default function Index({ purchaseInvoices }: Props) {
                     <Heading title="Supplier Invoice" description="Manage your supplier invoice." />
 
                     {hasPermission('create_purchase_invoice') && (
-                        <Link href={route('procurement.invoice.create')}>
+                        <Link href={route('procurement.invoices.create')}>
                             <Button>
                                 <Plus className="mr-2 h-4 w-4" />
                                 Add Supplier Invoice

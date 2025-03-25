@@ -113,6 +113,8 @@ class TransactionCode
                     'user_id' => auth()->user()->id,
                     'expires_at' => now()->addHour()
                 ]);
+                $jobs = DB::table('jobs')->get();
+                self::updateJobs($jobs, $availableSequence);
 
                 $sequenceNumber = $availableSequence->sequence_number;
             } else {
@@ -209,37 +211,113 @@ class TransactionCode
     private static function updateJobs($jobs, $sequence)
     {
         $updated = false;
+
+        // Log sebelum mencoba update jobs
+        Log::info("Attempting to update jobs for sequenceId: {$sequence->id}, expires_at: {$sequence->expires_at}");
+
+        // Parse waktu expires_at sequence
+        $expiryTime = Carbon::parse($sequence->expires_at);
+
+        // Log waktu saat ini dan waktu kedaluwarsa untuk debugging
+        Log::info("Timing information", [
+            'current_time' => now()->toDateTimeString(),
+            'sequence_expires_at' => $expiryTime->toDateTimeString(),
+            'difference_seconds' => $expiryTime->diffInSeconds(now()),
+            'expires_in_future' => $expiryTime->gt(now()) ? 'Yes' : 'No'
+        ]);
+
         foreach ($jobs as $job) {
-            $payload = json_decode($job->payload, true);
+            try {
+                $payload = json_decode($job->payload, true);
 
-            if (!isset($payload['data']['command'])) {
-                continue;
-            }
+                if (!isset($payload['data']['command'])) {
+                    continue;
+                }
 
-            $commandData = unserialize($payload['data']['command']);
+                $commandData = unserialize($payload['data']['command']);
 
-            if (isset($commandData->sequenceId) && $commandData->sequenceId == $sequence->id) {
+                if (isset($commandData->sequenceId) && $commandData->sequenceId == $sequence->id) {
+                    // Log sebelum update
+                    Log::info("Found job to update - Job ID: {$job->id}, SequenceId: {$sequence->id}");
 
-                $newDelay = Carbon::parse($sequence->expires_at)->diffInSeconds(now());
+                    DB::beginTransaction();
+                    try {
+                        // Ambil data job dengan lock untuk update
+                        $beforeJob = DB::table('jobs')->where('id', $job->id)->lockForUpdate()->first();
 
-                $commandData->expires_at = $sequence->expires_at;
-                $updatedCommand = serialize($commandData);
+                        if (!$beforeJob) {
+                            Log::warning("Job not found or already processed - Job ID: {$job->id}");
+                            DB::rollBack();
+                            continue;
+                        }
 
-                $payload['data']['command'] = $updatedCommand;
-                DB::table('jobs')->where('id', $job->id)->update([
-                    'payload' => json_encode($payload),
-                    'available_at' => now()->addSeconds($newDelay)->getTimestamp(),
+                        Log::info("Job before update:", [
+                            'job_id' => $beforeJob->id,
+                            'available_at' => date('Y-m-d H:i:s', $beforeJob->available_at)
+                        ]);
+
+                        // Hitung delay yang benar
+                        // Gunakan waktu kedaluwarsa langsung jika masih di masa depan
+                        // Jika sudah lewat, gunakan delay minimal (misalnya 30 detik dari sekarang)
+                        if ($expiryTime->gt(now())) {
+                            // Jika waktu kedaluwarsa masih di masa depan
+                            $newAvailableAt = $expiryTime->getTimestamp();
+                        } else {
+                            // Jika waktu kedaluwarsa sudah lewat, tambahkan delay minimal
+                            $newAvailableAt = now()->addSeconds(30)->getTimestamp();
+                        }
+
+                        // Log perhitungan delay untuk debugging
+                        Log::info("Delay calculation", [
+                            'job_id' => $job->id,
+                            'new_available_at' => date('Y-m-d H:i:s', $newAvailableAt),
+                            'current_time' => now()->toDateTimeString(),
+                            'is_in_future' => ($newAvailableAt > now()->getTimestamp()) ? 'Yes' : 'No'
+                        ]);
+
+                        // Update job
+                        $updateResult = DB::table('jobs')
+                            ->where('id', $job->id)
+                            ->update([
+                                'available_at' => $newAvailableAt,
+                            ]);
+
+                        // Verifikasi update berhasil dengan query baru
+                        $afterJob = DB::table('jobs')->where('id', $job->id)->first();
+
+                        if ($afterJob) {
+                            DB::commit();
+                            Log::info("Job updated successfully", [
+                                'job_id' => $job->id,
+                                'update_result' => $updateResult,
+                                'new_available_at' => date('Y-m-d H:i:s', $afterJob->available_at),
+                                'sequence_expires_at' => $sequence->expires_at
+                            ]);
+                            $updated = true;
+                        } else {
+                            DB::rollBack();
+                            Log::error("Job disappeared during update transaction", ['job_id' => $job->id]);
+                        }
+                    } catch (\Exception $e) {
+                        DB::rollBack();
+                        Log::error("Transaction error for job {$job->id}: " . $e->getMessage(), [
+                            'trace' => $e->getTraceAsString()
+                        ]);
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::error("Error processing job {$job->id}: " . $e->getMessage(), [
+                    'trace' => $e->getTraceAsString()
                 ]);
-
-                \Log::info("Job ID {$job->id} updated for sequenceId {$sequence->id} with new expires_at: {$sequence->expires_at}");
-
-                $updated = true;
             }
         }
 
         if (!$updated) {
+            Log::info("No existing jobs found or updated, dispatching new RevertSequenceJob for sequenceId: {$sequence->id}");
             RevertSequenceJob::dispatch($sequence->id)->delay(now()->addHour());
         }
+
+        return $updated;
     }
 
     private static function deleteJobs($jobs, $sequenceId)

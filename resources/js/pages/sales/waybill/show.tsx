@@ -239,6 +239,46 @@ export default function Show({ waybill }: WaybillProps) {
         );
     };
 
+    const getStatusSOBadge = (status: string) => {
+        let variant = 'outline';
+        let classes = '';
+        let label = '';
+
+        switch (status) {
+            case 'pending':
+                variant = 'outline';
+                classes = 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-yellow-200';
+                label = 'Pending';
+                break;
+            case 'completed':
+                variant = 'outline';
+                classes = 'bg-green-100 text-green-800 hover:bg-green-100 border-green-200';
+                label = 'Completed';
+                break;
+            case 'processed':
+                variant = 'outline';
+                classes = 'bg-blue-100 text-blue-800 hover:bg-blue-100 border-blue-200';
+                label = 'Processed';
+                break;
+            case 'cancelled':
+                variant = 'outline';
+                classes = 'bg-red-100 text-red-800 hover:bg-red-100 border-red-200';
+                label = 'Cancelled';
+                break;
+            default:
+                label = status
+                    .split('_')
+                    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                    .join(' ');
+        }
+
+        return (
+            <Badge variant={variant as never} className={classes}>
+                {label}
+            </Badge>
+        );
+    };
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Waybill: ${waybill.code}`} />
@@ -319,7 +359,7 @@ export default function Show({ waybill }: WaybillProps) {
                                             </div>
                                             <div className="flex justify-between">
                                                 <span className="text-sm text-gray-600">Order Status</span>
-                                                <span className="text-sm font-medium">{getStatusBadge(waybill.sales_order.status)}</span>
+                                                <span className="text-sm font-medium">{getStatusSOBadge(waybill.sales_order.status)}</span>
                                             </div>
                                         </div>
                                     </div>

@@ -157,11 +157,11 @@ export default function Show({ purchaseInvoice }: PurchaseInvoiceProps) {
         },
         {
             title: 'Invoice',
-            href: route('procurement.invoice.index'),
+            href: route('procurement.invoices.index'),
         },
         {
             title: purchaseInvoice.code,
-            href: route('procurement.invoice.show', purchaseInvoice.id),
+            href: route('procurement.invoices.show', purchaseInvoice.id),
         },
     ];
 
@@ -340,13 +340,13 @@ export default function Show({ purchaseInvoice }: PurchaseInvoiceProps) {
                     <Heading title="Supplier Invoice" description="Invoice details and items" />
                     <div className="flex gap-3">
                         {purchaseInvoice.status == 'unpaid' && (
-                            <Link href={route('procurement.invoice.edit', purchaseInvoice.id)}>
+                            <Link href={route('procurement.invoices.edit', purchaseInvoice.id)}>
                                 <Button className="flex items-center gap-2">
                                     <FileEdit className="h-4 w-4" /> Edit
                                 </Button>
                             </Link>
                         )}
-                        <Link href={route('procurement.invoice.index')}>
+                        <Link href={route('procurement.invoices.index')}>
                             <Button variant="outline" className="flex items-center gap-2">
                                 <ArrowLeft className="h-4 w-4" /> Back
                             </Button>

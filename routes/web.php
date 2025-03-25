@@ -6,6 +6,8 @@ use App\Http\Controllers\Procurement\PurchaseInvoiceController;
 use App\Http\Controllers\Procurement\PurchaseInvoicePaymentController;
 use App\Http\Controllers\Procurement\PurchaseOrderController;
 use App\Http\Controllers\Procurement\GoodsReceiptController;
+use App\Http\Controllers\Sales\SalesInvoiceController;
+use App\Http\Controllers\Sales\SalesInvoicePaymentController;
 use App\Http\Controllers\Sales\SalesOrderController;
 use App\Http\Controllers\Sales\WaybillController;
 use App\Http\Controllers\Stock\StockAdjustmentController;
@@ -100,15 +102,15 @@ Route::middleware(['auth'])->group(function () {
         });
 
         Route::group(['prefix' => 'invoices'], function () {
-            Route::get('/', [PurchaseInvoiceController::class, 'index'])->middleware('permission:read_purchase_invoice')->name('procurement.invoice.index');
-            Route::get('/create', [PurchaseInvoiceController::class, 'create'])->middleware('permission:create_purchase_invoice')->name('procurement.invoice.create');
-            Route::get('/getNotInvoicedGoodsReceipts', [PurchaseInvoiceController::class, 'getNotInvoicedGoodsReceipts'])->middleware('permission:create_purchase_invoice')->name('procurement.invoice.getNotInvoicedGoodsReceipts');
-            Route::get('/getGoodsReceiptData', [PurchaseInvoiceController::class, 'getGoodsReceiptData'])->middleware('permission:read_purchase_invoice')->name('procurement.invoice.getGoodsReceiptData');
-            Route::post('/', [PurchaseInvoiceController::class, 'store'])->middleware('permission:create_purchase_invoice')->name('procurement.invoice.store');
-            Route::get('/{id}/edit', [PurchaseInvoiceController::class, 'edit'])->middleware('permission:update_purchase_invoice')->name('procurement.invoice.edit');
-            Route::put('/{id}', [PurchaseInvoiceController::class, 'update'])->middleware('permission:update_purchase_invoice')->name('procurement.invoice.update');
-            Route::get('/{id}', [PurchaseInvoiceController::class, 'show'])->middleware('permission:read_purchase_invoice')->name('procurement.invoice.show');
-            Route::delete('/{id}', [PurchaseInvoiceController::class, 'destroy'])->middleware('permission:delete_purchase_invoice')->name('procurement.invoice.destroy');
+            Route::get('/', [PurchaseInvoiceController::class, 'index'])->middleware('permission:read_purchase_invoice')->name('procurement.invoices.index');
+            Route::get('/create', [PurchaseInvoiceController::class, 'create'])->middleware('permission:create_purchase_invoice')->name('procurement.invoices.create');
+            Route::get('/getNotInvoicedGoodsReceipts', [PurchaseInvoiceController::class, 'getNotInvoicedGoodsReceipts'])->middleware('permission:create_purchase_invoice')->name('procurement.invoices.getNotInvoicedGoodsReceipts');
+            Route::get('/getGoodsReceiptData', [PurchaseInvoiceController::class, 'getGoodsReceiptData'])->middleware('permission:read_purchase_invoice')->name('procurement.invoices.getGoodsReceiptData');
+            Route::post('/', [PurchaseInvoiceController::class, 'store'])->middleware('permission:create_purchase_invoice')->name('procurement.invoices.store');
+            Route::get('/{id}/edit', [PurchaseInvoiceController::class, 'edit'])->middleware('permission:update_purchase_invoice')->name('procurement.invoices.edit');
+            Route::put('/{id}', [PurchaseInvoiceController::class, 'update'])->middleware('permission:update_purchase_invoice')->name('procurement.invoices.update');
+            Route::get('/{id}', [PurchaseInvoiceController::class, 'show'])->middleware('permission:read_purchase_invoice')->name('procurement.invoices.show');
+            Route::delete('/{id}', [PurchaseInvoiceController::class, 'destroy'])->middleware('permission:delete_purchase_invoice')->name('procurement.invoices.destroy');
         });
 
         Route::group(['prefix' => 'payments'], function () {
@@ -141,6 +143,25 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/getSalesOrderData', [WaybillController::class, 'getSalesOrderData'])->middleware('permission:read_waybill')->name('sales.waybill.getSalesOrderData');
             Route::get('/{id}', [WaybillController::class, 'show'])->middleware('permission:read_waybill')->name('sales.waybill.show');
             Route::get('/{id}/generate-pdf', [WaybillController::class, 'generatePdf'])->middleware('permission:read_waybill')->name('sales.waybill.generate-pdf');
+        });
+
+        Route::group(['prefix' => 'invoices'], function () {
+            Route::get('/', [SalesInvoiceController::class, 'index'])->middleware('permission:read_sales_invoice')->name('sales.invoices.index');
+            Route::get('/create', [SalesInvoiceController::class, 'create'])->middleware('permission:create_sales_invoice')->name('sales.invoices.create');
+            Route::post('/', [SalesInvoiceController::class, 'store'])->middleware('permission:create_sales_invoice')->name('sales.invoices.store');
+            Route::get('/getWaybillData', [SalesInvoiceController::class, 'getWaybillData'])->middleware('permission:read_sales_invoice')->name('sales.invoices.getWaybillData');
+            Route::get('/{id}/generate-pdf', [SalesInvoiceController::class, 'generatePdf'])->middleware('permission:read_sales_invoice')->name('sales.invoices.generate-pdf');
+            Route::get('/{id}/edit', [SalesInvoiceController::class, 'edit'])->middleware('permission:update_sales_invoice')->name('sales.invoices.edit');
+            Route::put('/{id}', [SalesInvoiceController::class, 'update'])->middleware('permission:update_sales_invoice')->name('sales.invoices.update');
+            Route::delete('/{id}', [SalesInvoiceController::class, 'destroy'])->middleware('permission:delete_sales_invoice')->name('sales.invoices.destroy');
+            Route::get('/{id}', [SalesInvoiceController::class, 'show'])->middleware('permission:read_sales_invoice')->name('sales.invoices.show');
+        });
+
+        Route::group(['prefix' => 'payments'], function () {
+            Route::get('/', [SalesInvoicePaymentController::class, 'index'])->middleware('permission:read_sales_invoice_payment')->name('sales.payment.index');
+            Route::get('/create', [SalesInvoicePaymentController::class, 'create'])->middleware('permission:create_sales_invoice_payment')->name('sales.payment.create');
+            Route::post('/', [SalesInvoicePaymentController::class, 'store'])->middleware('permission:create_sales_invoice_payment')->name('sales.payment.store');
+            Route::get('/getSalesInvoiceData', [SalesInvoicePaymentController::class, 'getSalesInvoiceData'])->middleware('permission:read_sales_invoice_payment')->name('sales.payment.getSalesInvoiceData');
         });
     });
 

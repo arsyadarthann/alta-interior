@@ -34,6 +34,10 @@ const breadcrumbs: BreadcrumbItem[] = [
 type SalesOrder = {
     id: number;
     code: string;
+    customer: {
+        id: number;
+        name: string;
+    };
     customer_name: string;
     date: string;
 };
@@ -264,7 +268,7 @@ export default function Create({ code, salesOrders }: Props) {
                                                 onValueChange={handleSalesOrderChange}
                                                 options={salesOrders.map((order) => ({
                                                     value: String(order.id),
-                                                    label: `${order.code} - ${order.customer_name}`,
+                                                    label: `${order.code} - ${order.customer.name ?? order.customer_name}`,
                                                 }))}
                                                 placeholder="Select sales order"
                                                 searchPlaceholder="Search orders..."

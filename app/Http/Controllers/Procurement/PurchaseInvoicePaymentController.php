@@ -69,7 +69,7 @@ class PurchaseInvoicePaymentController extends Controller
             return Inertia::render('errors/error-page', [
                 'status' => 404,
                 'customTitle' => 'Purchase Invoice Payment Not Found',
-                'customDescription' => 'The purchase invoice payment you are looking for could not be found.',
+                'customDescription' => 'The purchase invoices payment you are looking for could not be found.',
                 'customBreadcrumbs' => [
                     [
                         'title' => 'Procurement',

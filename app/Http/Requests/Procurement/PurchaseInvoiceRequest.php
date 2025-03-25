@@ -54,19 +54,19 @@ class PurchaseInvoiceRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'code.required' => 'Purchase invoice code is required.',
-            'code.unique' => 'Purchase invoice code is already taken.',
-            'date.required' => 'Purchase invoice date is required.',
-            'due_date.required' => 'Purchase invoice due date is required.',
-            'supplier_id.required' => 'Purchase invoice supplier is required.',
-            'total_amount.required' => 'Purchase invoice total amount is required.',
-            'tax_rate_id.exists' => 'Purchase invoice tax rate is invalid.',
-            'tax_amount.required' => 'Purchase invoice tax amount is required.',
-            'grand_total.required' => 'Purchase invoice grand total is required.',
-            'purchase_invoice_goods_receipt.required' => 'Purchase invoice goods receipt is required.',
-            'purchase_invoice_goods_receipt.*.goods_receipt_id.required' => 'Purchase invoice goods receipt is required.',
-            'purchase_invoice_goods_receipt.*.purchase_invoice_details.required' => 'Purchase invoice details are required.',
-            'purchase_invoice_goods_receipt.*.purchase_invoice_details.*.goods_receipt_detail_id.required' => 'Purchase invoice details are required.',
+            'code.required' => 'Purchase invoices code is required.',
+            'code.unique' => 'Purchase invoices code is already taken.',
+            'date.required' => 'Purchase invoices date is required.',
+            'due_date.required' => 'Purchase invoices due date is required.',
+            'supplier_id.required' => 'Purchase invoices supplier is required.',
+            'total_amount.required' => 'Purchase invoices total amount is required.',
+            'tax_rate_id.exists' => 'Purchase invoices tax rate is invalid.',
+            'tax_amount.required' => 'Purchase invoices tax amount is required.',
+            'grand_total.required' => 'Purchase invoices grand total is required.',
+            'purchase_invoice_goods_receipt.required' => 'Purchase invoices goods receipt is required.',
+            'purchase_invoice_goods_receipt.*.goods_receipt_id.required' => 'Purchase invoices goods receipt is required.',
+            'purchase_invoice_goods_receipt.*.purchase_invoice_details.required' => 'Purchase invoices details are required.',
+            'purchase_invoice_goods_receipt.*.purchase_invoice_details.*.goods_receipt_detail_id.required' => 'Purchase invoices details are required.',
         ];
     }
 

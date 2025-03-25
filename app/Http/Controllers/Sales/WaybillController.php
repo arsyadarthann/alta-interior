@@ -77,6 +77,33 @@ class WaybillController extends Controller
 
     public function show($id)
     {
+        $waybill = $this->waybill->getById($id);
+
+        if (!$waybill) {
+            return Inertia::render('errors/error-page', [
+                'status' => 404,
+                'customTitle' => 'Waybill Not Found',
+                'customDescription' => 'The waybill you are looking for could not be found.',
+                'customBreadcrumbs' => [
+                    [
+                        'title' => 'Sales',
+                        'href' => '#',
+                    ],
+                    [
+                        'title' => 'Waybill',
+                        'href' => route('sales.waybill.index'),
+                    ],
+                    [
+                        'title' => 'Show',
+                        'href' => route('sales.waybill.show', $id),
+                    ],
+                    [
+                        'title' => 'Waybill Not Found',
+                    ]
+                ]
+            ]);
+        }
+
         return Inertia::render('sales/waybill/show', [
             'waybill' => $this->waybill->getById($id),
         ]);
@@ -85,6 +112,31 @@ class WaybillController extends Controller
     public function generatePdf($id)
     {
         $waybill = $this->waybill->getById($id);
+
+        if (!$waybill) {
+            return Inertia::render('errors/error-page', [
+                'status' => 404,
+                'customTitle' => 'Waybill Not Found',
+                'customDescription' => 'The waybill you are looking for could not be found.',
+                'customBreadcrumbs' => [
+                    [
+                        'title' => 'Sales',
+                        'href' => '#',
+                    ],
+                    [
+                        'title' => 'Waybill',
+                        'href' => route('sales.waybill.index'),
+                    ],
+                    [
+                        'title' => 'Print',
+                        'href' => route('sales.waybill.generate-pdf', $id),
+                    ],
+                    [
+                        'title' => 'Waybill Not Found',
+                    ]
+                ]
+            ]);
+        }
 
         $pdf = PDF::loadView('pdf.waybill', [
             'waybill' => $waybill
@@ -106,5 +158,9 @@ class WaybillController extends Controller
             $data = $this->waybill->getSalesOrderWaybillDetails($request->query('sales_order_id'));
             return response()->json($data);
         }
+
+        return Inertia::render('errors/error-page', [
+            'status' => 404,
+        ]);
     }
 }

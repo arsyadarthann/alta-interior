@@ -31,6 +31,9 @@ return new class extends Migration
             $table->decimal('paid_amount', 15, 2);
             $table->decimal('remaining_amount', 15, 2);
             $table->timestamps();
+
+            $table->foreign('branch_id')->references('id')->on('branches');
+            $table->foreign('tax_rate_id')->references('id')->on('tax_rates');
         });
     }
 

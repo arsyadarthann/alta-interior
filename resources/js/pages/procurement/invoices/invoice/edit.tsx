@@ -23,7 +23,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
     {
         title: 'Invoice',
-        href: route('procurement.invoice.index'),
+        href: route('procurement.invoices.index'),
     },
     {
         title: 'Edit',
@@ -240,7 +240,7 @@ export default function Edit({ purchaseInvoice, suppliers = [], taxRates = [] }:
             purchase_invoice_goods_receipt: filteredGoodsReceipts,
         };
 
-        put(route('procurement.invoice.update', { id: purchaseInvoice.id, ...submitData }), {
+        put(route('procurement.invoices.update', { id: purchaseInvoice.id, ...submitData }), {
             preserveScroll: true,
             onError: showErrorToast,
         });
@@ -265,7 +265,7 @@ export default function Edit({ purchaseInvoice, suppliers = [], taxRates = [] }:
             setLoading(true);
             try {
                 const response = await fetch(
-                    route('procurement.invoice.getNotInvoicedGoodsReceipts', {
+                    route('procurement.invoices.getNotInvoicedGoodsReceipts', {
                         supplier_id: supplierId,
                     }),
                     {
@@ -313,7 +313,7 @@ export default function Edit({ purchaseInvoice, suppliers = [], taxRates = [] }:
             setLoading(true);
             try {
                 const response = await fetch(
-                    route('procurement.invoice.getGoodsReceiptData', {
+                    route('procurement.invoices.getGoodsReceiptData', {
                         goods_receipt_id: goodsReceiptId,
                     }),
                     {
@@ -641,7 +641,7 @@ export default function Edit({ purchaseInvoice, suppliers = [], taxRates = [] }:
                 <div className="mb-6 flex items-center justify-between">
                     <Heading title="Edit Supplier Invoice" description="Edit an existing supplier invoice." />
                     <div className="flex gap-3">
-                        <Link href={route('procurement.invoice.index')}>
+                        <Link href={route('procurement.invoices.index')}>
                             <Button variant="outline" className="flex items-center gap-2">
                                 <ArrowLeft className="h-4 w-4" /> Back
                             </Button>
@@ -963,7 +963,7 @@ export default function Edit({ purchaseInvoice, suppliers = [], taxRates = [] }:
 
                     <div className="sticky bottom-0 mt-6 border-t bg-white pt-4 pb-2">
                         <div className="flex items-center justify-end gap-3">
-                            <Button variant="outline" type="button" onClick={() => router.visit(route('procurement.invoice.index'))}>
+                            <Button variant="outline" type="button" onClick={() => router.visit(route('procurement.invoices.index'))}>
                                 Cancel
                             </Button>
                             <Button type="submit" disabled={processing || !canSubmit} className="px-8">

@@ -14,6 +14,8 @@ use App\Interface\PurchaseInvoiceInterface;
 use App\Interface\PurchaseInvoicePaymentInterface;
 use App\Interface\PurchaseOrderInterface;
 use App\Interface\RoleInterface;
+use App\Interface\SalesInvoiceInterface;
+use App\Interface\SalesInvoicePaymentInterface;
 use App\Interface\SalesOrderInterface;
 use App\Interface\StockAdjustmentInterface;
 use App\Interface\StockAuditInterface;
@@ -36,6 +38,8 @@ use App\Repositories\PurchaseInvoicePaymentRepository;
 use App\Repositories\PurchaseInvoiceRepository;
 use App\Repositories\PurchaseOrderRepository;
 use App\Repositories\RoleRepository;
+use App\Repositories\SalesInvoicePaymentRepository;
+use App\Repositories\SalesInvoiceRepository;
 use App\Repositories\SalesOrderRepository;
 use App\Repositories\StockAdjustmentRepository;
 use App\Repositories\StockAuditRepository;
@@ -77,6 +81,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(PurchaseInvoicePaymentInterface::class, PurchaseInvoicePaymentRepository::class);
         $this->app->bind(SalesOrderInterface::class, SalesOrderRepository::class);
         $this->app->bind(WaybillInterface::class, WaybillRepository::class);
+        $this->app->bind(SalesInvoiceInterface::class, SalesInvoiceRepository::class);
+        $this->app->bind(SalesInvoicePaymentInterface::class, SalesInvoicePaymentRepository::class);
     }
 
     /**

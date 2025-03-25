@@ -236,7 +236,7 @@ export default function Create({ code = '', suppliers = [], paymentMethods = [] 
                     showErrorToast(['Invalid response format']);
                 }
             } catch (error) {
-                console.error('Error fetching invoice details:', error);
+                console.error('Error fetching invoices details:', error);
                 showErrorToast([(error as Error).message]);
             } finally {
                 setLoading(false);
@@ -376,7 +376,7 @@ export default function Create({ code = '', suppliers = [], paymentMethods = [] 
                                                     value: invoice.id.toString(),
                                                     label: `${invoice.code} - ${formatCurrency(invoice.remaining_amount)}`,
                                                 }))}
-                                                placeholder={loading ? 'Loading...' : 'Select invoice'}
+                                                placeholder={loading ? 'Loading...' : 'Select invoices'}
                                                 searchPlaceholder="Search invoices..."
                                                 initialDisplayCount={5}
                                                 disabled={loading || notPaidInvoices.length === 0}

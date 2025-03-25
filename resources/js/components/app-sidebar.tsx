@@ -119,7 +119,7 @@ export function AppSidebar() {
               ]
             : []),
 
-        ...(hasPermission('read_purchase_invoice') || hasPermission('read_purchase_invoice_payments')
+        ...(hasPermission('read_purchase_invoice') || hasPermission('read_purchase_invoice_payment')
             ? [
                   {
                       title: 'Payables',
@@ -135,7 +135,7 @@ export function AppSidebar() {
                                 ]
                               : []),
 
-                          ...(hasPermission('read_purchase_invoice_payments')
+                          ...(hasPermission('read_purchase_invoice_payment')
                               ? [
                                     {
                                         title: 'Payments',
@@ -155,32 +155,60 @@ export function AppSidebar() {
     });
 
     const salesItems: NavItemWithChildren[] = [
-        {
-            title: 'Sales Orders',
-            url: '/sales/orders',
-            icon: Ticket,
-        },
-        {
-            title: 'Waybill',
-            url: '/sales/waybills',
-            icon: ScrollText,
-        },
-        {
-            title: 'Receivables',
-            url: '',
-            icon: Banknote,
-            children: [
-                {
-                    title: 'Invoice',
-                    url: '/sales/invoices',
-                },
-                {
-                    title: 'Payments',
-                    url: '/sales/payments',
-                },
-            ],
-        },
-    ];
+        ...(hasPermission('read_sales_order')
+            ? [
+                  {
+                      title: 'Sales Orders',
+                      url: '/sales/orders',
+                      icon: Ticket,
+                  },
+              ]
+            : []),
+
+        ...(hasPermission('read_waybill')
+            ? [
+                  {
+                      title: 'Waybill',
+                      url: '/sales/waybills',
+                      icon: ScrollText,
+                  },
+              ]
+            : []),
+
+        ...(hasPermission('read_sales_invoice') || hasPermission('read_sales_invoice_payment')
+            ? [
+                  {
+                      title: 'Receivables',
+                      url: '',
+                      icon: Banknote,
+                      children: [
+                          ...(hasPermission('read_sales_invoice')
+                              ? [
+                                    {
+                                        title: 'Invoice',
+                                        url: '/sales/invoices',
+                                    },
+                                ]
+                              : []),
+
+                          ...(hasPermission('read_sales_invoice_payment')
+                              ? [
+                                    {
+                                        title: 'Payments',
+                                        url: '/sales/payments',
+                                    },
+                                ]
+                              : []),
+                      ].filter((item) => item !== undefined),
+                  },
+              ]
+            : []),
+    ].filter((item) => {
+        if (item.title === 'Receivables') {
+            return item.children && item.children.length > 0;
+        }
+        return true;
+    });
 
     const financeItems: NavItem[] = [
         {

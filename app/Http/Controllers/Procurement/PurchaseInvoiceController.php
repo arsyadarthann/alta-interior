@@ -35,7 +35,7 @@ class PurchaseInvoiceController extends Controller
         try {
             $this->purchaseInvoice->store($request->validated());
             return redirect()
-                ->route('procurement.invoice.index')
+                ->route('procurement.invoices.index')
                 ->with('flash', [
                     'toast' => [
                         'variant' => 'success',
@@ -45,14 +45,14 @@ class PurchaseInvoiceController extends Controller
                 ]);
         } catch (\Throwable $th) {
             $errorMessage = app()->environment('production')
-                ? 'An error occurred while creating supplier invoice. Please try again later.'
+                ? 'An error occurred while creating supplier invoices. Please try again later.'
                 : $th->getMessage();
             return redirect()
                 ->back()
                 ->with('flash', [
                     'toast' => [
                         'variant' => 'destructive',
-                        'title' => 'Error creating supplier invoice',
+                        'title' => 'Error creating supplier invoices',
                         'description' => $errorMessage,
                     ]
                 ]);
@@ -67,7 +67,7 @@ class PurchaseInvoiceController extends Controller
             return Inertia::render('errors/error-page', [
                 'status' => 404,
                 'customTitle' => 'Supplier Invoice Not Found',
-                'customDescription' => 'The supplier invoice you are looking for could not be found.',
+                'customDescription' => 'The supplier invoices you are looking for could not be found.',
                 'customBreadcrumbs' => [
                     [
                         'title' => 'Procurement',
@@ -75,11 +75,11 @@ class PurchaseInvoiceController extends Controller
                     ],
                     [
                         'title' => 'Invoice',
-                        'href' => route('procurement.invoice.index'),
+                        'href' => route('procurement.invoices.index'),
                     ],
                     [
                         'title' => 'Show',
-                        'href' => route('procurement.invoice.show', $id),
+                        'href' => route('procurement.invoices.show', $id),
                     ],
                     [
                         'title' => 'Supplier Invoice Not Found',
@@ -101,7 +101,7 @@ class PurchaseInvoiceController extends Controller
             return Inertia::render('errors/error-page', [
                 'status' => 404,
                 'customTitle' => 'Supplier Invoice Not Found',
-                'customDescription' => 'The supplier invoice you are looking for could not be found.',
+                'customDescription' => 'The supplier invoices you are looking for could not be found.',
                 'customBreadcrumbs' => [
                     [
                         'title' => 'Procurement',
@@ -109,11 +109,11 @@ class PurchaseInvoiceController extends Controller
                     ],
                     [
                         'title' => 'Invoice',
-                        'href' => route('procurement.invoice.index'),
+                        'href' => route('procurement.invoices.index'),
                     ],
                     [
                         'title' => 'Edit',
-                        'href' => route('procurement.invoice.edit', $id),
+                        'href' => route('procurement.invoices.edit', $id),
                     ],
                     [
                         'title' => 'Supplier Invoice Not Found',
@@ -132,7 +132,7 @@ class PurchaseInvoiceController extends Controller
             return Inertia::render('errors/error-page', [
                 'status' => 423,
                 'customTitle' => 'Purchase Invoice Cannot Be Edited',
-                'customDescription' => 'This invoice cannot be edited because it is already in ' . $statusDisplay . ' status.',
+                'customDescription' => 'This invoices cannot be edited because it is already in ' . $statusDisplay . ' status.',
                 'customBreadcrumbs' => [
                     [
                         'title' => 'Procurement',
@@ -140,11 +140,11 @@ class PurchaseInvoiceController extends Controller
                     ],
                     [
                         'title' => 'Invoice',
-                        'href' => route('procurement.invoice.index'),
+                        'href' => route('procurement.invoices.index'),
                     ],
                     [
                         'title' => 'Edit',
-                        'href' => route('procurement.invoice.edit', $id),
+                        'href' => route('procurement.invoices.edit', $id),
                     ],
                     [
                         'title' => 'Status Error',
@@ -165,7 +165,7 @@ class PurchaseInvoiceController extends Controller
         try {
             $this->purchaseInvoice->update($id, $request->validated());
             return redirect()
-                ->route('procurement.invoice.index')
+                ->route('procurement.invoices.index')
                 ->with('flash', [
                     'toast' => [
                         'variant' => 'success',
@@ -175,14 +175,14 @@ class PurchaseInvoiceController extends Controller
                 ]);
         } catch (\Throwable $th) {
             $errorMessage = app()->environment('production')
-                ? 'An error occurred while updating supplier invoice. Please try again later.'
+                ? 'An error occurred while updating supplier invoices. Please try again later.'
                 : $th->getMessage();
             return redirect()
                 ->back()
                 ->with('flash', [
                     'toast' => [
                         'variant' => 'destructive',
-                        'title' => 'Error updating supplier invoice',
+                        'title' => 'Error updating supplier invoices',
                         'description' => $errorMessage,
                     ]
                 ]);
@@ -193,7 +193,7 @@ class PurchaseInvoiceController extends Controller
     {
         $this->purchaseInvoice->destroy($id);
         return redirect()
-            ->route('procurement.invoice.index')
+            ->route('procurement.invoices.index')
             ->with('flash', [
                 'toast' => [
                     'variant' => 'success',
