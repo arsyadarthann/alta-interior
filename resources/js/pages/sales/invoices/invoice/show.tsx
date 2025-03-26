@@ -134,10 +134,30 @@ interface SalesInvoiceDetail {
     id: number;
     sales_invoice_id: number;
     waybill_id: number;
-    total_price: string;
     created_at: string;
     updated_at: string;
     waybill: Waybill;
+}
+
+interface PaymentMethod {
+    id: number;
+    name: string;
+}
+
+interface SalesInvoicePayment {
+    id: number;
+    code: string;
+    date: string;
+    user_id: number;
+    branch_id: number;
+    sales_invoice_id: number;
+    payment_method_id: number;
+    amount: string;
+    note: string | null;
+    created_at: string;
+    updated_at: string;
+    user: User;
+    payment_method: PaymentMethod;
 }
 
 interface SalesInvoice {
@@ -148,7 +168,7 @@ interface SalesInvoice {
     user_id: number;
     branch_id: number;
     customer_id: number;
-    customer_name: string;
+    customer_name: string | null;
     total_amount: string;
     discount_type: 'percentage' | 'amount';
     discount_percentage: string;
@@ -166,6 +186,7 @@ interface SalesInvoice {
     customer: Customer;
     tax_rate: TaxRate;
     sales_invoice_details: SalesInvoiceDetail[];
+    sales_invoice_payments: SalesInvoicePayment[];
 }
 
 interface SalesInvoiceProps {
@@ -302,7 +323,7 @@ export default function Show({ salesInvoice }: SalesInvoiceProps) {
     const getStatusBadge = (status: string) => {
         let variant = 'outline';
         let classes = '';
-        let label = '';
+        let label;
 
         switch (status) {
             case 'unpaid':
@@ -463,6 +484,8 @@ export default function Show({ salesInvoice }: SalesInvoiceProps) {
                                             </div>
                                         </div>
                                     </div>
+
+                                    {/* Payment History Section moved to below Invoice Waybills */}
                                 </div>
                             </div>
                         </Card>
@@ -489,6 +512,81 @@ export default function Show({ salesInvoice }: SalesInvoiceProps) {
                         </Card>
                     </div>
                 </div>
+                <Card className="mt-6 border-0 shadow-sm">
+                    <div className="p-6">
+                        <div className="mb-4 flex items-center">
+                            <h2 className="text-base font-semibold text-gray-900">Payment History</h2>
+                            <Badge variant="secondary" className="ml-2">
+                                {salesInvoice.sales_invoice_payments?.length || 0} payments
+                            </Badge>
+                        </div>
+
+                        {salesInvoice.sales_invoice_payments && salesInvoice.sales_invoice_payments.length > 0 ? (
+                            <div className="overflow-hidden rounded-md border border-gray-200">
+                                <table className="min-w-full divide-y divide-gray-200">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th
+                                                scope="col"
+                                                className="px-4 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
+                                            >
+                                                Payment Code
+                                            </th>
+                                            <th
+                                                scope="col"
+                                                className="px-4 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
+                                            >
+                                                Date
+                                            </th>
+                                            <th
+                                                scope="col"
+                                                className="px-4 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
+                                            >
+                                                Method
+                                            </th>
+                                            <th
+                                                scope="col"
+                                                className="px-4 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
+                                            >
+                                                Created By
+                                            </th>
+                                            <th
+                                                scope="col"
+                                                className="px-4 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
+                                            >
+                                                Note
+                                            </th>
+                                            <th
+                                                scope="col"
+                                                className="px-4 py-3 text-right text-xs font-medium tracking-wider text-gray-500 uppercase"
+                                            >
+                                                Amount
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-200 bg-white">
+                                        {salesInvoice.sales_invoice_payments.map((payment) => (
+                                            <tr key={payment.id} className="hover:bg-gray-50">
+                                                <td className="px-4 py-3 text-sm font-medium whitespace-nowrap text-gray-900">{payment.code}</td>
+                                                <td className="px-4 py-3 text-sm whitespace-nowrap text-gray-500">{formatDate(payment.date)}</td>
+                                                <td className="px-4 py-3 text-sm whitespace-nowrap text-gray-500">{payment.payment_method.name}</td>
+                                                <td className="px-4 py-3 text-sm whitespace-nowrap text-gray-500">{payment.user.name}</td>
+                                                <td className="px-4 py-3 text-sm text-gray-500">{payment.note || '-'}</td>
+                                                <td className="px-4 py-3 text-right text-sm font-medium whitespace-nowrap text-green-600">
+                                                    {formatCurrency(payment.amount)}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <div className="py-8 text-center text-gray-500">
+                                <p>No payment records found for this invoice</p>
+                            </div>
+                        )}
+                    </div>
+                </Card>
             </div>
         </AppLayout>
     );

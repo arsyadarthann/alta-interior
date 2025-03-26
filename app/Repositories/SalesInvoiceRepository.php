@@ -33,6 +33,8 @@ class SalesInvoiceRepository implements SalesInvoiceInterface
             'salesInvoiceDetails.waybill.salesOrder',
             'salesInvoiceDetails.waybill.waybillDetails.salesOrderDetail.item_source_able',
             'salesInvoiceDetails.waybill.waybillDetails.salesOrderDetail.item.itemUnit',
+            'salesInvoicePayments.user:id,name',
+            'salesInvoicePayments.paymentMethod:id,name',
         ])->find($id);
     }
 
