@@ -12,7 +12,7 @@ const Combobox = React.forwardRef<
     value?: string;
     onValueChange?: (value: string) => void;
     disabled?: boolean;
-    options?: Array<{ value: string; label: string; disabled?: boolean }>;
+    options?: Array<{ value: string | null; label: string; disabled?: boolean }>;
     placeholder?: string;
     searchPlaceholder?: string;
     emptyMessage?: string;

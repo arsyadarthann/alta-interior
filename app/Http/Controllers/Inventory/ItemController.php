@@ -8,6 +8,7 @@ use App\Interface\BranchInterface;
 use App\Interface\ItemCategoryInterface;
 use App\Interface\ItemInterface;
 use App\Interface\ItemUnitInterface;
+use App\Interface\ItemWholesaleUnitInterface;
 use App\Interface\WarehouseInterface;
 use App\Models\Branch;
 use App\Models\Warehouse;
@@ -16,7 +17,7 @@ use Inertia\Inertia;
 
 class ItemController extends Controller
 {
-    public function __construct(private ItemInterface $item, private ItemCategoryInterface $itemCategory, private itemUnitInterface $itemUnit, private WarehouseInterface $warehouse, private BranchInterface $branch) {}
+    public function __construct(private ItemInterface $item, private ItemCategoryInterface $itemCategory, private ItemWholesaleUnitInterface $itemWholesaleUnit, private itemUnitInterface $itemUnit, private WarehouseInterface $warehouse, private BranchInterface $branch) {}
 
     public function index(Request $request)
     {
@@ -36,6 +37,7 @@ class ItemController extends Controller
                 'source_able_type' => $sourceAbleType,
             ]),
             'itemCategories' => $this->itemCategory->getAll(),
+            'itemWholesaleUnits' => $this->itemWholesaleUnit->getAll(),
             'itemUnits' => $this->itemUnit->getAll(),
             'warehouses' => $this->warehouse->getAll(),
             'branches' => $this->branch->getAll(),

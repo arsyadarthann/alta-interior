@@ -18,13 +18,20 @@ class Item extends Model
         'name',
         'code',
         'item_category_id',
+        'item_wholesale_unit_id',
         'item_unit_id',
+        'wholesale_unit_conversion',
         'price'
     ];
 
     public function itemCategory(): BelongsTo
     {
         return $this->belongsTo(ItemCategory::class, 'item_category_id', 'id');
+    }
+
+    public function itemWholesaleUnit(): BelongsTo
+    {
+        return $this->belongsTo(ItemWholesaleUnit::class, 'item_wholesale_unit_id', 'id');
     }
 
     public function itemUnit(): BelongsTo

@@ -16,22 +16,22 @@ import { Label } from "@/components/ui/label";
 import { usePermissions } from "@/hooks/use-permissions";
 import { FormDialog } from "@/components/form-dialog";
 
-type ItemUnit = {
+type ItemWholesaleUnit = {
     id: number;
     name: string;
     abbreviation: string;
 }
 
 interface Props {
-    itemUnits: ItemUnit[];
+    itemWholesaleUnits: ItemWholesaleUnit[];
 }
 
-export default function ItemUnit({ itemUnits }: Props) {
+export default function ItemWholesaleUnit({ itemWholesaleUnits }: Props) {
     const { hasPermission } = usePermissions();
     const { showErrorToast } = useToastNotification();
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-    const [selectedItemUnit, setSelectedItemUnit] = useState<ItemUnit | undefined>();
+    const [selectedItemUnit, setSelectedItemUnit] = useState<ItemWholesaleUnit | undefined>();
 
     const createForm = useForm({
         name: '',
@@ -45,7 +45,7 @@ export default function ItemUnit({ itemUnits }: Props) {
 
     const handleCreateSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        createForm.post(route('unit.store'), {
+        createForm.post(route('wholesale-unit.store'), {
             preserveScroll: true,
             onError: showErrorToast,
             onSuccess: () => {
@@ -59,7 +59,7 @@ export default function ItemUnit({ itemUnits }: Props) {
         e.preventDefault();
         if (!selectedItemUnit) return;
 
-        editForm.put(route('unit.update', selectedItemUnit.id), {
+        editForm.put(route('wholesale-unit.update', selectedItemUnit.id), {
             preserveScroll: true,
             onError: showErrorToast,
             onSuccess: () => {
@@ -69,26 +69,26 @@ export default function ItemUnit({ itemUnits }: Props) {
         });
     };
 
-    const columns: ColumnDef<ItemUnit>[] = [
-        createNumberColumn<ItemUnit>(),
+    const columns: ColumnDef<ItemWholesaleUnit>[] = [
+        createNumberColumn<ItemWholesaleUnit>(),
         {
             accessorKey: "name",
             header: "Unit Name",
-            cell: ({ row }: { row: Row<ItemUnit> }) => {
+            cell: ({ row }: { row: Row<ItemWholesaleUnit> }) => {
                 return row.original.name;
             }
         },
         {
             accessorKey: "abbreviation",
             header: "Abbreviation",
-            cell: ({ row }: { row: Row<ItemUnit> }) => {
+            cell: ({ row }: { row: Row<ItemWholesaleUnit> }) => {
                 return row.original.abbreviation;
             }
         },
-        (hasPermission('update_item_unit') || hasPermission('delete_item_unit')) && (
-            ActionColumn<ItemUnit>({
+        (hasPermission('update_item_wholesale_unit') || hasPermission('delete_item_wholesale_unit')) && (
+            ActionColumn<ItemWholesaleUnit>({
                 hasPermission: hasPermission,
-                actions: (itemUnit) => [
+                actions: (itemWholesaleUnit) => [
                     {
                         label: "Edit",
                         icon: <Pencil className="h-4 w-4" />,
@@ -100,7 +100,7 @@ export default function ItemUnit({ itemUnits }: Props) {
                             });
                             setIsEditModalOpen(true);
                         },
-                        permission: 'update_item_unit',
+                        permission: 'update_item_wholesale_unit',
                     },
                     {
                         label: "Delete",
@@ -108,51 +108,51 @@ export default function ItemUnit({ itemUnits }: Props) {
                         className: "text-red-600",
                         showConfirmDialog: true,
                         confirmDialogProps: {
-                            title: "Delete Item Retail Unit",
-                            description: `This action cannot be undone. This will permanently delete the "${itemUnit.name}" unit.`,
+                            title: "Delete Item Wholesale Unit",
+                            description: `This action cannot be undone. This will permanently delete the "${itemWholesaleUnit.name}" unit.`,
                         },
                         onClick: (data) => {
-                            router.delete(route('unit.destroy', data.id), {
+                            router.delete(route('wholesale-unit.destroy', data.id), {
                                 preserveScroll: true,
                             });
                         },
-                        permission: 'delete_item_unit',
+                        permission: 'delete_item_wholesale_unit',
                     }
                 ],
             })
         )
-    ].filter(Boolean) as ColumnDef<ItemUnit>[];
+    ].filter(Boolean) as ColumnDef<ItemWholesaleUnit>[];
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Item Retail Unit" />
+            <Head title="Item Wholesale Unit" />
 
             <InventoryLayout>
                 <div className="space-y-6">
                     <div className="flex items-center justify-between">
                         <HeadingSmall
-                            title="Item Retail Unit"
-                            description="Manage your item retail units."
+                            title="Item Wholesale Unit"
+                            description="Manage your item wholesale units."
                         />
-                        {hasPermission('create_item_unit') && (
+                        {hasPermission('create_item_wholesale_unit') && (
                             <Button
                                 onClick={() => setIsCreateModalOpen(true)}
                                 className="flex items-center gap-2"
                             >
                                 <Plus className="h-4 w-4" />
-                                Add Item Retail Unit
+                                Add Item Unit
                             </Button>
                         )}
                     </div>
 
                     <DataTable
                         columns={columns}
-                        data={itemUnits}
+                        data={itemWholesaleUnits}
                     />
 
                     <FormDialog
-                        title="Add Item Retail Unit"
-                        description="Create a new unit for your items."
+                        title="Add Item Wholesale Unit"
+                        description="Create a new wholesale unit for your items."
                         isOpen={isCreateModalOpen}
                         onClose={() => setIsCreateModalOpen(false)}
                         onSubmit={handleCreateSubmit}
@@ -162,7 +162,7 @@ export default function ItemUnit({ itemUnits }: Props) {
                     >
                         <div className="space-y-2 relative grid gap-2">
                             <Label htmlFor="name">
-                                Retail Unit Name <span className="text-red-500">*</span>
+                                Wholesale Unit Name <span className="text-red-500">*</span>
                             </Label>
                             <Input
                                 id="name"
@@ -189,8 +189,8 @@ export default function ItemUnit({ itemUnits }: Props) {
                     </FormDialog>
 
                     <FormDialog
-                        title="Edit Item Retail Unit"
-                        description="Update the item retail unit name."
+                        title="Edit Item Wholesale Unit"
+                        description="Update the item unit wholesale name."
                         isOpen={isEditModalOpen}
                         onClose={() => setIsEditModalOpen(false)}
                         onSubmit={handleEditSubmit}
@@ -199,7 +199,7 @@ export default function ItemUnit({ itemUnits }: Props) {
                         processingLabel="Saving..."
                     >
                         <div className="space-y-2 relative grid gap-2">
-                            <Label htmlFor="edit_name">Retail Unit Name</Label>
+                            <Label htmlFor="edit_name">Wholesale Unit Name</Label>
                             <Input
                                 id="edit_name"
                                 type="text"
@@ -229,7 +229,7 @@ export default function ItemUnit({ itemUnits }: Props) {
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
-        title: 'Item Retail Unit',
-        href: route('unit.index'),
+        title: 'Wholesale Unit',
+        href: route('wholesale-unit.index'),
     }
 ];

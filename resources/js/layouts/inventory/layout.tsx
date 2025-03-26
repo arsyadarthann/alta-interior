@@ -24,8 +24,12 @@ export default function InventoryLayout({ children, fullWidth = false }: Invento
             title: 'Category',
             url: '/inventory/category',
         },
+        {
+            title: 'Wholesale Unit',
+            url: '/inventory/wholesale-unit',
+        },
         hasPermission('read_item_unit') && {
-            title: 'Unit',
+            title: 'Retail Unit',
             url: '/inventory/unit',
         },
         {

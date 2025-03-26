@@ -3,6 +3,7 @@
 use App\Http\Controllers\Inventory\ItemCategoryController;
 use App\Http\Controllers\Inventory\ItemController;
 use App\Http\Controllers\Inventory\ItemUnitController;
+use App\Http\Controllers\Inventory\ItemWholesaleUnitController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth')->group(function () {
@@ -13,6 +14,13 @@ Route::middleware('auth')->group(function () {
         Route::post('/', [ItemCategoryController::class, 'store'])->middleware('permission:create_item_category')->name('category.store');
         Route::put('/{id}', [ItemCategoryController::class, 'update'])->middleware('permission:update_item_category')->name('category.update');
         Route::delete('/{id}', [ItemCategoryController::class, 'destroy'])->middleware('permission:delete_item_category')->name('category.destroy');
+    });
+
+    Route::group(['prefix' => 'inventory/wholesale-unit'], function () {
+        Route::get('/', [ItemWholesaleUnitController::class, 'index'])->middleware('permission:read_item_wholesale_unit')->name('wholesale-unit.index');
+        Route::post('/', [ItemWholesaleUnitController::class, 'store'])->middleware('permission:create_item_wholesale_unit')->name('wholesale-unit.store');
+        Route::put('/{id}', [ItemWholesaleUnitController::class, 'update'])->middleware('permission:update_item_wholesale_unit')->name('wholesale-unit.update');
+        Route::delete('/{id}', [ItemWholesaleUnitController::class, 'destroy'])->middleware('permission:delete_item_wholesale_unit')->name('wholesale-unit.destroy');
     });
 
     Route::group(['prefix' => 'inventory/unit'], function () {

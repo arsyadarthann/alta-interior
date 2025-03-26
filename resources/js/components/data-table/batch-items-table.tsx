@@ -4,6 +4,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency } from '@/lib/utils';
 import { ColumnDef } from '@tanstack/react-table';
 import { useEffect, useMemo, useState } from 'react';
+import { usePermissions } from '@/hooks/use-permissions';
+import { usePage } from '@inertiajs/react';
 
 interface ItemUnit {
     id: number;
@@ -56,6 +58,7 @@ interface BatchItemsTableProps {
 }
 
 export function BatchItemsTable({ itemId, sourceAbleId, sourceAbleType }: BatchItemsTableProps) {
+    const { hasRole } = usePermissions();
     const [batchItems, setBatchItems] = useState<BatchItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -63,7 +66,6 @@ export function BatchItemsTable({ itemId, sourceAbleId, sourceAbleType }: BatchI
     const [lastPage, setLastPage] = useState(1);
     const [totalItems, setTotalItems] = useState(0);
 
-    // Format tanggal dan waktu
     const formatDateTime = (dateTimeStr: string) => {
         if (!dateTimeStr) return 'N/A';
         const date = new Date(dateTimeStr);
@@ -111,7 +113,6 @@ export function BatchItemsTable({ itemId, sourceAbleId, sourceAbleType }: BatchI
             }
 
             const responseData = await response.json();
-            console.log('API Response:', responseData);
 
             let paginationData: BatchItemsResponse;
 
@@ -167,8 +168,9 @@ export function BatchItemsTable({ itemId, sourceAbleId, sourceAbleType }: BatchI
     };
 
     // Define columns for the DataTable
-    const columns = useMemo<ColumnDef<BatchItem, any>[]>(
-        () => [
+    const columns = useMemo<ColumnDef<BatchItem, any>[]>(() => {
+        // Definisikan kolom dasar yang akan selalu ditampilkan
+        const baseColumns = [
             createNumberColumn(),
             {
                 accessorKey: 'sku',
@@ -189,19 +191,28 @@ export function BatchItemsTable({ itemId, sourceAbleId, sourceAbleType }: BatchI
                     </div>
                 ),
             },
-            {
-                accessorKey: 'cogs',
-                header: 'COGS',
-                cell: ({ row }) => formatCurrency(row.original.cogs),
-            },
+            // Kolom received_at akan selalu ditampilkan
             {
                 accessorKey: 'received_at',
                 header: 'Received At',
                 cell: ({ row }) => formatDateTime(row.original.received_at),
             },
-        ],
-        [currentPage],
-    );
+        ];
+
+
+        const cogsColumn = {
+            accessorKey: 'cogs',
+            header: 'COGS',
+            cell: ({ row }) => formatCurrency(row.original.cogs),
+        };
+
+
+        if (hasRole('super_admin') || hasRole('admin')) {
+            baseColumns.splice(4, 0, cogsColumn);
+        }
+
+        return baseColumns;
+    }, [currentPage, hasRole]);
 
     if (error) {
         return <div className="p-4 text-red-500">{error}</div>;

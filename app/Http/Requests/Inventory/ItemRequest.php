@@ -21,7 +21,9 @@ class ItemRequest extends FormRequest
             'name' => 'required|string|max:255|unique:items,name,NULL,id,deleted_at,NULL',
             'code' => 'required|string|max:10|unique:items,code,NULL,id,deleted_at,NULL',
             'item_category_id' => 'required|exists:item_categories,id',
+            'item_wholesale_unit_id' => 'nullable|exists:item_wholesale_units,id',
             'item_unit_id' => 'required|exists:item_units,id',
+            'wholesale_unit_conversion' => 'required_with:item_wholesale_unit_id',
             'price' => 'required|numeric',
         ];
     }
@@ -32,7 +34,9 @@ class ItemRequest extends FormRequest
             'name' => 'required|string|max:255|unique:items,name,' . $this->route('id') . ',id,deleted_at,NULL',
             'code' => 'required|string|max:10|unique:items,code,' . $this->route('id') . ',id,deleted_at,NULL',
             'item_category_id' => 'required|exists:item_categories,id',
+            'item_wholesale_unit_id' => 'nullable|exists:item_wholesale_units,id',
             'item_unit_id' => 'required|exists:item_units,id',
+            'wholesale_unit_conversion' => 'required_with:item_wholesale_unit_id',
             'price' => 'required|numeric',
         ];
     }
@@ -48,6 +52,7 @@ class ItemRequest extends FormRequest
             'item_category_id.exists' => 'Item category is invalid.',
             'item_unit_id.required' => 'Item unit is required.',
             'item_unit_id.exists' => 'Item unit is invalid.',
+            'wholesale_unit_conversion.required_with' => 'Wholesale unit conversion is required.',
             'price.required' => 'Item price is required.',
         ];
     }

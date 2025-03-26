@@ -17,12 +17,12 @@ class ItemRepository implements ItemInterface
 
     public function getAllOnlyItem()
     {
-        return $this->item->with(['itemCategory:id,name', 'itemUnit:id,name,abbreviation'])->get();
+        return $this->item->with(['itemCategory:id,name', 'itemWholesaleUnit:id,name,abbreviation', 'itemUnit:id,name,abbreviation'])->get();
     }
 
     public function getAll($sourceId = null, $sourceType = null)
     {
-        $query = $this->item->with(['itemCategory:id,name', 'itemUnit:id,name,abbreviation']);
+        $query = $this->item->with(['itemCategory:id,name', 'itemWholesaleUnit:id,name,abbreviation', 'itemUnit:id,name,abbreviation']);
 
         $query->selectRaw('items.*, COALESCE((
         SELECT SUM(stock)
@@ -37,7 +37,7 @@ class ItemRepository implements ItemInterface
 
     public function getAllPaginate($sourceId = null, $sourceType = null)
     {
-        $query = $this->item->with(['itemCategory:id,name', 'itemUnit:id,name,abbreviation']);
+        $query = $this->item->with(['itemCategory:id,name', 'itemWholesaleUnit:id,name,abbreviation', 'itemUnit:id,name,abbreviation']);
 
         $query->selectRaw('items.*, COALESCE((
         SELECT SUM(stock)
@@ -72,7 +72,7 @@ class ItemRepository implements ItemInterface
 
     public function getById(int $id)
     {
-        return $this->item->with(['itemCategory:id,name', 'itemUnit:id,name,abbreviation'])->find($id);
+        return $this->item->with(['itemCategory:id,name', 'itemWholesaleUnit:id,name,abbreviation', 'itemUnit:id,name,abbreviation'])->find($id);
     }
 
     public function store(array $data)
@@ -82,7 +82,9 @@ class ItemRepository implements ItemInterface
                 'name' => $data['name'],
                 'code' => $data['code'],
                 'item_category_id' => $data['item_category_id'],
+                'item_wholesale_unit_id' => $data['item_wholesale_unit_id'] ?? null,
                 'item_unit_id' => $data['item_unit_id'],
+                'wholesale_unit_conversion' => $data['wholesale_unit_conversion'] ?? null,
                 'price' => $data['price'],
             ]);
         });
@@ -96,7 +98,9 @@ class ItemRepository implements ItemInterface
                 'name' => $data['name'],
                 'code' => $data['code'],
                 'item_category_id' => $data['item_category_id'],
+                'item_wholesale_unit_id' => $data['item_wholesale_unit_id'] ?? null,
                 'item_unit_id' => $data['item_unit_id'],
+                'wholesale_unit_conversion' => $data['wholesale_unit_conversion'] ?? null,
                 'price' => $data['price'],
             ]);
         });
@@ -145,7 +149,7 @@ class ItemRepository implements ItemInterface
         };
 
         return $this->itemBatch->with([
-            'source_able:id,name', 'item.itemCategory', 'item.itemUnit'
+            'source_able:id,name', 'item.itemCategory', 'item.itemWholesaleUnit', 'item.itemUnit'
         ])
             ->where('item_id', $itemId)
             ->where('source_able_id', $sourceAbleId)
@@ -165,7 +169,7 @@ class ItemRepository implements ItemInterface
         };
 
         return $this->itemBatch->with([
-            'source_able:id,name', 'item.itemCategory', 'item.itemUnit'
+            'source_able:id,name', 'item.itemCategory', 'item.itemWholesaleUnit', 'item.itemUnit'
         ])
             ->where('item_id', $itemId)
             ->where('source_able_id', $sourceAbleId)

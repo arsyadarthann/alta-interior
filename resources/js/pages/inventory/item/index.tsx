@@ -23,6 +23,12 @@ type ItemCategory = {
     name: string;
 };
 
+type ItemWholesaleUnit = {
+    id: number;
+    name: string;
+    abbreviation: string;
+};
+
 type ItemUnit = {
     id: number;
     name: string;
@@ -44,9 +50,12 @@ type Item = {
     name: string;
     code: string;
     item_category_id: number;
+    item_wholesale_unit_id?: number;
     item_unit_id: number;
+    wholesale_unit_conversion?: number;
     price: number;
     item_category?: ItemCategory;
+    item_wholesale_unit?: ItemWholesaleUnit;
     item_unit?: ItemUnit;
     stock?: number;
 };
@@ -66,6 +75,7 @@ interface Props {
         total: number;
     };
     itemCategories: ItemCategory[];
+    itemWholesaleUnits: ItemWholesaleUnit[];
     itemUnits: ItemUnit[];
     warehouses: Warehouse[];
     branches: Branch[];
@@ -76,6 +86,7 @@ interface Props {
 export default function Item({
     items,
     itemCategories,
+    itemWholesaleUnits,
     itemUnits,
     warehouses,
     branches,
@@ -181,6 +192,8 @@ export default function Item({
         code: '',
         item_category_id: '',
         item_unit_id: '',
+        item_wholesale_unit_id: '',
+        wholesale_unit_conversion: '',
         price: '',
     });
 
@@ -189,6 +202,8 @@ export default function Item({
         code: '',
         item_category_id: '',
         item_unit_id: '',
+        item_wholesale_unit_id: '',
+        wholesale_unit_conversion: '',
         price: '',
     });
 
@@ -290,6 +305,13 @@ export default function Item({
             },
         },
         {
+            accessorKey: 'item_wholesale_unit.abbreviation',
+            header: 'Wholesale Unit',
+            cell: ({ row }: { row: Row<Item> }) => {
+                return row.original.item_wholesale_unit?.abbreviation || '-';
+            },
+        },
+        {
             accessorKey: 'stock',
             header: 'Stock',
             cell: ({ row }: { row: Row<Item> }) => {
@@ -329,6 +351,8 @@ export default function Item({
                             code: data.code,
                             item_category_id: data.item_category_id.toString(),
                             item_unit_id: data.item_unit_id.toString(),
+                            item_wholesale_unit_id: data.item_wholesale_unit_id ? data.item_wholesale_unit_id.toString() : '',
+                            wholesale_unit_conversion: data.wholesale_unit_conversion ? data.wholesale_unit_conversion.toString() : '',
                             price: data.price.toString(),
                         });
                         setIsEditModalOpen(true);
@@ -501,9 +525,6 @@ export default function Item({
                                     searchPlaceholder="Search categories..."
                                     className={createForm.errors.item_category_id ? 'border-red-500 ring-red-100' : ''}
                                 />
-                                {createForm.errors.item_category_id && (
-                                    <p className="mt-1 text-xs text-red-500">{createForm.errors.item_category_id}</p>
-                                )}
                             </div>
 
                             <div className="relative grid gap-2 space-y-2">
@@ -521,7 +542,48 @@ export default function Item({
                                     searchPlaceholder="Search units..."
                                     className={createForm.errors.item_unit_id ? 'border-red-500 ring-red-100' : ''}
                                 />
-                                {createForm.errors.item_unit_id && <p className="mt-1 text-xs text-red-500">{createForm.errors.item_unit_id}</p>}
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="relative grid gap-2 space-y-2">
+                                <Label htmlFor="item_wholesale_unit_id">
+                                    Wholesale Unit
+                                </Label>
+                                <Combobox
+                                    value={createForm.data.item_wholesale_unit_id}
+                                    onValueChange={(value) => {
+                                        createForm.setData('item_wholesale_unit_id', value);
+                                        if (!value) {
+                                            createForm.setData('wholesale_unit_conversion', '');
+                                        }
+                                    }}
+                                    options={[
+                                        { value: null, label: 'None' },
+                                        ...itemWholesaleUnits.map((unit) => ({
+                                            value: unit.id.toString(),
+                                            label: `${unit.name} (${unit.abbreviation})`,
+                                        }))
+                                    ]}
+                                    placeholder="Select a wholesale"
+                                    searchPlaceholder="Search units..."
+                                    className={createForm.errors.item_wholesale_unit_id ? 'border-red-500 ring-red-100' : ''}
+                                />
+                            </div>
+
+                            <div className="relative grid gap-2 space-y-2">
+                                <Label htmlFor="wholesale_unit_conversion">
+                                    Conversion {createForm.data.item_wholesale_unit_id && <span className="text-red-500">*</span>}
+                                </Label>
+                                <Input
+                                    id="wholesale_unit_conversion"
+                                    type="number"
+                                    value={createForm.data.wholesale_unit_conversion}
+                                    onChange={(e) => createForm.setData('wholesale_unit_conversion', e.target.value)}
+                                    placeholder="Enter conversion rate"
+                                    disabled={!createForm.data.item_wholesale_unit_id}
+                                    className={createForm.errors.wholesale_unit_conversion ? 'border-red-500 ring-red-100' : ''}
+                                />
                             </div>
                         </div>
 
@@ -597,7 +659,6 @@ export default function Item({
                                     searchPlaceholder="Search categories..."
                                     className={editForm.errors.item_category_id ? 'border-red-500 ring-red-100' : ''}
                                 />
-                                {editForm.errors.item_category_id && <p className="mt-1 text-xs text-red-500">{editForm.errors.item_category_id}</p>}
                             </div>
 
                             <div className="relative grid gap-2 space-y-2">
@@ -615,7 +676,50 @@ export default function Item({
                                     searchPlaceholder="Search units..."
                                     className={editForm.errors.item_unit_id ? 'border-red-500 ring-red-100' : ''}
                                 />
-                                {editForm.errors.item_unit_id && <p className="mt-1 text-xs text-red-500">{editForm.errors.item_unit_id}</p>}
+                            </div>
+                        </div>
+
+                        {/* New Wholesale Unit Fields */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="relative grid gap-2 space-y-2">
+                                <Label htmlFor="edit_item_wholesale_unit_id">
+                                    Wholesale Unit
+                                </Label>
+                                <Combobox
+                                    value={editForm.data.item_wholesale_unit_id}
+                                    onValueChange={(value) => {
+                                        editForm.setData('item_wholesale_unit_id', value);
+                                        // Clear conversion if wholesale unit is cleared
+                                        if (!value) {
+                                            editForm.setData('wholesale_unit_conversion', '');
+                                        }
+                                    }}
+                                    options={[
+                                        { value: null, label: 'None' },
+                                        ...itemWholesaleUnits.map((unit) => ({
+                                            value: unit.id.toString(),
+                                            label: `${unit.name} (${unit.abbreviation})`,
+                                        }))
+                                    ]}
+                                    placeholder="Select a wholesale"
+                                    searchPlaceholder="Search units..."
+                                    className={editForm.errors.item_wholesale_unit_id ? 'border-red-500 ring-red-100' : ''}
+                                />
+                            </div>
+
+                            <div className="relative grid gap-2 space-y-2">
+                                <Label htmlFor="edit_wholesale_unit_conversion">
+                                    Conversion {editForm.data.item_wholesale_unit_id && <span className="text-red-500">*</span>}
+                                </Label>
+                                <Input
+                                    id="edit_wholesale_unit_conversion"
+                                    type="number"
+                                    value={editForm.data.wholesale_unit_conversion}
+                                    onChange={(e) => editForm.setData('wholesale_unit_conversion', e.target.value)}
+                                    placeholder="Enter conversion rate"
+                                    disabled={!editForm.data.item_wholesale_unit_id}
+                                    className={editForm.errors.wholesale_unit_conversion ? 'border-red-500 ring-red-100' : ''}
+                                />
                             </div>
                         </div>
 
