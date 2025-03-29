@@ -26,7 +26,7 @@ class PurchaseOrderRepository implements PurchaseOrderInterface
     public function getById(int $id)
     {
         return $this->purchaseOrder
-            ->with([...self::GENERAL_RELATIONSHIPS, 'purchaseOrderDetails.item.itemUnit', 'goodsReceipts.goodsReceiptDetails'])
+            ->with([...self::GENERAL_RELATIONSHIPS, 'purchaseOrderDetails.item.itemUnit', 'purchaseOrderDetails.item.itemWholesaleUnit', 'goodsReceipts.goodsReceiptDetails'])
             ->find($id);
     }
 

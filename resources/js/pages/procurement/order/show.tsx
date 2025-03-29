@@ -35,6 +35,9 @@ interface OrderDetail {
         item_unit_id: number;
         item_category: ItemCategory;
         item_unit: ItemUnit;
+        item_wholesale_unit_id: number | null;
+        item_wholesale_unit: ItemUnit | null;
+        wholesale_unit_conversion: string | null;
     };
 }
 
@@ -127,6 +130,17 @@ export default function Show({ purchaseOrder }: PurchaseOrderProps) {
         return 'Rp ' + parts[0];
     };
 
+    const formatNumber = (value: string | number): string => {
+        const numValue = typeof value === 'string' ? parseFloat(value) : value;
+        return numValue % 1 === 0 ? numValue.toString() : numValue.toFixed(2).replace(/\.?0+$/, '');
+    };
+
+    const hasWholesaleUnit = (item: OrderDetail['item']): boolean => {
+        return !!(item.item_wholesale_unit_id !== null &&
+            item.item_wholesale_unit !== null &&
+            item.wholesale_unit_conversion !== null);
+    };
+
     const columns: ColumnDef<OrderDetail>[] = [
         createNumberColumn<OrderDetail>(),
         {
@@ -138,9 +152,26 @@ export default function Show({ purchaseOrder }: PurchaseOrderProps) {
             accessorKey: 'quantity',
             header: 'Quantity',
             cell: ({ row }) => {
+                const item = row.original.item;
                 const qty = parseFloat(row.getValue('quantity'));
-                const formattedQty = qty % 1 === 0 ? qty.toString() : qty.toFixed(2).replace(/\.?0+$/, '');
-                return `${formattedQty} ${row.original.item.item_unit.abbreviation}`;
+                const formattedQty = formatNumber(qty);
+
+                if (hasWholesaleUnit(item) && item.item_wholesale_unit && item.wholesale_unit_conversion) {
+                    // Use wholesale unit with conversion display
+                    const conversionRate = parseFloat(item.wholesale_unit_conversion);
+                    const equivalentAmount = qty * conversionRate;
+
+                    return (
+                        <div>
+                            <span>{formattedQty} {item.item_wholesale_unit.abbreviation}</span>
+                            <span className="ml-2">
+                                ({formatNumber(equivalentAmount)} {item.item_unit.abbreviation})
+                            </span>
+                        </div>
+                    );
+                } else {
+                    return `${formattedQty} ${item.item_unit.abbreviation}`;
+                }
             },
             meta: {
                 className: 'text-center',

@@ -8,12 +8,12 @@ import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToastNotification } from '@/hooks/use-toast-notification';
 import AppLayout from '@/layouts/app-layout';
-import { cn } from '@/lib/utils';
+import { cn, formatDecimal, formatCurrency } from '@/lib/utils';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { format } from 'date-fns';
 import { ArrowLeft, CalendarIcon, Loader2, Plus, Trash2 } from 'lucide-react';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -35,7 +35,11 @@ type Supplier = {
     name: string;
 };
 
-// Type definition that matches the exact structure from the API
+type TaxRate = {
+    id: number;
+    rate: number;
+};
+
 type UnreceivedPurchaseOrderDetail = {
     purchase_order_detail_id: number;
     purchase_order_id: number;
@@ -44,12 +48,13 @@ type UnreceivedPurchaseOrderDetail = {
     item_name: string;
     item_code: string;
     item_abbreviation: string;
-    ordered_quantity: string | number;
+    item_wholesale_abbreviation: string | null;
+    wholesale_unit_conversion: string | null;
+    ordered_quantity: number;
     received_quantity: string | number;
-    remaining_quantity: string | number;
+    remaining_quantity: number;
 };
 
-// For grouped purchase orders
 type GroupedPurchaseOrder = {
     id: number;
     code: string;
@@ -58,9 +63,10 @@ type GroupedPurchaseOrder = {
 
 interface Props {
     suppliers?: Supplier[];
+    taxRates?: TaxRate[];
 }
 
-export default function Create({ suppliers = [] }: Props) {
+export default function Create({ suppliers = [], taxRates = [] }: Props) {
     const { showErrorToast } = useToastNotification();
     const [loading, setLoading] = useState(false);
     const [, setUnreceivedDetails] = useState<UnreceivedPurchaseOrderDetail[]>([]);
@@ -69,12 +75,21 @@ export default function Create({ suppliers = [] }: Props) {
     const [receiptQuantities, setReceiptQuantities] = useState<Record<number, string>>({});
     const [receiptPrices, setReceiptPrices] = useState<Record<number, string>>({});
     const [receiptTotals, setReceiptTotals] = useState<Record<number, string>>({});
+    const [selectedTaxRate, setSelectedTaxRate] = useState<number | null>(null);
+    const [miscellaneousCost, setMiscellaneousCost] = useState<string>('0');
+    const isDistributing = useRef(false);
+    const isRemoving = useRef(false);
 
     const { data, setData, post, processing, errors } = useForm({
         code: '',
         date: new Date(),
         supplier_id: '',
         received_by: '',
+        total_amount: '0',
+        miscellaneous_cost: '0',
+        tax_rate_id: '',
+        tax_amount: '0',
+        grand_total: '0',
         goods_receipt_purchase_order: [] as {
             purchase_order_id: number;
             purchase_order_code: string;
@@ -88,40 +103,171 @@ export default function Create({ suppliers = [] }: Props) {
                 price_per_unit: number;
                 total_price: number;
                 item_unit: string;
+                item_wholesale_unit: string | null;
+                wholesale_unit_conversion: number | null;
+                converted_quantity: number | null;
+                miscellaneous_cost: number;
+                tax_amount: number;
+                total_amount: number;
+                cogs: number;
             }[];
         }[],
     });
 
-    // Format number with optional decimals
-    const formatDecimal = (value: string | number): string => {
-        if (value === null || value === undefined) return '0';
-
-        const numValue = typeof value === 'string' ? parseFloat(value) : value;
-
-        if (isNaN(numValue)) return '0';
-
-        // Check if the value is a whole number
-        if (Number.isInteger(numValue)) {
-            return numValue.toString();
-        }
-
-        // Otherwise, display with up to 2 decimal places
-        return numValue.toFixed(2).replace(/\.?0+$/, '');
-    };
-
-    const calculateTotal = (quantity: string, price: string) => {
+    const calculateItemTotals = (quantity: string, price: string) => {
         const qty = parseFloat(quantity || '0');
         const prc = parseFloat(price || '0');
+        const subtotal = qty * prc;
 
-        if (isNaN(qty) || isNaN(prc)) return '0';
+        if (isNaN(qty) || isNaN(prc)) return { subtotal: '0' };
 
-        return (qty * prc).toString();
+        return {
+            subtotal: subtotal.toString()
+        };
+    };
+
+    const distributeFeesAndCalculateTotals = (forceUpdate = false) => {
+        if ((isDistributing.current || isRemoving.current) && !forceUpdate) return;
+        if (data.goods_receipt_purchase_order.length === 0) return;
+
+        isDistributing.current = true;
+
+        try {
+            const currentPOs = JSON.parse(JSON.stringify(data.goods_receipt_purchase_order));
+            const totalMiscCost = parseFloat(miscellaneousCost || '0');
+            let totalItemsPrice = 0;
+
+            currentPOs.forEach(po => {
+                po.goods_receipt_details.forEach(detail => {
+                    totalItemsPrice += detail.total_price;
+                });
+            });
+
+            if (totalItemsPrice === 0) {
+                isDistributing.current = false;
+                return;
+            }
+
+            let totalTaxAmount = 0;
+            let sumOfAllocatedMiscCosts = 0;
+
+            for (let poIndex = 0; poIndex < currentPOs.length; poIndex++) {
+                for (let detailIndex = 0; detailIndex < currentPOs[poIndex].goods_receipt_details.length; detailIndex++) {
+                    const detail = currentPOs[poIndex].goods_receipt_details[detailIndex];
+                    const isLastItem = (poIndex === currentPOs.length - 1) &&
+                        (detailIndex === currentPOs[poIndex].goods_receipt_details.length - 1);
+
+                    const proportion = detail.total_price / totalItemsPrice;
+                    let allocatedMiscCost;
+
+                    if (isLastItem) {
+                        allocatedMiscCost = totalMiscCost - sumOfAllocatedMiscCosts;
+                    } else {
+                        allocatedMiscCost = Math.ceil(proportion * totalMiscCost);
+                        sumOfAllocatedMiscCosts += allocatedMiscCost;
+                    }
+
+                    currentPOs[poIndex].goods_receipt_details[detailIndex].miscellaneous_cost = allocatedMiscCost;
+
+                    // Calculate tax based on item price only (excluding misc cost)
+                    let taxAmount = 0;
+                    if (selectedTaxRate) {
+                        const taxRate = taxRates.find(t => t.id === selectedTaxRate);
+                        if (taxRate) {
+                            // Calculate tax on item price only, not including miscellaneous cost
+                            const itemTotal = detail.total_price;
+                            taxAmount = itemTotal * (taxRate.rate / 100);
+                            totalTaxAmount += taxAmount;
+                        }
+                    }
+
+                    currentPOs[poIndex].goods_receipt_details[detailIndex].tax_amount = taxAmount;
+
+                    const totalAmount = detail.total_price + allocatedMiscCost + taxAmount;
+                    currentPOs[poIndex].goods_receipt_details[detailIndex].total_amount = totalAmount;
+
+                    // Calculate COGS and ceiling the result
+                    const quantity = detail.received_quantity || 1;
+                    if (detail.wholesale_unit_conversion && detail.item_wholesale_unit) {
+                        // For items with wholesale unit
+                        currentPOs[poIndex].goods_receipt_details[detailIndex].cogs =
+                            Math.ceil(totalAmount / (quantity * detail.wholesale_unit_conversion));
+                    } else {
+                        // For regular items
+                        currentPOs[poIndex].goods_receipt_details[detailIndex].cogs =
+                            Math.ceil(totalAmount / quantity);
+                    }
+                }
+            }
+
+            const updatedState = {
+                ...data,
+                goods_receipt_purchase_order: currentPOs,
+                miscellaneous_cost: totalMiscCost.toString(),
+                tax_amount: totalTaxAmount.toString(),
+                grand_total: (totalItemsPrice + totalMiscCost + totalTaxAmount).toString(),
+                total_amount: totalItemsPrice.toString()
+            };
+
+            setData(updatedState);
+        } finally {
+            setTimeout(() => {
+                isDistributing.current = false;
+            }, 100);
+        }
+    };
+
+    useEffect(() => {
+        if (isDistributing.current || isRemoving.current) return;
+
+        let totalAmount = 0;
+
+        data.goods_receipt_purchase_order.forEach(po => {
+            po.goods_receipt_details.forEach(detail => {
+                totalAmount += detail.total_price;
+            });
+        });
+
+        if (totalAmount.toString() !== data.total_amount) {
+            setData(prevData => ({
+                ...prevData,
+                total_amount: totalAmount.toString()
+            }));
+        }
+    }, [data.goods_receipt_purchase_order]);
+
+    useEffect(() => {
+        if (data.goods_receipt_purchase_order.length > 0 && !isRemoving.current) {
+            distributeFeesAndCalculateTotals();
+        }
+    }, [selectedTaxRate, miscellaneousCost]);
+
+    const handleTaxRateChange = (taxRateId: string) => {
+        setData('tax_rate_id', taxRateId);
+        setSelectedTaxRate(taxRateId ? parseInt(taxRateId) : null);
+
+        if (data.goods_receipt_purchase_order.length > 0) {
+            setTimeout(() => {
+                distributeFeesAndCalculateTotals(true);
+            }, 50);
+        }
+    };
+
+    const handleMiscCostChange = (value: string) => {
+        setMiscellaneousCost(value);
+
+        if (!data.goods_receipt_purchase_order.length) {
+            setData('miscellaneous_cost', value);
+        } else {
+            setTimeout(() => {
+                distributeFeesAndCalculateTotals(true);
+            }, 50);
+        }
     };
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
-        // Filter out details with zero received quantity before submission
         const filteredPOs = data.goods_receipt_purchase_order
             .map((po) => ({
                 ...po,
@@ -129,7 +275,6 @@ export default function Create({ suppliers = [] }: Props) {
             }))
             .filter((po) => po.goods_receipt_details.length > 0);
 
-        // Create a new form data object with the filtered POs
         const submitData = {
             ...data,
             goods_receipt_purchase_order: filteredPOs,
@@ -165,21 +310,18 @@ export default function Create({ suppliers = [] }: Props) {
                 }
 
                 const responseData = await response.json();
-                let data = responseData;
+                let responseItems = responseData;
 
-                // Handle case where data might be wrapped in a data property
                 if (responseData && responseData.data && Array.isArray(responseData.data)) {
-                    data = responseData.data;
+                    responseItems = responseData.data;
                 }
 
-                if (Array.isArray(data)) {
-                    // Store the original unreceived details
-                    setUnreceivedDetails(data);
+                if (Array.isArray(responseItems)) {
+                    setUnreceivedDetails(responseItems);
 
-                    // Group items by purchase order
                     const groupedByPO: Record<number, GroupedPurchaseOrder> = {};
 
-                    data.forEach((item: UnreceivedPurchaseOrderDetail) => {
+                    responseItems.forEach((item: UnreceivedPurchaseOrderDetail) => {
                         const poId = item.purchase_order_id;
 
                         if (!groupedByPO[poId]) {
@@ -193,30 +335,34 @@ export default function Create({ suppliers = [] }: Props) {
                         groupedByPO[poId].details.push(item);
                     });
 
-                    // Convert to array
                     const purchaseOrders = Object.values(groupedByPO);
                     setGroupedPurchaseOrders(purchaseOrders);
 
-                    // Reset the selection state
                     setSelectedPO('');
                     setReceiptQuantities({});
                     setReceiptPrices({});
                     setReceiptTotals({});
+                    setMiscellaneousCost('0');
 
-                    // Reset the goods receipt purchase orders
-                    setData('goods_receipt_purchase_order', []);
+                    setData({
+                        ...data,
+                        supplier_id: supplierId,
+                        goods_receipt_purchase_order: [],
+                        total_amount: '0',
+                        miscellaneous_cost: '0',
+                        tax_amount: '0',
+                        grand_total: '0'
+                    });
                 } else {
-                    console.error('Unexpected response format:', data);
                     showErrorToast(['Invalid response format']);
                 }
             } catch (error) {
-                console.error('Error fetching unreceived purchase orders:', error);
                 showErrorToast([(error as Error).message]);
             } finally {
                 setLoading(false);
             }
         },
-        [setData, showErrorToast],
+        [data, setData, showErrorToast],
     );
 
     const handleSupplierChange = (supplierId: string) => {
@@ -227,7 +373,6 @@ export default function Create({ suppliers = [] }: Props) {
     const handleSelectedPOChange = (poId: string) => {
         setSelectedPO(poId);
 
-        // Initialize empty receipt quantities and prices for this PO's items
         if (poId) {
             const po = groupedPurchaseOrders.find((p) => p.id.toString() === poId);
             if (po) {
@@ -236,7 +381,6 @@ export default function Create({ suppliers = [] }: Props) {
                 const newTotals = { ...receiptTotals };
 
                 po.details.forEach((detail) => {
-                    // Initialize with empty strings (not pre-filled)
                     newQuantities[detail.purchase_order_detail_id] = '';
                     newPrices[detail.purchase_order_detail_id] = '';
                     newTotals[detail.purchase_order_detail_id] = '';
@@ -250,76 +394,65 @@ export default function Create({ suppliers = [] }: Props) {
     };
 
     const handleReceiptQuantityChange = (poDetailId: number, value: string, maxQuantity: number) => {
-        // Allow empty string for blank input
         if (value === '') {
             setReceiptQuantities({
                 ...receiptQuantities,
                 [poDetailId]: value,
             });
-            // Update total when quantity changes
-            const updatedTotal = calculateTotal(value, receiptPrices[poDetailId] || '0');
+            const { subtotal } = calculateItemTotals(value, receiptPrices[poDetailId] || '0');
             setReceiptTotals({
                 ...receiptTotals,
-                [poDetailId]: updatedTotal,
+                [poDetailId]: subtotal,
             });
             return;
         }
 
-        // Otherwise validate as number
         let quantity = Number(value);
         if (isNaN(quantity) || quantity < 0) return;
 
-        // Enforce maximum quantity (remaining quantity)
         if (quantity > maxQuantity) {
             quantity = maxQuantity;
             value = quantity.toString();
         }
 
-        // Update the receipt quantities
         setReceiptQuantities({
             ...receiptQuantities,
             [poDetailId]: value,
         });
 
-        // Update total when quantity changes
-        const updatedTotal = calculateTotal(value, receiptPrices[poDetailId] || '0');
+        const { subtotal } = calculateItemTotals(value, receiptPrices[poDetailId] || '0');
         setReceiptTotals({
             ...receiptTotals,
-            [poDetailId]: updatedTotal,
+            [poDetailId]: subtotal,
         });
     };
 
     const handleReceiptPriceChange = (poDetailId: number, value: string) => {
-        // Allow empty string for blank input
         if (value === '') {
             setReceiptPrices({
                 ...receiptPrices,
                 [poDetailId]: value,
             });
-            // Update total when price changes
-            const updatedTotal = calculateTotal(receiptQuantities[poDetailId] || '0', value);
+            const { subtotal } = calculateItemTotals(receiptQuantities[poDetailId] || '0', value);
             setReceiptTotals({
                 ...receiptTotals,
-                [poDetailId]: updatedTotal,
+                [poDetailId]: subtotal,
             });
             return;
         }
 
-        // Otherwise validate as number
         const price = Number(value);
         if (isNaN(price) || price < 0) return;
 
-        // Update the receipt prices
         setReceiptPrices({
             ...receiptPrices,
             [poDetailId]: value,
         });
 
-        // Update total when price changes
-        const updatedTotal = calculateTotal(receiptQuantities[poDetailId] || '0', value);
+        const { subtotal } = calculateItemTotals(receiptQuantities[poDetailId] || '0', value);
         setReceiptTotals({
             ...receiptTotals,
-            [poDetailId]: updatedTotal,
+            [poDetailId]: subtotal,
         });
     };
 
@@ -329,13 +462,11 @@ export default function Create({ suppliers = [] }: Props) {
         const quantityStr = receiptQuantities[poDetailId] || '';
         const priceStr = receiptPrices[poDetailId] || '';
 
-        // Skip if quantity is empty or 0
         if (quantityStr === '' || Number(quantityStr) <= 0) {
             showErrorToast(['Please enter a valid quantity']);
             return;
         }
 
-        // Skip if price is empty or 0
         if (priceStr === '' || Number(priceStr) <= 0) {
             showErrorToast(['Please enter a valid price']);
             return;
@@ -343,32 +474,53 @@ export default function Create({ suppliers = [] }: Props) {
 
         const quantity = Number(quantityStr);
         const price = Number(priceStr);
-        const total = quantity * price;
 
-        // Make a deep copy of the current POs
+        const { subtotal } = calculateItemTotals(quantityStr, priceStr);
+
+        let convertedQuantity = null;
+        if (detail.item_wholesale_abbreviation && detail.wholesale_unit_conversion) {
+            convertedQuantity = quantity * Number(detail.wholesale_unit_conversion);
+        }
+
         const updatedPOs = [...data.goods_receipt_purchase_order];
 
-        // Check if we already have this PO in our form
         let poIndex = updatedPOs.findIndex((po) => po.purchase_order_id === poId);
 
-        // If not, add it
         if (poIndex === -1) {
-            // Create the new PO object with empty details array
             const newPO = {
                 purchase_order_id: poId,
                 purchase_order_code: detail.purchase_order_code,
                 goods_receipt_details: [],
             };
 
-            // Add it to our array
             updatedPOs.push(newPO);
             poIndex = updatedPOs.length - 1;
         }
 
-        // Now we can safely access the PO
         const updatedPO = updatedPOs[poIndex];
 
-        // Create the new detail
+        // Calculate COGS with ceiling
+        let cogs;
+        const misc = parseFloat(miscellaneousCost || '0');
+        const subtotalNum = Number(subtotal);
+
+        if (detail.item_wholesale_abbreviation && detail.wholesale_unit_conversion) {
+            // For items with wholesale units
+            cogs = Math.ceil((subtotalNum + misc) / (quantity * Number(detail.wholesale_unit_conversion)));
+        } else {
+            // For regular items
+            cogs = Math.ceil((subtotalNum + misc) / quantity);
+        }
+
+        // Calculate tax based on item price only, not including misc cost
+        let taxAmount = 0;
+        if (selectedTaxRate) {
+            const taxRate = taxRates.find(t => t.id === selectedTaxRate);
+            if (taxRate) {
+                taxAmount = subtotalNum * (taxRate.rate / 100);
+            }
+        }
+
         const newDetail = {
             purchase_order_detail_id: poDetailId,
             item_name: `${detail.item_name} (${detail.item_code})`,
@@ -377,72 +529,205 @@ export default function Create({ suppliers = [] }: Props) {
             remaining_quantity: Number(detail.remaining_quantity),
             received_quantity: Math.min(quantity, Number(detail.remaining_quantity)),
             price_per_unit: price,
-            total_price: total,
+            total_price: Number(subtotal),
+            miscellaneous_cost: parseFloat(miscellaneousCost || '0'),
+            tax_amount: taxAmount,
+            total_amount: Number(subtotal) + parseFloat(miscellaneousCost || '0') + taxAmount,
+            cogs: cogs,
             item_unit: detail.item_abbreviation,
+            item_wholesale_unit: detail.item_wholesale_abbreviation,
+            wholesale_unit_conversion: detail.wholesale_unit_conversion ? Number(detail.wholesale_unit_conversion) : null,
+            converted_quantity: convertedQuantity,
         };
 
-        // Check if this detail already exists
         const detailIndex = updatedPO.goods_receipt_details.findIndex((d) => d.purchase_order_detail_id === poDetailId);
 
         if (detailIndex !== -1) {
-            // Update existing detail
             updatedPO.goods_receipt_details[detailIndex] = {
                 ...updatedPO.goods_receipt_details[detailIndex],
                 received_quantity: Math.min(quantity, Number(detail.remaining_quantity)),
                 price_per_unit: price,
-                total_price: total,
+                total_price: Number(subtotal),
+                converted_quantity: convertedQuantity,
+                tax_amount: taxAmount,
+                total_amount: Number(subtotal) + parseFloat(miscellaneousCost || '0') + taxAmount,
+                cogs: cogs
             };
         } else {
-            // Add new detail
             updatedPO.goods_receipt_details.push(newDetail);
         }
 
-        // Update the state with all changes at once
-        setData('goods_receipt_purchase_order', updatedPOs);
+        if (updatedPOs.length === 1 && updatedPO.goods_receipt_details.length === 1) {
+            setData({
+                ...data,
+                goods_receipt_purchase_order: updatedPOs,
+                total_amount: subtotal,
+                miscellaneous_cost: miscellaneousCost,
+                tax_amount: taxAmount.toString(),
+                grand_total: (Number(subtotal) + parseFloat(miscellaneousCost || '0') + taxAmount).toString()
+            });
+        } else {
+            setData({
+                ...data,
+                goods_receipt_purchase_order: updatedPOs
+            });
+        }
 
-        // Force a re-render by updating the selected PO
         setSelectedPO(selectedPO);
+
+        if (!(updatedPOs.length === 1 && updatedPO.goods_receipt_details.length === 1)) {
+            setTimeout(() => {
+                distributeFeesAndCalculateTotals(true);
+            }, 10);
+        }
     };
 
     const removeItemFromReceipt = (poDetailId: number) => {
-        // Create a copy of the current receipt data
-        const updatedPOs = data.goods_receipt_purchase_order
-            .map((po) => ({
-                ...po,
-                goods_receipt_details: po.goods_receipt_details.filter((detail) => detail.purchase_order_detail_id !== poDetailId),
-            }))
-            .filter((po) => po.goods_receipt_details.length > 0);
+        if (isRemoving.current) return;
+        isRemoving.current = true;
 
-        setData('goods_receipt_purchase_order', updatedPOs);
+        const newPurchaseOrders = [];
+
+        for (const po of data.goods_receipt_purchase_order) {
+            const newDetails = po.goods_receipt_details.filter(
+                detail => detail.purchase_order_detail_id !== poDetailId
+            );
+
+            if (newDetails.length > 0) {
+                newPurchaseOrders.push({
+                    purchase_order_id: po.purchase_order_id,
+                    purchase_order_code: po.purchase_order_code,
+                    goods_receipt_details: newDetails
+                });
+            }
+        }
+
+        let newTotalAmount = 0;
+        newPurchaseOrders.forEach(po => {
+            po.goods_receipt_details.forEach(detail => {
+                newTotalAmount += detail.total_price;
+            });
+        });
+
+        const newState = {
+            ...data,
+            goods_receipt_purchase_order: newPurchaseOrders,
+            total_amount: newTotalAmount.toString()
+        };
+
+        setData(newState);
+
+        setTimeout(() => {
+            if (newPurchaseOrders.length === 0) {
+                setData({
+                    ...data,
+                    goods_receipt_purchase_order: [],
+                    total_amount: '0',
+                    tax_amount: '0',
+                    grand_total: '0'
+                });
+            } else {
+                isDistributing.current = true;
+
+                const currentPOs = JSON.parse(JSON.stringify(newPurchaseOrders));
+                const totalMiscCost = parseFloat(miscellaneousCost || '0');
+                let totalItemsPrice = 0;
+
+                currentPOs.forEach(po => {
+                    po.goods_receipt_details.forEach(detail => {
+                        totalItemsPrice += detail.total_price;
+                    });
+                });
+
+                let totalTaxAmount = 0;
+                let sumOfAllocatedMiscCosts = 0;
+
+                for (let poIndex = 0; poIndex < currentPOs.length; poIndex++) {
+                    for (let detailIndex = 0; detailIndex < currentPOs[poIndex].goods_receipt_details.length; detailIndex++) {
+                        const detail = currentPOs[poIndex].goods_receipt_details[detailIndex];
+                        const isLastItem = (poIndex === currentPOs.length - 1) &&
+                            (detailIndex === currentPOs[poIndex].goods_receipt_details.length - 1);
+
+                        const proportion = detail.total_price / totalItemsPrice;
+                        let allocatedMiscCost;
+
+                        if (isLastItem) {
+                            allocatedMiscCost = totalMiscCost - sumOfAllocatedMiscCosts;
+                        } else {
+                            allocatedMiscCost = Math.ceil(proportion * totalMiscCost);
+                            sumOfAllocatedMiscCosts += allocatedMiscCost;
+                        }
+
+                        currentPOs[poIndex].goods_receipt_details[detailIndex].miscellaneous_cost = allocatedMiscCost;
+
+                        // Calculate tax based on item price only (not including misc cost)
+                        let taxAmount = 0;
+                        if (selectedTaxRate) {
+                            const taxRate = taxRates.find(t => t.id === selectedTaxRate);
+                            if (taxRate) {
+                                taxAmount = detail.total_price * (taxRate.rate / 100);
+                                totalTaxAmount += taxAmount;
+                            }
+                        }
+
+                        currentPOs[poIndex].goods_receipt_details[detailIndex].tax_amount = taxAmount;
+
+                        const totalAmount = detail.total_price + allocatedMiscCost + taxAmount;
+                        currentPOs[poIndex].goods_receipt_details[detailIndex].total_amount = totalAmount;
+
+                        const quantity = detail.received_quantity || 1;
+
+                        // Calculate and ceiling COGS
+                        if (detail.wholesale_unit_conversion && detail.item_wholesale_unit) {
+                            currentPOs[poIndex].goods_receipt_details[detailIndex].cogs =
+                                Math.ceil(totalAmount / (quantity * detail.wholesale_unit_conversion));
+                        } else {
+                            currentPOs[poIndex].goods_receipt_details[detailIndex].cogs =
+                                Math.ceil(totalAmount / quantity);
+                        }
+                    }
+                }
+
+                const completeUpdatedState = {
+                    ...data,
+                    goods_receipt_purchase_order: currentPOs,
+                    miscellaneous_cost: totalMiscCost.toString(),
+                    tax_amount: totalTaxAmount.toString(),
+                    grand_total: (totalItemsPrice + totalMiscCost + totalTaxAmount).toString(),
+                    total_amount: totalItemsPrice.toString()
+                };
+
+                setData(completeUpdatedState);
+            }
+
+            setTimeout(() => {
+                isRemoving.current = false;
+                isDistributing.current = false;
+            }, 200);
+        }, 200);
     };
 
-    // Get the currently selected purchase order with filtered items
     const isItemInReceipt = (poDetailId: number): boolean => {
         return data.goods_receipt_purchase_order.some((po) =>
             po.goods_receipt_details.some((detail) => detail.purchase_order_detail_id === poDetailId),
         );
     };
 
-    // Get the currently selected purchase order with filtered items
     const getCurrentPOWithFilteredItems = () => {
         if (!selectedPO) return null;
 
         const po = groupedPurchaseOrders.find((p) => p.id.toString() === selectedPO);
         if (!po) return null;
 
-        // Create a copy with filtered details
         return {
             ...po,
             details: po.details.filter((detail) => !isItemInReceipt(detail.purchase_order_detail_id)),
         };
     };
 
-    // Get the currently selected purchase order with filtered items
     const filteredCurrentPO = getCurrentPOWithFilteredItems();
 
-    // Get items that are in the receipt already
     const getReceiptItems = () => {
-        // Flatten all goods receipt details across all POs
         return data.goods_receipt_purchase_order.flatMap((po) =>
             po.goods_receipt_details.map((detail) => ({
                 ...detail,
@@ -451,23 +736,6 @@ export default function Create({ suppliers = [] }: Props) {
         );
     };
 
-    // Format currency for display
-    const formatCurrency = (value: number | string): string => {
-        const numValue = typeof value === 'string' ? parseFloat(value) : value;
-        if (isNaN(numValue)) return 'Rp 0';
-
-        const rounded = Math.round(numValue * 100) / 100;
-        const parts = rounded.toString().split('.');
-        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-
-        if (parts.length > 1 && parts[1] !== '00' && parseInt(parts[1]) !== 0) {
-            return 'Rp ' + parts[0] + ',' + (parts[1].length === 1 ? parts[1] + '0' : parts[1]);
-        }
-
-        return 'Rp ' + parts[0];
-    };
-
-    // Calculate if the form can be submitted
     const hasItemsToReceive = data.goods_receipt_purchase_order.some((po) => po.goods_receipt_details.some((detail) => detail.received_quantity > 0));
 
     const canSubmit = data.code && data.supplier_id && data.received_by && hasItemsToReceive;
@@ -571,6 +839,65 @@ export default function Create({ suppliers = [] }: Props) {
                                             />
                                             {errors.received_by && <p className="mt-1 text-xs text-red-500">{errors.received_by}</p>}
                                         </div>
+
+                                        <div className="relative grid gap-2 space-y-2">
+                                            <Label htmlFor="tax_rate_id">Tax Rate</Label>
+                                            <Combobox
+                                                value={data.tax_rate_id ? data.tax_rate_id.toString() : ''}
+                                                onValueChange={handleTaxRateChange}
+                                                options={[
+                                                    { value: '', label: 'No Tax' },
+                                                    ...taxRates.map((tax) => ({
+                                                        value: tax.id.toString(),
+                                                        label: `${formatDecimal(tax.rate)}%`,
+                                                    })),
+                                                ]}
+                                                placeholder="Select tax rate"
+                                                searchPlaceholder="Search tax rates..."
+                                                initialDisplayCount={5}
+                                                className={errors.tax_rate_id ? 'border-red-500' : ''}
+                                            />
+                                            {errors.tax_rate_id && <p className="text-sm text-red-500">{errors.tax_rate_id}</p>}
+                                        </div>
+
+                                        <div className="relative grid gap-2 space-y-2">
+                                            <Label htmlFor="miscellaneous_cost">Miscellaneous Cost</Label>
+                                            <Input
+                                                id="miscellaneous_cost"
+                                                type="number"
+                                                min="0"
+                                                value={miscellaneousCost}
+                                                onChange={(e) => handleMiscCostChange(e.target.value)}
+                                                placeholder="Enter miscellaneous cost"
+                                                className={errors.miscellaneous_cost ? 'border-red-500 ring-red-100' : ''}
+                                                disabled={data.goods_receipt_purchase_order.length > 0}
+                                            />
+                                            {errors.miscellaneous_cost && <p className="mt-1 text-xs text-red-500">{errors.miscellaneous_cost}</p>}
+                                            <p className="text-xs text-gray-500">
+                                                {data.goods_receipt_purchase_order.length > 0
+                                                    ? 'Misc cost is locked after items are added to the list.'
+                                                    : 'This cost will be distributed proportionally across all items.'}
+                                            </p>
+                                        </div>
+
+                                        <div className="border-t pt-4">
+                                            <div className="mb-2 flex justify-between">
+                                                <span className="text-sm text-gray-600">Total Amount:</span>
+                                                <span className="font-medium">{formatCurrency(data.total_amount)}</span>
+                                            </div>
+                                            <div className="mb-2 flex justify-between">
+                                                <span className="text-sm text-gray-600">Miscellaneous Costs:</span>
+                                                <span className="font-medium">{formatCurrency(data.miscellaneous_cost)}</span>
+                                            </div>
+                                            <div className="mb-2 flex justify-between">
+                                                <span className="text-sm text-gray-600">Tax Amount:</span>
+                                                <span className="font-medium">{formatCurrency(data.tax_amount)}</span>
+                                            </div>
+                                            <div className="flex justify-between border-t pt-2">
+                                                <span className="text-sm font-medium">Grand Total:</span>
+                                                <span className="font-bold">{formatCurrency(data.grand_total)}</span>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </Card>
@@ -584,7 +911,6 @@ export default function Create({ suppliers = [] }: Props) {
                                         <p className="text-sm text-gray-500">Select items to include in this receipt</p>
                                     </div>
 
-                                    {/* Item Selection Section */}
                                     {data.supplier_id && (
                                         <div className="mb-6 space-y-4">
                                             {loading ? (
@@ -598,7 +924,6 @@ export default function Create({ suppliers = [] }: Props) {
                                                 </div>
                                             ) : (
                                                 <>
-                                                    {/* Purchase Order Selection Dropdown */}
                                                     <div className="space-y-2">
                                                         <Label htmlFor="purchase_order">Purchase Order</Label>
                                                         <Combobox
@@ -614,7 +939,6 @@ export default function Create({ suppliers = [] }: Props) {
                                                         />
                                                     </div>
 
-                                                    {/* Items from Selected PO */}
                                                     {filteredCurrentPO && (
                                                         <div className="rounded-md border p-4">
                                                             <h3 className="mb-2 font-medium">Items from PO: {filteredCurrentPO.code}</h3>
@@ -635,6 +959,10 @@ export default function Create({ suppliers = [] }: Props) {
                                                                     <tbody>
                                                                         {filteredCurrentPO.details.map((detail) => {
                                                                             const isAdded = isItemInReceipt(detail.purchase_order_detail_id);
+                                                                            const hasWholesale =
+                                                                                detail.item_wholesale_abbreviation &&
+                                                                                detail.wholesale_unit_conversion;
+
                                                                             return (
                                                                                 <tr
                                                                                     key={detail.purchase_order_detail_id}
@@ -644,12 +972,14 @@ export default function Create({ suppliers = [] }: Props) {
                                                                                         {detail.item_name} ({detail.item_code})
                                                                                     </td>
                                                                                     <td className="px-2 py-2 text-center">
-                                                                                        {formatDecimal(detail.ordered_quantity)}{' '}
-                                                                                        {detail.item_abbreviation}
+                                                                                        {hasWholesale
+                                                                                            ? `${formatDecimal(detail.ordered_quantity)} ${detail.item_wholesale_abbreviation} (${formatDecimal(Number(detail.ordered_quantity) * Number(detail.wholesale_unit_conversion))} ${detail.item_abbreviation})`
+                                                                                            : `${formatDecimal(detail.ordered_quantity)} ${detail.item_abbreviation}`}
                                                                                     </td>
                                                                                     <td className="px-2 py-2 text-center">
-                                                                                        {formatDecimal(detail.remaining_quantity)}{' '}
-                                                                                        {detail.item_abbreviation}
+                                                                                        {hasWholesale
+                                                                                            ? `${formatDecimal(detail.remaining_quantity)} ${detail.item_wholesale_abbreviation} (${formatDecimal(Number(detail.remaining_quantity) * Number(detail.wholesale_unit_conversion))} ${detail.item_abbreviation})`
+                                                                                            : `${formatDecimal(detail.remaining_quantity)} ${detail.item_abbreviation}`}
                                                                                     </td>
                                                                                     <td className="px-2 py-2">
                                                                                         <div className="flex items-center justify-center">
@@ -726,7 +1056,6 @@ export default function Create({ suppliers = [] }: Props) {
                                         </div>
                                     )}
 
-                                    {/* Items to be Received Summary */}
                                     <div>
                                         <h3 className="mb-3 text-sm font-semibold text-gray-700">Items to be Received</h3>
 
@@ -743,7 +1072,10 @@ export default function Create({ suppliers = [] }: Props) {
                                                             <th className="px-2 py-2 text-left">PO</th>
                                                             <th className="px-2 py-2 text-center">Quantity</th>
                                                             <th className="px-2 py-2 text-right">Price</th>
+                                                            <th className="px-2 py-2 text-right">Misc Cost</th>
+                                                            <th className="px-2 py-2 text-right">Tax</th>
                                                             <th className="px-2 py-2 text-right">Total</th>
+                                                            <th className="px-2 py-2 text-right">Cogs</th>
                                                             <th className="px-2 py-2 text-center">Actions</th>
                                                         </tr>
                                                     </thead>
@@ -753,10 +1085,17 @@ export default function Create({ suppliers = [] }: Props) {
                                                                 <td className="px-2 py-2">{item.item_name}</td>
                                                                 <td className="px-2 py-2">{item.purchase_order_code}</td>
                                                                 <td className="px-2 py-2 text-center">
-                                                                    {formatDecimal(item.received_quantity)} {item.item_unit}
+                                                                    {item.item_wholesale_unit &&
+                                                                    item.wholesale_unit_conversion &&
+                                                                    item.converted_quantity
+                                                                        ? `${formatDecimal(item.received_quantity)} ${item.item_wholesale_unit} (${formatDecimal(item.converted_quantity)} ${item.item_unit})`
+                                                                        : `${formatDecimal(item.received_quantity)} ${item.item_unit}`}
                                                                 </td>
                                                                 <td className="px-2 py-2 text-right">{formatCurrency(item.price_per_unit)}</td>
-                                                                <td className="px-2 py-2 text-right">{formatCurrency(item.total_price)}</td>
+                                                                <td className="px-2 py-2 text-right">{formatCurrency(item.miscellaneous_cost)}</td>
+                                                                <td className="px-2 py-2 text-right">{formatCurrency(item.tax_amount)}</td>
+                                                                <td className="px-2 py-2 text-right">{formatCurrency(item.total_amount)}</td>
+                                                                <td className="px-2 py-2 text-right">{formatCurrency(item.cogs)}</td>
                                                                 <td className="px-2 py-2 text-center">
                                                                     <Button
                                                                         type="button"

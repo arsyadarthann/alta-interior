@@ -21,4 +21,9 @@ class TaxRate extends Model
     {
         return $this->hasMany(PurchaseOrder::class, 'tax_rate_id', 'id');
     }
+
+    public function goodsReceipts(): HasMany
+    {
+        return $this->hasMany(GoodsReceipt::class, 'tax_rate_id', 'id');
+    }
 }

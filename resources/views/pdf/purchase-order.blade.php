@@ -124,8 +124,8 @@
             <tr>
                 <td>{{ $index + 1 }}</td>
                 <td>{{ $item->item->name }} ({{ $item->item->code }})</td>
-                <td>{{ $item->quantity }}</td>
-                <td>{{ $item->item->item_unit->abbreviation }}</td>
+                <td>{{ $item->quantity == floor($item->quantity) ? number_format($item->quantity, 0) : $item->quantity }}</td>
+                <td>{{ $item->item->item_wholesale_unit ? $item->item->item_wholesale_unit->abbreviation : $item->item->item_unit->abbreviation }}</td>
             </tr>
         @endforeach
         </tbody>

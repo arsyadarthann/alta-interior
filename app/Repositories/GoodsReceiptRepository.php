@@ -25,7 +25,7 @@ class GoodsReceiptRepository implements GoodsReceiptInterface
 
     public function getById(int $id)
     {
-        return $this->goodsReceipt->with(['supplier', 'goodsReceiptDetails.purchaseOrderDetail.item.itemUnit', 'goodsReceiptDetails.goodsReceiptPurchaseOrder.purchaseOrder:id,code'])->find($id);
+        return $this->goodsReceipt->with(['supplier', 'goodsReceiptDetails.purchaseOrderDetail.item.itemUnit', 'goodsReceiptDetails.purchaseOrderDetail.item.itemWholesaleUnit', 'goodsReceiptDetails.goodsReceiptPurchaseOrder.purchaseOrder:id,code'])->find($id);
     }
 
     public function getUnreceivedPurchaseOrderDetails($supplierId)
@@ -39,6 +39,8 @@ class GoodsReceiptRepository implements GoodsReceiptInterface
                 'items.name as item_name',
                 'items.code as item_code',
                 'item_units.abbreviation as item_abbreviation',
+                'item_wholesale_units.abbreviation as item_wholesale_abbreviation',
+                'items.wholesale_unit_conversion',
                 'purchase_order_details.quantity as ordered_quantity',
                 DB::raw('COALESCE(SUM(goods_receipt_details.received_quantity), 0) as received_quantity'),
                 DB::raw('purchase_order_details.quantity - COALESCE(SUM(goods_receipt_details.received_quantity), 0) as remaining_quantity')
@@ -46,6 +48,7 @@ class GoodsReceiptRepository implements GoodsReceiptInterface
             ->join('purchase_orders', 'purchase_order_details.purchase_order_id', '=', 'purchase_orders.id')
             ->join('items', 'purchase_order_details.item_id', '=', 'items.id')
             ->join('item_units', 'items.item_unit_id', '=', 'item_units.id')
+            ->leftJoin('item_wholesale_units', 'items.item_wholesale_unit_id', '=', 'item_wholesale_units.id')
             ->leftJoin('goods_receipt_details', 'purchase_order_details.id', '=', 'goods_receipt_details.purchase_order_detail_id')
             ->where([
                 ['purchase_orders.supplier_id', $supplierId],
@@ -59,11 +62,12 @@ class GoodsReceiptRepository implements GoodsReceiptInterface
                 'items.name',
                 'items.code',
                 'item_units.abbreviation',
+                'item_wholesale_units.abbreviation',
+                'items.wholesale_unit_conversion',
                 'purchase_order_details.quantity',
             ])
             ->havingRaw('COALESCE(SUM(goods_receipt_details.received_quantity), 0) < purchase_order_details.quantity')
             ->get();
-
     }
 
     public function store(array $data)
@@ -74,6 +78,11 @@ class GoodsReceiptRepository implements GoodsReceiptInterface
                 'date' => $data['date'],
                 'supplier_id' => $data['supplier_id'],
                 'received_by' => $data['received_by'],
+                'total_amount' => $data['total_amount'],
+                'miscellaneous_cost' => $data['miscellaneous_cost'],
+                'tax_rate_id' => $data['tax_rate_id'] ?? null,
+                'tax_amount' => $data['tax_amount'],
+                'grand_total' => $data['grand_total'],
             ]);
 
             foreach ($data['goods_receipt_purchase_order'] as $goodsReceiptPurchaseOrder) {
@@ -94,7 +103,10 @@ class GoodsReceiptRepository implements GoodsReceiptInterface
                         'received_quantity' => $goodsReceiptDetail['received_quantity'],
                         'price_per_unit' => $goodsReceiptDetail['price_per_unit'],
                         'total_price' => $goodsReceiptDetail['total_price'],
-                        'cogs' => $goodsReceiptDetail['price_per_unit'],
+                        'miscellaneous_cost' => $goodsReceiptDetail['miscellaneous_cost'],
+                        'tax_amount' => $goodsReceiptDetail['tax_amount'],
+                        'total_amount' => $goodsReceiptDetail['total_amount'],
+                        'cogs' => $goodsReceiptDetail['cogs'],
                     ]);
 
                     $item = $purchaseOrderDetail->item;
@@ -106,8 +118,8 @@ class GoodsReceiptRepository implements GoodsReceiptInterface
                         'source_able_id' => Warehouse::first()->id,
                         'source_able_type' => Warehouse::class,
                         'item_id' => $item->id,
-                        'stock' => $goodsReceiptDetail['received_quantity'],
-                        'cogs' => $goodsReceiptDetail['price_per_unit'],
+                        'stock' => $item->item_wholesale_unit_id ? $goodsReceiptDetail['received_quantity'] * $item->wholesale_unit_conversion : $goodsReceiptDetail['received_quantity'],
+                        'cogs' => $goodsReceiptDetail['cogs'],
                     ]);
 
                     $dataQuantity = [

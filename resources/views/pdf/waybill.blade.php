@@ -150,6 +150,7 @@
                 <td>{{ $item->salesOrderDetail->item->name }} ({{ $item->salesOrderDetail->item->code }})</td>
                 <td>{{ $item->salesOrderDetail->item_source_able->name ?? '-' }}</td>
                 <td>{{ $item->quantity == floor($item->quantity) ? number_format($item->quantity, 0) : $item->quantity }}</td>
+
                 <td>{{ $item->salesOrderDetail->item->itemUnit->abbreviation }}</td>
                 <td>{{ $item->description ?? '-' }}</td>
             </tr>

@@ -55,6 +55,9 @@ type Item = {
     price: number;
     item_category?: ItemCategory;
     item_unit?: ItemUnit;
+    item_wholesale_unit_id: number | null;
+    item_wholesale_unit: ItemUnit | null;
+    wholesale_unit_conversion: string | null;
 };
 
 interface Props {
@@ -66,6 +69,8 @@ export default function Create({ suppliers = [] }: Props) {
     const [items, setItems] = useState<Item[]>([]);
     const [selectedItemNames, setSelectedItemNames] = useState<Record<number, string>>({});
     const [selectedItemUnits, setSelectedItemUnits] = useState<Record<number, string>>({});
+    const [selectedItemSmallUnits, setSelectedItemSmallUnits] = useState<Record<number, string>>({});
+    const [selectedItemConversionRates, setSelectedItemConversionRates] = useState<Record<number, number>>({});
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
     const [addingItem, setAddingItem] = useState<boolean>(false);
     const [, setInitialized] = useState(false);
@@ -203,29 +208,41 @@ export default function Create({ suppliers = [] }: Props) {
 
         const newSelectedItemNames = { ...selectedItemNames };
         const newSelectedItemUnits = { ...selectedItemUnits };
+        const newSelectedItemSmallUnits = { ...selectedItemSmallUnits };
+        const newSelectedItemConversionRates = { ...selectedItemConversionRates };
 
         delete newSelectedItemNames[index];
         delete newSelectedItemUnits[index];
+        delete newSelectedItemSmallUnits[index];
+        delete newSelectedItemConversionRates[index];
 
         updatedItems.splice(index, 1);
         setData('purchase_order_details', updatedItems);
 
         const updatedSelectedItemNames: Record<number, string> = {};
         const updatedSelectedItemUnits: Record<number, string> = {};
+        const updatedSelectedItemSmallUnits: Record<number, string> = {};
+        const updatedSelectedItemConversionRates: Record<number, number> = {};
 
         Object.keys(newSelectedItemNames).forEach((key) => {
             const keyNum = parseInt(key, 10);
             if (keyNum > index) {
                 updatedSelectedItemNames[keyNum - 1] = newSelectedItemNames[keyNum];
                 updatedSelectedItemUnits[keyNum - 1] = newSelectedItemUnits[keyNum];
+                updatedSelectedItemSmallUnits[keyNum - 1] = newSelectedItemSmallUnits[keyNum];
+                updatedSelectedItemConversionRates[keyNum - 1] = newSelectedItemConversionRates[keyNum];
             } else {
                 updatedSelectedItemNames[keyNum] = newSelectedItemNames[keyNum];
                 updatedSelectedItemUnits[keyNum] = newSelectedItemUnits[keyNum];
+                updatedSelectedItemSmallUnits[keyNum] = newSelectedItemSmallUnits[keyNum];
+                updatedSelectedItemConversionRates[keyNum] = newSelectedItemConversionRates[keyNum];
             }
         });
 
         setSelectedItemNames(updatedSelectedItemNames);
         setSelectedItemUnits(updatedSelectedItemUnits);
+        setSelectedItemSmallUnits(updatedSelectedItemSmallUnits);
+        setSelectedItemConversionRates(updatedSelectedItemConversionRates);
     };
 
     const updatePurchaseOrderItem = (index: number, field: 'item_id' | 'quantity', value: string | number) => {
@@ -236,19 +253,43 @@ export default function Create({ suppliers = [] }: Props) {
             const selectedItem = items.find((itm) => itm.id === itemId);
 
             if (selectedItem) {
+                const hasWholesaleUnit = selectedItem.item_wholesale_unit_id !== null &&
+                    selectedItem.item_wholesale_unit !== null &&
+                    selectedItem.wholesale_unit_conversion !== null;
+
+                // Set the item name for display
                 const newSelectedItemNames = { ...selectedItemNames };
                 newSelectedItemNames[index] = `${selectedItem.name} (${selectedItem.code})`;
                 setSelectedItemNames(newSelectedItemNames);
 
+                // Set appropriate unit and conversion info
                 const newSelectedItemUnits = { ...selectedItemUnits };
-                newSelectedItemUnits[index] = selectedItem.item_unit?.abbreviation || '';
+                const newSelectedItemSmallUnits = { ...selectedItemSmallUnits };
+                const newSelectedItemConversionRates = { ...selectedItemConversionRates };
+
+                if (hasWholesaleUnit && selectedItem.item_wholesale_unit) {
+                    // Use wholesale unit by default
+                    newSelectedItemUnits[index] = selectedItem.item_wholesale_unit.abbreviation;
+                    newSelectedItemSmallUnits[index] = selectedItem.item_unit?.abbreviation || '';
+                    newSelectedItemConversionRates[index] = Number(selectedItem.wholesale_unit_conversion);
+
+                    updatedItems[index] = {
+                        ...updatedItems[index],
+                        item_id: itemId,
+                    };
+                } else {
+                    // No wholesale unit available, use regular unit
+                    newSelectedItemUnits[index] = selectedItem.item_unit?.abbreviation || '';
+
+                    updatedItems[index] = {
+                        ...updatedItems[index],
+                        item_id: itemId,
+                    };
+                }
+
                 setSelectedItemUnits(newSelectedItemUnits);
-
-                updatedItems[index] = {
-                    ...updatedItems[index],
-                    item_id: itemId,
-                };
-
+                setSelectedItemSmallUnits(newSelectedItemSmallUnits);
+                setSelectedItemConversionRates(newSelectedItemConversionRates);
                 setData('purchase_order_details', updatedItems);
             }
         } else if (field === 'quantity') {
@@ -271,6 +312,11 @@ export default function Create({ suppliers = [] }: Props) {
         });
     };
 
+    const calculateConversion = (quantity: number | string, conversionRate: number): number => {
+        if (quantity === '') return 0;
+        return Number(quantity) * conversionRate;
+    };
+
     const renderPurchaseOrderItemForm = (
         orderItem: {
             item_id: number;
@@ -281,6 +327,29 @@ export default function Create({ suppliers = [] }: Props) {
     ) => {
         const item = orderItem || data.new_item;
         const selectedItemId = isAddingNew ? data.new_item.item_id : item.item_id;
+        const selectedItem = items.find(itm => itm.id === selectedItemId);
+        const hasWholesaleUnit = selectedItem &&
+            selectedItem.item_wholesale_unit_id !== null &&
+            selectedItem.item_wholesale_unit !== null &&
+            selectedItem.wholesale_unit_conversion !== null;
+
+        // Get conversion rate and units
+        const conversionRate = isAddingNew
+            ? selectedItemConversionRates[data.purchase_order_details.length] || 0
+            : selectedItemConversionRates[index] || 0;
+
+        const displayUnit = isAddingNew
+            ? selectedItemUnits[data.purchase_order_details.length] || ''
+            : selectedItemUnits[index] || '';
+
+        const smallUnit = isAddingNew
+            ? selectedItemSmallUnits[data.purchase_order_details.length] || ''
+            : selectedItemSmallUnits[index] || '';
+
+        // Calculate the equivalent in small units
+        const equivalentAmount = hasWholesaleUnit
+            ? calculateConversion(item.quantity, conversionRate)
+            : 0;
 
         return (
             <div className="mb-4 rounded-md border bg-gray-50 p-4">
@@ -297,19 +366,41 @@ export default function Create({ suppliers = [] }: Props) {
                                     const selectedItem = items.find((itm) => itm.id === itemId);
 
                                     if (selectedItem) {
+                                        const hasWholesaleUnit = selectedItem.item_wholesale_unit_id !== null &&
+                                            selectedItem.item_wholesale_unit !== null &&
+                                            selectedItem.wholesale_unit_conversion !== null;
+
+                                        // Set the wholesale flag based on availability
+                                        const useWholesale = hasWholesaleUnit;
+
                                         const tempItem = {
                                             item_id: itemId,
                                             quantity: data.new_item.quantity,
                                         };
 
+                                        // Set the item name for display
                                         const newSelectedItemNames = { ...selectedItemNames };
                                         newSelectedItemNames[data.purchase_order_details.length] = `${selectedItem.name} (${selectedItem.code})`;
                                         setSelectedItemNames(newSelectedItemNames);
 
+                                        // Set units and conversion info
                                         const newSelectedItemUnits = { ...selectedItemUnits };
-                                        newSelectedItemUnits[data.purchase_order_details.length] = selectedItem.item_unit?.abbreviation || '';
-                                        setSelectedItemUnits(newSelectedItemUnits);
+                                        const newSelectedItemSmallUnits = { ...selectedItemSmallUnits };
+                                        const newSelectedItemConversionRates = { ...selectedItemConversionRates };
 
+                                        if (hasWholesaleUnit && selectedItem.item_wholesale_unit) {
+                                            // Use wholesale unit
+                                            newSelectedItemUnits[data.purchase_order_details.length] = selectedItem.item_wholesale_unit.abbreviation;
+                                            newSelectedItemSmallUnits[data.purchase_order_details.length] = selectedItem.item_unit?.abbreviation || '';
+                                            newSelectedItemConversionRates[data.purchase_order_details.length] = Number(selectedItem.wholesale_unit_conversion);
+                                        } else {
+                                            // No wholesale unit, use regular unit
+                                            newSelectedItemUnits[data.purchase_order_details.length] = selectedItem.item_unit?.abbreviation || '';
+                                        }
+
+                                        setSelectedItemUnits(newSelectedItemUnits);
+                                        setSelectedItemSmallUnits(newSelectedItemSmallUnits);
+                                        setSelectedItemConversionRates(newSelectedItemConversionRates);
                                         setData('new_item', tempItem);
                                     }
                                 } else {
@@ -327,11 +418,12 @@ export default function Create({ suppliers = [] }: Props) {
                                 isAddingNew && errors[`new_item.item_id` as keyof typeof errors]
                                     ? 'border-red-500 ring-red-100'
                                     : !isAddingNew && errors[`purchase_order_details.${index}.item_id` as keyof typeof errors]
-                                      ? 'border-red-500 ring-red-100'
-                                      : ''
+                                        ? 'border-red-500 ring-red-100'
+                                        : ''
                             }
                         />
                     </div>
+
                     <div className="relative grid min-w-[150px] flex-1 gap-2">
                         <Label htmlFor={`quantity_${index}`}>
                             Quantity <span className="text-red-500">*</span>
@@ -362,12 +454,16 @@ export default function Create({ suppliers = [] }: Props) {
                                     isAddingNew && errors[`new_item.quantity` as keyof typeof errors]
                                         ? 'border-red-500 ring-red-100'
                                         : !isAddingNew && errors[`purchase_order_details.${index}.quantity` as keyof typeof errors]
-                                          ? 'border-red-500 ring-red-100'
-                                          : ''
+                                            ? 'border-red-500 ring-red-100'
+                                            : ''
                                 }`}
                             />
                             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-sm text-gray-500">
-                                {isAddingNew ? selectedItemUnits[data.purchase_order_details.length] || '' : selectedItemUnits[index] || ''}
+                                {displayUnit} {hasWholesaleUnit && item.quantity !== '' && (
+                                <div>
+                                    ({equivalentAmount} {smallUnit})
+                                </div>
+                            )}
                             </div>
                         </div>
                         {!isAddingNew && errors[`purchase_order_details.${index}.quantity` as keyof typeof errors] && (
@@ -399,7 +495,26 @@ export default function Create({ suppliers = [] }: Props) {
     ) => {
         const selectedItem = items.find((itm) => itm.id === orderItem.item_id);
         const itemName = selectedItemNames[index] || (selectedItem ? `${selectedItem.name} (${selectedItem.code})` : 'Unknown Item');
-        const itemUnit = selectedItemUnits[index] || selectedItem?.item_unit?.abbreviation || '';
+
+        // Get the correct unit display
+        const itemUnit = selectedItemUnits[index] ||
+            (selectedItem?.item_wholesale_unit
+                ? selectedItem.item_wholesale_unit.abbreviation
+                : selectedItem?.item_unit?.abbreviation || '');
+
+        // Calculate conversion for wholesale items
+        let conversionText = '';
+        const hasWholesaleUnit = selectedItem &&
+            selectedItem.item_wholesale_unit_id !== null &&
+            selectedItem.wholesale_unit_conversion !== null;
+
+        if (hasWholesaleUnit && orderItem.quantity !== '') {
+            const smallUnit = selectedItemSmallUnits[index] || selectedItem?.item_unit?.abbreviation || '';
+            const conversionRate = selectedItemConversionRates[index] || Number(selectedItem?.wholesale_unit_conversion || 0);
+            const totalSmallUnits = Number(orderItem.quantity) * conversionRate;
+
+            conversionText = `= ${totalSmallUnits} ${smallUnit}`;
+        }
 
         return (
             <div key={index} className="border-b border-gray-100 py-3">
@@ -408,8 +523,13 @@ export default function Create({ suppliers = [] }: Props) {
                         <p className="font-medium text-gray-900">{itemName}</p>
                         <div className="flex flex-wrap gap-2">
                             <span className="rounded-full bg-gray-100 px-2 py-0.5 text-sm text-gray-600">
-                                Quantity: {orderItem.quantity} {itemUnit}
+                                {orderItem.quantity} {itemUnit}
                             </span>
+                            {conversionText && (
+                                <span className="rounded-full bg-blue-50 px-2 py-0.5 text-sm text-blue-600">
+                                    {conversionText}
+                                </span>
+                            )}
                         </div>
                     </div>
                     <div className="flex items-center gap-2">

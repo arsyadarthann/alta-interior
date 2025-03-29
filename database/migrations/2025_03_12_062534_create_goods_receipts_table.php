@@ -17,6 +17,11 @@ return new class extends Migration
             $table->date('date');
             $table->foreignId('supplier_id')->constrained('suppliers');
             $table->string('received_by', 100)->nullable();
+            $table->decimal('total_amount', 15, 2);
+            $table->decimal('miscellaneous_cost', 15, 2);
+            $table->foreignId('tax_rate_id')->nullable()->constrained('tax_rates');
+            $table->decimal('tax_amount', 15, 2);
+            $table->decimal('grand_total', 15, 2);
             $table->enum('status', ['not_invoiced', 'invoiced'])->default('not_invoiced');
             $table->timestamps();
         });

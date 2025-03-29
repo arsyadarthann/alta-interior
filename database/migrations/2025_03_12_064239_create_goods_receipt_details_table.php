@@ -18,6 +18,9 @@ return new class extends Migration
             $table->decimal('received_quantity', 15, 2);
             $table->decimal('price_per_unit', 15, 2);
             $table->decimal('total_price', 15, 2);
+            $table->decimal('miscellaneous_cost', 15, 2);
+            $table->decimal('tax_amount', 15, 2);
+            $table->decimal('total_amount', 15, 2);
             $table->decimal('cogs', 15, 2);
             $table->timestamps();
         });

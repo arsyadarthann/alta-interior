@@ -20,6 +20,9 @@ class GoodsReceiptDetail extends Model
         'shipping_cost',
         'price_per_unit',
         'total_price',
+        'miscellaneous_cost',
+        'tax_amount',
+        'total_amount',
         'cogs'
     ];
 

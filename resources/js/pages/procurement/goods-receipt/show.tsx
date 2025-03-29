@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
+import { formatCurrency, formatDecimal } from '@/lib/utils'
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link } from '@inertiajs/react';
 import { type ColumnDef } from '@tanstack/react-table';
@@ -44,6 +45,9 @@ interface Item {
     updated_at: string;
     deleted_at: null | string;
     item_unit?: ItemUnit;
+    item_wholesale_unit_id?: number | null;
+    item_wholesale_unit?: ItemUnit | null;
+    wholesale_unit_conversion?: string | number | null;
 }
 
 interface PurchaseOrderDetail {
@@ -75,6 +79,9 @@ interface GoodsReceiptDetail {
     price_per_unit: string;
     total_price: string;
     cogs: string;
+    miscellaneous_cost: string;
+    tax_amount: string;
+    total_amount: string;
     created_at: string;
     updated_at: string;
     laravel_through_key: number;
@@ -90,6 +97,10 @@ interface GoodsReceiptProps {
         supplier_id: number;
         received_by: string;
         status: string;
+        total_amount: string;
+        miscellaneous_cost: string;
+        tax_amount: string;
+        grand_total: string;
         created_at: string;
         updated_at: string;
         supplier: Supplier;
@@ -113,37 +124,6 @@ export default function Show({ goodsReceipt }: GoodsReceiptProps) {
         },
     ];
 
-    const formatCurrency = (value: string | number): string => {
-        const numValue = typeof value === 'string' ? parseFloat(value) : value;
-        const rounded = Math.round(numValue * 100) / 100;
-
-        const parts = rounded.toString().split('.');
-
-        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-
-        if (parts.length > 1 && parts[1] !== '00' && parseInt(parts[1]) !== 0) {
-            return 'Rp ' + parts[0] + ',' + (parts[1].length === 1 ? parts[1] + '0' : parts[1]);
-        }
-
-        return 'Rp ' + parts[0];
-    };
-
-    const formatDecimal = (value: string | number): string => {
-        if (value === null || value === undefined) return '0';
-
-        const numValue = typeof value === 'string' ? parseFloat(value) : value;
-
-        if (isNaN(numValue)) return '0';
-
-        // Check if the value is a whole number
-        if (Number.isInteger(numValue)) {
-            return numValue.toString();
-        }
-
-        // Otherwise, display with up to 2 decimal places
-        return numValue.toFixed(2).replace(/\.?0+$/, '');
-    };
-
     const columns: ColumnDef<GoodsReceiptDetail>[] = [
         createNumberColumn<GoodsReceiptDetail>(),
         {
@@ -151,7 +131,6 @@ export default function Show({ goodsReceipt }: GoodsReceiptProps) {
             header: 'Item Name',
             cell: ({ row }) => {
                 const detail = row.original;
-                // Get item from purchase_order_detail
                 const item = detail.purchase_order_detail?.item;
                 return item ? `${item.name} (${item.code})` : `Item #${detail.purchase_order_detail_id}`;
             },
@@ -167,10 +146,26 @@ export default function Show({ goodsReceipt }: GoodsReceiptProps) {
             accessorKey: 'received_quantity',
             header: 'Received Qty',
             cell: ({ row }) => {
+                const detail = row.original;
+                const item = detail.purchase_order_detail?.item;
                 const qty = parseFloat(row.getValue('received_quantity'));
                 const formattedQty = formatDecimal(qty);
-                const unit = row.original.purchase_order_detail?.item?.item_unit?.abbreviation || '';
-                return `${formattedQty} ${unit}`;
+
+                // Check if item has wholesale unit
+                if (item?.item_wholesale_unit_id && item?.wholesale_unit_conversion) {
+                    const wholesaleUnit = item.item_wholesale_unit?.abbreviation || '';
+                    const baseUnit = item.item_unit?.abbreviation || '';
+                    const conversionFactor = parseFloat(item.wholesale_unit_conversion.toString());
+
+                    // Calculate base unit quantity from wholesale quantity
+                    const baseQty = qty * conversionFactor;
+
+                    // Format as "10 dus (600m)" - showing both wholesale and calculated base units
+                    return `${formattedQty} ${wholesaleUnit} (${formatDecimal(baseQty)}${baseUnit})`;
+                } else {
+                    const unit = item?.item_unit?.abbreviation || '';
+                    return `${formattedQty} ${unit}`;
+                }
             },
             meta: {
                 className: 'text-center',
@@ -187,10 +182,50 @@ export default function Show({ goodsReceipt }: GoodsReceiptProps) {
             },
         },
         {
+            accessorKey: 'miscellaneous_cost',
+            header: 'Misc Cost',
+            cell: ({ row }) => {
+                return formatCurrency(row.original.miscellaneous_cost || '0');
+            },
+            meta: {
+                className: 'text-right',
+            },
+        },
+        {
+            accessorKey: 'tax_amount',
+            header: 'Tax',
+            cell: ({ row }) => {
+                return formatCurrency(row.original.tax_amount || '0');
+            },
+            meta: {
+                className: 'text-right',
+            },
+        },
+        {
             accessorKey: 'total_price',
-            header: 'Total Price',
+            header: 'Subtotal',
             cell: ({ row }) => {
                 return formatCurrency(row.getValue('total_price'));
+            },
+            meta: {
+                className: 'text-right',
+            },
+        },
+        {
+            accessorKey: 'total_amount',
+            header: 'Total',
+            cell: ({ row }) => {
+                return formatCurrency(row.original.total_amount || row.getValue('total_price'));
+            },
+            meta: {
+                className: 'text-right',
+            },
+        },
+        {
+            accessorKey: 'cogs',
+            header: 'COGS',
+            cell: ({ row }) => {
+                return formatCurrency(row.original.cogs || '0');
             },
             meta: {
                 className: 'text-right font-medium',
@@ -206,9 +241,6 @@ export default function Show({ goodsReceipt }: GoodsReceiptProps) {
             year: 'numeric',
         }).format(date);
     };
-
-    // Calculate total values
-    const totalAmount = goodsReceipt.goods_receipt_details.reduce((sum, detail) => sum + parseFloat(detail.total_price), 0);
 
     // Group details by purchase order
     const detailsByPO = goodsReceipt.goods_receipt_details.reduce(
@@ -254,6 +286,7 @@ export default function Show({ goodsReceipt }: GoodsReceiptProps) {
     };
 
     const purchaseOrderCount = Object.keys(detailsByPO).length;
+    const totalItems = goodsReceipt.goods_receipt_details.length;
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -271,7 +304,7 @@ export default function Show({ goodsReceipt }: GoodsReceiptProps) {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
                     <div className="lg:col-span-1">
                         <Card className="h-full border-0 shadow-sm">
                             <div className="p-6">
@@ -324,9 +357,25 @@ export default function Show({ goodsReceipt }: GoodsReceiptProps) {
                                                     </div>
                                                 );
                                             })}
+
+                                            <div className="flex justify-between">
+                                                <span className="text-sm text-gray-600">Subtotal:</span>
+                                                <span className="text-sm font-medium">{formatCurrency(goodsReceipt.total_amount || '0')}</span>
+                                            </div>
+
+                                            <div className="flex justify-between">
+                                                <span className="text-sm text-gray-600">Miscellaneous Costs:</span>
+                                                <span className="text-sm font-medium">{formatCurrency(goodsReceipt.miscellaneous_cost || '0')}</span>
+                                            </div>
+
+                                            <div className="flex justify-between">
+                                                <span className="text-sm text-gray-600">Tax Amount:</span>
+                                                <span className="text-sm font-medium">{formatCurrency(goodsReceipt.tax_amount || '0')}</span>
+                                            </div>
+
                                             <div className="mt-2 flex justify-between border-t pt-2">
-                                                <span className="font-medium">Total Amount</span>
-                                                <span className="font-bold text-gray-900">{formatCurrency(totalAmount)}</span>
+                                                <span className="font-medium">Grand Total</span>
+                                                <span className="font-bold text-gray-900">{formatCurrency(goodsReceipt.grand_total || '0')}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -335,13 +384,13 @@ export default function Show({ goodsReceipt }: GoodsReceiptProps) {
                         </Card>
                     </div>
 
-                    <div className="lg:col-span-2">
+                    <div className="lg:col-span-3">
                         <Card className="h-full border-0 shadow-sm">
                             <div className="p-6">
                                 <div className="mb-4 flex items-center">
                                     <h2 className="text-base font-semibold text-gray-900">Received Items</h2>
                                     <Badge variant="secondary" className="ml-2">
-                                        {goodsReceipt.goods_receipt_details.length} items
+                                        {totalItems} {totalItems === 1 ? 'item' : 'items'}
                                     </Badge>
                                 </div>
 

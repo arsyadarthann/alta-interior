@@ -6,12 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Procurement\GoodsReceiptRequest;
 use App\Interface\GoodsReceiptInterface;
 use App\Interface\SupplierInterface;
+use App\Interface\TaxRateInterface;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class GoodsReceiptController extends Controller
 {
-    public function __construct(private GoodsReceiptInterface $goodsReceipt, private SupplierInterface $supplier) {}
+    public function __construct(private GoodsReceiptInterface $goodsReceipt, private SupplierInterface $supplier, private taxRateInterface $taxRate) {}
 
     public function index()
     {
@@ -24,6 +25,7 @@ class GoodsReceiptController extends Controller
     {
         return Inertia::render('procurement/goods-receipt/create', [
             'suppliers' => $this->supplier->getAll(),
+            'taxRates' => $this->taxRate->getAll()
         ]);
     }
 
