@@ -758,7 +758,7 @@ export default function Create({ branches = [], warehouses = [] }: { branches?: 
                                                         {data.date ? format(data.date, 'PPP') : <span>Select date</span>}
                                                     </Button>
                                                 </PopoverTrigger>
-                                                <PopoverContent className="w-auto p-0">
+                                                <PopoverContent className="w-auto p-0" align="start">
                                                     <Calendar
                                                         mode="single"
                                                         selected={data.date}

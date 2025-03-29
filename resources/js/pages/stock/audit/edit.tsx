@@ -725,7 +725,7 @@ export default function EditStockAudit({
                                                         )}
                                                     </Button>
                                                 </PopoverTrigger>
-                                                <PopoverContent className="w-auto p-0">
+                                                <PopoverContent className="w-auto p-0" align="start">
                                                     <Calendar
                                                         mode="single"
                                                         selected={data.date instanceof Date ? data.date : data.date ? new Date(data.date) : undefined}

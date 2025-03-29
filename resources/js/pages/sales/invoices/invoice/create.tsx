@@ -639,7 +639,7 @@ export default function Create({
                                                             {data.date ? format(data.date, 'MMM dd, yyyy') : <span>Select date</span>}
                                                         </Button>
                                                     </PopoverTrigger>
-                                                    <PopoverContent className="w-auto p-0">
+                                                    <PopoverContent className="w-auto p-0" align="start">
                                                         <Calendar
                                                             mode="single"
                                                             selected={data.date}
@@ -670,7 +670,7 @@ export default function Create({
                                                             {data.due_date ? format(data.due_date, 'MMM dd, yyyy') : <span>Select due date</span>}
                                                         </Button>
                                                     </PopoverTrigger>
-                                                    <PopoverContent className="w-auto p-0">
+                                                    <PopoverContent className="w-auto p-0" align="start">
                                                         <Calendar
                                                             mode="single"
                                                             selected={data.due_date}

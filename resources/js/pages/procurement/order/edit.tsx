@@ -637,7 +637,7 @@ export default function EditPurchaseOrder({ suppliers = [], purchaseOrder }: Pro
                                                         {data.date ? format(data.date, 'PPP') : <span>Select date</span>}
                                                     </Button>
                                                 </PopoverTrigger>
-                                                <PopoverContent className="w-auto p-0">
+                                                <PopoverContent className="w-auto p-0" align="start">
                                                     <Calendar
                                                         mode="single"
                                                         selected={data.date}
@@ -671,7 +671,7 @@ export default function EditPurchaseOrder({ suppliers = [], purchaseOrder }: Pro
                                                         )}
                                                     </Button>
                                                 </PopoverTrigger>
-                                                <PopoverContent className="w-auto p-0">
+                                                <PopoverContent className="w-auto p-0" align="start">
                                                     <Calendar
                                                         mode="single"
                                                         selected={data.expected_delivery_date}

@@ -709,7 +709,7 @@ export default function Edit({ purchaseInvoice, suppliers = [], taxRates = [] }:
                                                         {data.date ? format(data.date, 'PPP') : <span>Select date</span>}
                                                     </Button>
                                                 </PopoverTrigger>
-                                                <PopoverContent className="w-auto p-0">
+                                                <PopoverContent className="w-auto p-0" align="start">
                                                     <Calendar
                                                         mode="single"
                                                         selected={data.date}
@@ -740,7 +740,7 @@ export default function Edit({ purchaseInvoice, suppliers = [], taxRates = [] }:
                                                         {data.due_date ? format(data.due_date, 'PPP') : <span>Select due date</span>}
                                                     </Button>
                                                 </PopoverTrigger>
-                                                <PopoverContent className="w-auto p-0">
+                                                <PopoverContent className="w-auto p-0" align="start">
                                                     <Calendar
                                                         mode="single"
                                                         selected={data.due_date}
