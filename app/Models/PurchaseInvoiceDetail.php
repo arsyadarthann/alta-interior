@@ -18,6 +18,9 @@ class PurchaseInvoiceDetail extends Model
         'quantity',
         'unit_price',
         'total_price',
+        'miscellaneous_cost',
+        'tax_amount',
+        'grand_total'
     ];
 
     public function purchaseInvoiceGoodsReceipt(): BelongsTo

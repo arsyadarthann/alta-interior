@@ -113,19 +113,21 @@ class GoodsReceiptRepository implements GoodsReceiptInterface
 
                     $previousQuantity = app(ItemRepository::class)->sumStockByWarehouse($item->id, Warehouse::first()->id);
 
+                    $stock = $item->item_wholesale_unit_id ? $goodsReceiptDetail['received_quantity'] * $item->wholesale_unit_conversion : $goodsReceiptDetail['received_quantity'];
+
                     $newBatch = app(ItemRepository::class)->addBatch([
                         'sku' => SKUCode::generateSKU($item->id, Warehouse::first()->id, Warehouse::class),
                         'source_able_id' => Warehouse::first()->id,
                         'source_able_type' => Warehouse::class,
                         'item_id' => $item->id,
-                        'stock' => $item->item_wholesale_unit_id ? $goodsReceiptDetail['received_quantity'] * $item->wholesale_unit_conversion : $goodsReceiptDetail['received_quantity'],
+                        'stock' => $stock,
                         'cogs' => $goodsReceiptDetail['cogs'],
                     ]);
 
                     $dataQuantity = [
                         'previous_quantity' => $previousQuantity,
-                        'movement_quantity' => $goodsReceiptDetail['received_quantity'],
-                        'after_quantity' => $previousQuantity + $goodsReceiptDetail['received_quantity'],
+                        'movement_quantity' => $stock,
+                        'after_quantity' => $previousQuantity + $stock,
                     ];
 
                     app(StockMovementRepository::class)->createStockMovement($newBatch->id, Warehouse::first()->id, Warehouse::class, StockMovement::TYPE_IN, $dataQuantity, $newGoodsReceipDetail);

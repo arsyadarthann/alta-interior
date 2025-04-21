@@ -18,7 +18,7 @@ return new class extends Migration
             $table->date('due_date');
             $table->foreignId('supplier_id')->constrained('suppliers');
             $table->decimal('total_amount', 15, 2);
-            $table->unsignedSmallInteger('tax_rate_id')->nullable();
+            $table->decimal('miscellaneous_cost', 15, 2);
             $table->decimal('tax_amount', 15, 2);
             $table->decimal('grand_total', 15, 2);
             $table->enum('status', ['unpaid', 'partially_paid', 'paid'])->default('unpaid');

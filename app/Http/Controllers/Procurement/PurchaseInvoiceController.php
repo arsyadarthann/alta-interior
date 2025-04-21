@@ -26,7 +26,6 @@ class PurchaseInvoiceController extends Controller
     {
         return Inertia::render('procurement/invoices/invoice/create', [
             'suppliers' => $this->supplier->getAll(),
-            'taxRates' => $this->taxRate->getAll()
         ]);
     }
 
@@ -97,6 +96,11 @@ class PurchaseInvoiceController extends Controller
     {
         $purchaseInvoice = $this->purchaseInvoice->getById($id);
 
+//        return response()->json([
+//            'purchaseInvoice' => $purchaseInvoice,
+//            'suppliers' => $this->supplier->getAll(),
+//        ]);
+
         if (!$purchaseInvoice) {
             return Inertia::render('errors/error-page', [
                 'status' => 404,
@@ -156,7 +160,6 @@ class PurchaseInvoiceController extends Controller
         return Inertia::render('procurement/invoices/invoice/edit', [
             'purchaseInvoice' => $purchaseInvoice,
             'suppliers' => $this->supplier->getAll(),
-            'taxRates' => $this->taxRate->getAll()
         ]);
     }
 

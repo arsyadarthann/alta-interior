@@ -8,10 +8,9 @@ import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToastNotification } from '@/hooks/use-toast-notification';
 import AppLayout from '@/layouts/app-layout';
-import { cn } from '@/lib/utils';
+import { cn, formatDate, formatDateToYmd, formatDecimal } from '@/lib/utils';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
-import { format } from 'date-fns';
 import { ArrowLeft, CalendarIcon, CheckCircle, Edit, PlusCircle, Trash2 } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -125,7 +124,7 @@ export default function EditStockAudit({
 
     const { data, setData, put, processing, errors } = useForm({
         code: stockAudit.code,
-        date: new Date(stockAudit.date),
+        date: stockAudit.date,
         source_able_type: initialSourceType(),
         source_able_id: initialSourceId,
         stock_audit_details: stockAudit.stock_audit_details.map((detail) => ({
@@ -230,7 +229,7 @@ export default function EditStockAudit({
         // Format the date properly
         const formattedData = {
             ...data,
-            date: data.date instanceof Date ? format(data.date, 'yyyy-MM-dd') : data.date,
+            date: formatDateToYmd(data.date),
             deleted_details: deletedDetails,
             stock_audit_details: data.stock_audit_details.map((detail) => ({
                 id: detail.id,
@@ -576,16 +575,10 @@ export default function EditStockAudit({
                     <div className="mt-1 flex gap-4 text-sm text-gray-500">
                         <p className="font-medium text-gray-900">{itemName}</p>
                         <span>
-                            System:{' '}
-                            {auditItem.system_quantity === 0
-                                ? 0
-                                : auditItem.system_quantity % 1 === 0
-                                  ? Math.abs(Number(auditItem.system_quantity))
-                                  : Number(auditItem.system_quantity.toFixed(2))}{' '}
-                            {itemUnit}
+                            System: {formatDecimal(auditItem.system_quantity)} {itemUnit}
                         </span>
                         <span>
-                            Physical: {auditItem.physical_quantity} {itemUnit}
+                            Physical: {formatDecimal(auditItem.physical_quantity)} {itemUnit}
                         </span>
                         <span
                             className={`${
@@ -593,11 +586,7 @@ export default function EditStockAudit({
                             }`}
                         >
                             Discrepancy: {auditItem.discrepancy_quantity < 0 ? '-' : '+'}
-                            {auditItem.discrepancy_quantity === 0
-                                ? 0
-                                : auditItem.discrepancy_quantity % 1 === 0
-                                  ? Math.abs(Number(auditItem.discrepancy_quantity))
-                                  : Number(auditItem.discrepancy_quantity.toFixed(2))}{' '}
+                            {formatDecimal(auditItem.discrepancy_quantity)}
                             {itemUnit}
                         </span>
                         {auditItem.reason && <span>Reason: {auditItem.reason}</span>}
@@ -716,20 +705,14 @@ export default function EditStockAudit({
                                                         )}
                                                     >
                                                         <CalendarIcon className="mr-2 h-4 w-4" />
-                                                        {data.date instanceof Date ? (
-                                                            format(data.date, 'PPP')
-                                                        ) : data.date ? (
-                                                            format(new Date(data.date), 'PPP')
-                                                        ) : (
-                                                            <span>Select date</span>
-                                                        )}
+                                                        {data.date ? formatDate(data.date) : <span>Select date</span>}
                                                     </Button>
                                                 </PopoverTrigger>
                                                 <PopoverContent className="w-auto p-0" align="start">
                                                     <Calendar
                                                         mode="single"
-                                                        selected={data.date instanceof Date ? data.date : data.date ? new Date(data.date) : undefined}
-                                                        onSelect={(date) => date && setData('date', date)}
+                                                        selected={data.date ? new Date(data.date) : undefined}
+                                                        onSelect={(date) => date && setData('date', formatDateToYmd(date))}
                                                         initialFocus
                                                     />
                                                 </PopoverContent>

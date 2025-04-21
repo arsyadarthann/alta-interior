@@ -8,10 +8,9 @@ import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToastNotification } from '@/hooks/use-toast-notification';
 import AppLayout from '@/layouts/app-layout';
-import { cn } from '@/lib/utils';
+import { cn, formatDate, formatDateToYmd } from '@/lib/utils';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { format } from 'date-fns';
 import { ArrowLeft, CalendarIcon, CheckCircle, Edit, PlusCircle, Trash2 } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react';
 
@@ -94,7 +93,7 @@ export default function Create({ branches = [], warehouses = [] }: { branches?: 
 
     const { data, setData, post, processing, errors } = useForm({
         code: '',
-        date: new Date(),
+        date: '',
         source_able_id: '',
         source_able_type: '',
         destination_able_id: '',
@@ -805,14 +804,14 @@ export default function Create({ branches = [], warehouses = [] }: { branches?: 
                                                         )}
                                                     >
                                                         <CalendarIcon className="mr-2 h-4 w-4" />
-                                                        {data.date ? format(data.date, 'PPP') : <span>Select date</span>}
+                                                        {data.date ? formatDate(data.date) : <span>Select date</span>}
                                                     </Button>
                                                 </PopoverTrigger>
                                                 <PopoverContent className="w-auto p-0" align="start">
                                                     <Calendar
                                                         mode="single"
-                                                        selected={data.date}
-                                                        onSelect={(date) => date && setData('date', date)}
+                                                        selected={data.date ? new Date(data.date) : undefined}
+                                                        onSelect={(date) => date && setData('date', formatDateToYmd(date))}
                                                         initialFocus
                                                     />
                                                 </PopoverContent>

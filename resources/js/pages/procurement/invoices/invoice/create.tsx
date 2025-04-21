@@ -6,10 +6,9 @@ import { Combobox } from '@/components/ui/combobox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToastNotification } from '@/hooks/use-toast-notification';
 import AppLayout from '@/layouts/app-layout';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency, formatDecimal } from '@/lib/utils';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { addDays, format } from 'date-fns';
@@ -36,12 +35,6 @@ type Supplier = {
     name: string;
 };
 
-type TaxRate = {
-    id: number;
-    name: string;
-    rate: number;
-};
-
 type GoodsReceipt = {
     id: number;
     code: string;
@@ -57,6 +50,9 @@ type GoodsReceiptDetail = {
     received_quantity: string | number;
     price_per_unit: string | number;
     total_price: string | number;
+    miscellaneous_cost: string | number;
+    tax_amount: string | number;
+    total_amount: string | number;
     cogs: string | number;
     purchase_order_detail: {
         id: number;
@@ -74,6 +70,12 @@ type GoodsReceiptDetail = {
                 name: string;
                 abbreviation: string;
             };
+            item_wholesale_unit?: {
+                id: number;
+                name: string;
+                abbreviation: string;
+            };
+            wholesale_unit_conversion?: string | number;
         };
     };
     goods_receipt_purchase_order: {
@@ -90,10 +92,9 @@ type GoodsReceiptDetail = {
 
 interface Props {
     suppliers?: Supplier[];
-    taxRates?: TaxRate[];
 }
 
-export default function Create({ suppliers = [], taxRates = [] }: Props) {
+export default function Create({ suppliers = [] }: Props) {
     const { showErrorToast } = useToastNotification();
     const [loading, setLoading] = useState(false);
     const [notInvoicedGoodsReceipts, setNotInvoicedGoodsReceipts] = useState<GoodsReceipt[]>([]);
@@ -110,7 +111,7 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
         due_date: addDays(new Date(), 30),
         supplier_id: '',
         total_amount: 0,
-        tax_rate_id: '',
+        miscellaneous_cost: 0,
         tax_amount: 0,
         grand_total: 0,
         purchase_invoice_goods_receipts: [] as {
@@ -120,44 +121,53 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
                 quantity: number;
                 unit_price: number;
                 total_price: number;
+                total_amount?: number;
+                miscellaneous_cost?: number;
+                tax_amount?: number;
             }[];
         }[],
     });
 
-    const formatDecimal = (value: string | number): string => {
-        if (value === null || value === undefined) return '0';
+    const displayQuantityWithWholesale = (detail: GoodsReceiptDetail) => {
+        const item = detail.purchase_order_detail.item;
 
-        const numValue = typeof value === 'string' ? parseFloat(value) : value;
+        if (item.item_wholesale_unit && item.wholesale_unit_conversion) {
+            const quantity = parseFloat(detail.received_quantity as string);
+            const conversion = parseFloat(item.wholesale_unit_conversion as string);
+            const standardEquivalent = quantity * conversion;
+            const standardUnit = item.item_unit.abbreviation;
+            const wholesaleUnit = item.item_wholesale_unit.abbreviation;
 
-        if (isNaN(numValue)) return '0';
+            const formattedStandardEquivalent =
+                Math.floor(standardEquivalent) === standardEquivalent ? standardEquivalent.toString() : standardEquivalent.toFixed(2);
 
-        if (Number.isInteger(numValue)) {
-            return numValue.toString();
+            return (
+                <>
+                    {formatDecimal(quantity)} {wholesaleUnit}
+                    <span className="block text-xs text-gray-500">
+                        (= {formattedStandardEquivalent} {standardUnit})
+                    </span>
+                </>
+            );
         }
 
-        return numValue.toFixed(2).replace(/\.?0+$/, '');
+        return (
+            <>
+                {formatDecimal(detail.received_quantity)} {item.item_unit.abbreviation}
+            </>
+        );
     };
 
-    const formatCurrency = (value: string | number): string => {
-        if (value === null || value === undefined) return 'Rp 0';
+    const displayPriceWithWholesale = (detail: GoodsReceiptDetail) => {
+        const item = detail.purchase_order_detail.item;
 
-        const numValue = typeof value === 'string' ? parseFloat(value) : value;
+        if (item.item_wholesale_unit && item.wholesale_unit_conversion) {
+            const pricePerUnit = parseFloat(detail.price_per_unit as string);
 
-        if (isNaN(numValue)) return 'Rp 0';
-
-        const formattedValue = numValue.toFixed(2);
-
-        const integerPart = Math.floor(numValue)
-            .toString()
-            .replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-
-        if (formattedValue.endsWith('.00')) {
-            return `Rp ${integerPart}`;
-        } else {
-            const decimalPart = formattedValue.split('.')[1];
-
-            return `Rp ${integerPart},${decimalPart}`;
+            return <>{formatCurrency(pricePerUnit)}</>;
         }
+
+        return formatCurrency(detail.price_per_unit);
     };
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -336,44 +346,32 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
         }
     }, []);
 
-    const handleTaxRateChange = (taxRateId: string) => {
-        const actualTaxRateId = taxRateId === 'none' ? '' : taxRateId;
-
-        setData((prevData) => {
-            const newData = {
-                ...prevData,
-                tax_rate_id: actualTaxRateId,
-            };
-            return newData;
-        });
-
-        calculateTotalsWithTaxRate(data.purchase_invoice_goods_receipts, actualTaxRateId);
-    };
-
-    const calculateTotalsWithTaxRate = (goodsReceipts, taxRateId) => {
+    const calculateTotals = (goodsReceipts) => {
         setCalculatingTotals(true);
         try {
-            const totalAmount = goodsReceipts.reduce(
-                (sum, receipt) => sum + receipt.purchase_invoice_details.reduce((detailSum, detail) => detailSum + detail.total_price, 0),
+            const subtotal = goodsReceipts.reduce(
+                (sum, receipt) =>
+                    sum + receipt.purchase_invoice_details.reduce((detailSum, detail) => detailSum + (detail.total_amount || detail.total_price), 0),
                 0,
             );
 
-            let taxRate = 0;
-            if (taxRateId) {
-                const selectedTaxRate = taxRates.find((tax) => tax.id.toString() === taxRateId);
+            const miscCost = goodsReceipts.reduce(
+                (sum, receipt) =>
+                    sum + receipt.purchase_invoice_details.reduce((detailSum, detail) => detailSum + (detail.miscellaneous_cost || 0), 0),
+                0,
+            );
 
-                if (selectedTaxRate) {
-                    taxRate = selectedTaxRate.rate;
-                }
-            }
+            const taxAmount = goodsReceipts.reduce(
+                (sum, receipt) => sum + receipt.purchase_invoice_details.reduce((detailSum, detail) => detailSum + (detail.tax_amount || 0), 0),
+                0,
+            );
 
-            const taxAmount = (totalAmount * taxRate) / 100;
-
-            const grandTotal = totalAmount + taxAmount;
+            const grandTotal = subtotal;
 
             setData((prevData) => ({
                 ...prevData,
-                total_amount: totalAmount,
+                total_amount: subtotal,
+                miscellaneous_cost: miscCost,
                 tax_amount: taxAmount,
                 grand_total: grandTotal,
             }));
@@ -417,6 +415,9 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
                 quantity: Number(detail.received_quantity),
                 unit_price: Number(detail.price_per_unit),
                 total_price: Number(detail.total_price),
+                total_amount: Number(detail.total_amount),
+                miscellaneous_cost: Number(detail.miscellaneous_cost),
+                tax_amount: Number(detail.tax_amount),
             }));
 
         updatedGoodsReceipts[receiptIndex].purchase_invoice_details = [...currentDetails, ...newDetails];
@@ -428,37 +429,6 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
 
         calculateTotals(updatedGoodsReceipts);
         setSelectedGoodsReceipt('');
-    };
-
-    const calculateTotals = (goodsReceipts) => {
-        setCalculatingTotals(true);
-        try {
-            const totalAmount = goodsReceipts.reduce(
-                (sum, receipt) => sum + receipt.purchase_invoice_details.reduce((detailSum, detail) => detailSum + detail.total_price, 0),
-                0,
-            );
-
-            let taxRate = 0;
-            if (data.tax_rate_id) {
-                const selectedTaxRate = taxRates.find((tax) => tax.id.toString() === data.tax_rate_id);
-                if (selectedTaxRate) {
-                    taxRate = selectedTaxRate.rate;
-                }
-            }
-
-            const taxAmount = (totalAmount * taxRate) / 100;
-
-            const grandTotal = totalAmount + taxAmount;
-
-            setData((prevData) => ({
-                ...prevData,
-                total_amount: totalAmount,
-                tax_amount: taxAmount,
-                grand_total: grandTotal,
-            }));
-        } finally {
-            setCalculatingTotals(false);
-        }
     };
 
     const getInvoiceItems = () => {
@@ -505,9 +475,67 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
                     item_name: fullDetail ? fullDetail.purchase_order_detail.item.name : 'Unknown',
                     item_code: fullDetail ? fullDetail.purchase_order_detail.item.code : 'Unknown',
                     item_unit: fullDetail ? fullDetail.purchase_order_detail.item.item_unit.abbreviation : '',
+                    item_wholesale_unit:
+                        fullDetail && fullDetail.purchase_order_detail.item.item_wholesale_unit
+                            ? fullDetail.purchase_order_detail.item.item_wholesale_unit.abbreviation
+                            : null,
+                    wholesale_unit_conversion:
+                        fullDetail && fullDetail.purchase_order_detail.item.wholesale_unit_conversion
+                            ? fullDetail.purchase_order_detail.item.wholesale_unit_conversion
+                            : null,
+                    miscellaneous_cost: detail.miscellaneous_cost || (fullDetail ? fullDetail.miscellaneous_cost : 0),
+                    tax_amount: detail.tax_amount || (fullDetail ? fullDetail.tax_amount : 0),
+                    total_amount: detail.total_amount || (fullDetail ? fullDetail.total_amount : detail.total_price),
+                    fullDetail, // Include the full detail for wholesale calculations
                 };
             }),
         );
+    };
+
+    // Function to display item quantity in the invoice items table
+    const displayInvoiceItemQuantity = (item) => {
+        if (
+            item.fullDetail &&
+            item.fullDetail.purchase_order_detail.item.item_wholesale_unit &&
+            item.fullDetail.purchase_order_detail.item.wholesale_unit_conversion
+        ) {
+            const item_detail = item.fullDetail.purchase_order_detail.item;
+            const quantity = parseFloat(item.quantity);
+            const conversion = parseFloat(item_detail.wholesale_unit_conversion);
+            const standardEquivalent = quantity * conversion;
+
+            // Format standard equivalent
+            const formattedStandardEquivalent =
+                Math.floor(standardEquivalent) === standardEquivalent ? standardEquivalent.toString() : standardEquivalent.toFixed(2);
+
+            return (
+                <>
+                    {formatDecimal(quantity)} {item_detail.item_wholesale_unit.abbreviation}
+                    <span className="block text-xs text-gray-500">
+                        (= {formattedStandardEquivalent} {item.item_unit})
+                    </span>
+                </>
+            );
+        }
+
+        return `${formatDecimal(item.quantity)} ${item.item_unit}`;
+    };
+
+    // Function to display item price in the invoice items table
+    const displayInvoiceItemPrice = (item) => {
+        if (
+            item.fullDetail &&
+            item.fullDetail.purchase_order_detail.item.item_wholesale_unit &&
+            item.fullDetail.purchase_order_detail.item.wholesale_unit_conversion
+        ) {
+            const item_detail = item.fullDetail.purchase_order_detail.item;
+            const unitPrice = parseFloat(item.unit_price);
+            const conversion = parseFloat(item_detail.wholesale_unit_conversion);
+
+            return <>{formatCurrency(unitPrice)}</>;
+        }
+
+        return formatCurrency(item.unit_price);
     };
 
     const removeReceiptFromInvoice = (receiptIndex: number) => {
@@ -686,28 +714,14 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
                                             {errors.due_date && <p className="mt-1 text-xs text-red-500">{errors.due_date}</p>}
                                         </div>
 
-                                        <div className="space-y-2">
-                                            <Label htmlFor="tax_rate_id">Tax Rate</Label>
-                                            <Select value={data.tax_rate_id || 'none'} onValueChange={handleTaxRateChange}>
-                                                <SelectTrigger className={errors.tax_rate_id ? 'border-red-500' : ''}>
-                                                    <SelectValue placeholder="Select tax rate" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="none">No Tax</SelectItem>
-                                                    {taxRates.map((taxRate) => (
-                                                        <SelectItem key={taxRate.id} value={taxRate.id.toString()}>
-                                                            {formatDecimal(taxRate.rate)}%
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                            {errors.tax_rate_id && <p className="text-sm text-red-500">{errors.tax_rate_id}</p>}
-                                        </div>
-
                                         <div className="mt-4 space-y-3 border-t pt-4">
                                             <div className="flex justify-between">
                                                 <span className="text-sm text-gray-600">Subtotal:</span>
-                                                <span className="font-medium">{formatCurrency(data.total_amount)}</span>
+                                                <span className="font-medium">{formatCurrency(data.total_amount - data.miscellaneous_cost)}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-sm text-gray-600">Misc. Cost:</span>
+                                                <span className="font-medium">{formatCurrency(data.miscellaneous_cost)}</span>
                                             </div>
                                             <div className="flex justify-between">
                                                 <span className="text-sm text-gray-600">Tax Amount:</span>
@@ -792,6 +806,8 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
                                                                             <th className="px-2 py-2 text-left">Item</th>
                                                                             <th className="px-2 py-2 text-center">Quantity</th>
                                                                             <th className="px-2 py-2 text-right">Unit Price</th>
+                                                                            <th className="px-2 py-2 text-right">Misc. Cost</th>
+                                                                            <th className="px-2 py-2 text-right">Tax Amount</th>
                                                                             <th className="px-2 py-2 text-right">Total</th>
                                                                         </tr>
                                                                     </thead>
@@ -808,14 +824,19 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
                                                                                         {detail.purchase_order_detail.item.code})
                                                                                     </td>
                                                                                     <td className="px-2 py-2 text-center">
-                                                                                        {formatDecimal(detail.received_quantity)}{' '}
-                                                                                        {detail.purchase_order_detail.item.item_unit.abbreviation}
+                                                                                        {displayQuantityWithWholesale(detail)}
                                                                                     </td>
                                                                                     <td className="px-2 py-2 text-right">
-                                                                                        {formatCurrency(detail.price_per_unit)}
+                                                                                        {displayPriceWithWholesale(detail)}
                                                                                     </td>
                                                                                     <td className="px-2 py-2 text-right">
-                                                                                        {formatCurrency(detail.total_price)}
+                                                                                        {formatCurrency(detail.miscellaneous_cost || 0)}
+                                                                                    </td>
+                                                                                    <td className="px-2 py-2 text-right">
+                                                                                        {formatCurrency(detail.tax_amount || 0)}
+                                                                                    </td>
+                                                                                    <td className="px-2 py-2 text-right">
+                                                                                        {formatCurrency(detail.total_amount)}
                                                                                     </td>
                                                                                 </tr>
                                                                             );
@@ -860,6 +881,8 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
                                                                     <th className="px-2 py-2 text-left">Item</th>
                                                                     <th className="px-2 py-2 text-center">Quantity</th>
                                                                     <th className="px-2 py-2 text-right">Unit Price</th>
+                                                                    <th className="px-2 py-2 text-right">Misc. Cost</th>
+                                                                    <th className="px-2 py-2 text-right">Tax Amount</th>
                                                                     <th className="px-2 py-2 text-right">Total</th>
                                                                 </tr>
                                                             </thead>
@@ -869,19 +892,28 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
                                                                         <td className="px-2 py-2">
                                                                             {item.item_name} ({item.item_code})
                                                                         </td>
-                                                                        <td className="px-2 py-2 text-center">
-                                                                            {formatDecimal(item.quantity)} {item.item_unit}
+                                                                        <td className="px-2 py-2 text-center">{displayInvoiceItemQuantity(item)}</td>
+                                                                        <td className="px-2 py-2 text-right">{displayInvoiceItemPrice(item)}</td>
+                                                                        <td className="px-2 py-2 text-right">
+                                                                            {formatCurrency(item.miscellaneous_cost || 0)}
                                                                         </td>
-                                                                        <td className="px-2 py-2 text-right">{formatCurrency(item.unit_price)}</td>
-                                                                        <td className="px-2 py-2 text-right">{formatCurrency(item.total_price)}</td>
+                                                                        <td className="px-2 py-2 text-right">
+                                                                            {formatCurrency(item.tax_amount || 0)}
+                                                                        </td>
+                                                                        <td className="px-2 py-2 text-right">{formatCurrency(item.total_amount)}</td>
                                                                     </tr>
                                                                 ))}
                                                                 <tr className="bg-gray-50 font-medium">
-                                                                    <td colSpan={3} className="px-2 py-2 text-right">
+                                                                    <td colSpan={5} className="px-2 py-2 text-right">
                                                                         Subtotal:
                                                                     </td>
                                                                     <td className="px-2 py-2 text-right">
-                                                                        {formatCurrency(group.items.reduce((sum, item) => sum + item.total_price, 0))}
+                                                                        {formatCurrency(
+                                                                            group.items.reduce(
+                                                                                (sum, item) => sum + (item.total_amount || item.total_price),
+                                                                                0,
+                                                                            ),
+                                                                        )}
                                                                     </td>
                                                                 </tr>
                                                             </tbody>

@@ -8,10 +8,9 @@ import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToastNotification } from '@/hooks/use-toast-notification';
 import AppLayout from '@/layouts/app-layout';
-import { cn } from '@/lib/utils';
+import { cn, formatDate, formatDateToYmd } from '@/lib/utils';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { format } from 'date-fns';
 import { ArrowLeft, CalendarIcon, CheckCircle, Edit, PlusCircle, Trash2 } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react';
 
@@ -77,9 +76,9 @@ export default function Create({ suppliers = [] }: Props) {
 
     const { data, setData, post, processing, errors } = useForm({
         code: '',
-        date: new Date(),
+        date: '',
         supplier_id: '',
-        expected_delivery_date: new Date(),
+        expected_delivery_date: '',
         purchase_order_details: [] as {
             item_id: number;
             quantity: number | string;
@@ -253,7 +252,8 @@ export default function Create({ suppliers = [] }: Props) {
             const selectedItem = items.find((itm) => itm.id === itemId);
 
             if (selectedItem) {
-                const hasWholesaleUnit = selectedItem.item_wholesale_unit_id !== null &&
+                const hasWholesaleUnit =
+                    selectedItem.item_wholesale_unit_id !== null &&
                     selectedItem.item_wholesale_unit !== null &&
                     selectedItem.wholesale_unit_conversion !== null;
 
@@ -327,8 +327,9 @@ export default function Create({ suppliers = [] }: Props) {
     ) => {
         const item = orderItem || data.new_item;
         const selectedItemId = isAddingNew ? data.new_item.item_id : item.item_id;
-        const selectedItem = items.find(itm => itm.id === selectedItemId);
-        const hasWholesaleUnit = selectedItem &&
+        const selectedItem = items.find((itm) => itm.id === selectedItemId);
+        const hasWholesaleUnit =
+            selectedItem &&
             selectedItem.item_wholesale_unit_id !== null &&
             selectedItem.item_wholesale_unit !== null &&
             selectedItem.wholesale_unit_conversion !== null;
@@ -338,18 +339,12 @@ export default function Create({ suppliers = [] }: Props) {
             ? selectedItemConversionRates[data.purchase_order_details.length] || 0
             : selectedItemConversionRates[index] || 0;
 
-        const displayUnit = isAddingNew
-            ? selectedItemUnits[data.purchase_order_details.length] || ''
-            : selectedItemUnits[index] || '';
+        const displayUnit = isAddingNew ? selectedItemUnits[data.purchase_order_details.length] || '' : selectedItemUnits[index] || '';
 
-        const smallUnit = isAddingNew
-            ? selectedItemSmallUnits[data.purchase_order_details.length] || ''
-            : selectedItemSmallUnits[index] || '';
+        const smallUnit = isAddingNew ? selectedItemSmallUnits[data.purchase_order_details.length] || '' : selectedItemSmallUnits[index] || '';
 
         // Calculate the equivalent in small units
-        const equivalentAmount = hasWholesaleUnit
-            ? calculateConversion(item.quantity, conversionRate)
-            : 0;
+        const equivalentAmount = hasWholesaleUnit ? calculateConversion(item.quantity, conversionRate) : 0;
 
         return (
             <div className="mb-4 rounded-md border bg-gray-50 p-4">
@@ -366,12 +361,10 @@ export default function Create({ suppliers = [] }: Props) {
                                     const selectedItem = items.find((itm) => itm.id === itemId);
 
                                     if (selectedItem) {
-                                        const hasWholesaleUnit = selectedItem.item_wholesale_unit_id !== null &&
+                                        const hasWholesaleUnit =
+                                            selectedItem.item_wholesale_unit_id !== null &&
                                             selectedItem.item_wholesale_unit !== null &&
                                             selectedItem.wholesale_unit_conversion !== null;
-
-                                        // Set the wholesale flag based on availability
-                                        const useWholesale = hasWholesaleUnit;
 
                                         const tempItem = {
                                             item_id: itemId,
@@ -391,8 +384,11 @@ export default function Create({ suppliers = [] }: Props) {
                                         if (hasWholesaleUnit && selectedItem.item_wholesale_unit) {
                                             // Use wholesale unit
                                             newSelectedItemUnits[data.purchase_order_details.length] = selectedItem.item_wholesale_unit.abbreviation;
-                                            newSelectedItemSmallUnits[data.purchase_order_details.length] = selectedItem.item_unit?.abbreviation || '';
-                                            newSelectedItemConversionRates[data.purchase_order_details.length] = Number(selectedItem.wholesale_unit_conversion);
+                                            newSelectedItemSmallUnits[data.purchase_order_details.length] =
+                                                selectedItem.item_unit?.abbreviation || '';
+                                            newSelectedItemConversionRates[data.purchase_order_details.length] = Number(
+                                                selectedItem.wholesale_unit_conversion,
+                                            );
                                         } else {
                                             // No wholesale unit, use regular unit
                                             newSelectedItemUnits[data.purchase_order_details.length] = selectedItem.item_unit?.abbreviation || '';
@@ -418,8 +414,8 @@ export default function Create({ suppliers = [] }: Props) {
                                 isAddingNew && errors[`new_item.item_id` as keyof typeof errors]
                                     ? 'border-red-500 ring-red-100'
                                     : !isAddingNew && errors[`purchase_order_details.${index}.item_id` as keyof typeof errors]
-                                        ? 'border-red-500 ring-red-100'
-                                        : ''
+                                      ? 'border-red-500 ring-red-100'
+                                      : ''
                             }
                         />
                     </div>
@@ -454,16 +450,17 @@ export default function Create({ suppliers = [] }: Props) {
                                     isAddingNew && errors[`new_item.quantity` as keyof typeof errors]
                                         ? 'border-red-500 ring-red-100'
                                         : !isAddingNew && errors[`purchase_order_details.${index}.quantity` as keyof typeof errors]
-                                            ? 'border-red-500 ring-red-100'
-                                            : ''
+                                          ? 'border-red-500 ring-red-100'
+                                          : ''
                                 }`}
                             />
                             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-sm text-gray-500">
-                                {displayUnit} {hasWholesaleUnit && item.quantity !== '' && (
-                                <div>
-                                    ({equivalentAmount} {smallUnit})
-                                </div>
-                            )}
+                                {displayUnit}{' '}
+                                {hasWholesaleUnit && item.quantity !== '' && (
+                                    <div>
+                                        ({equivalentAmount} {smallUnit})
+                                    </div>
+                                )}
                             </div>
                         </div>
                         {!isAddingNew && errors[`purchase_order_details.${index}.quantity` as keyof typeof errors] && (
@@ -497,16 +494,13 @@ export default function Create({ suppliers = [] }: Props) {
         const itemName = selectedItemNames[index] || (selectedItem ? `${selectedItem.name} (${selectedItem.code})` : 'Unknown Item');
 
         // Get the correct unit display
-        const itemUnit = selectedItemUnits[index] ||
-            (selectedItem?.item_wholesale_unit
-                ? selectedItem.item_wholesale_unit.abbreviation
-                : selectedItem?.item_unit?.abbreviation || '');
+        const itemUnit =
+            selectedItemUnits[index] ||
+            (selectedItem?.item_wholesale_unit ? selectedItem.item_wholesale_unit.abbreviation : selectedItem?.item_unit?.abbreviation || '');
 
         // Calculate conversion for wholesale items
         let conversionText = '';
-        const hasWholesaleUnit = selectedItem &&
-            selectedItem.item_wholesale_unit_id !== null &&
-            selectedItem.wholesale_unit_conversion !== null;
+        const hasWholesaleUnit = selectedItem && selectedItem.item_wholesale_unit_id !== null && selectedItem.wholesale_unit_conversion !== null;
 
         if (hasWholesaleUnit && orderItem.quantity !== '') {
             const smallUnit = selectedItemSmallUnits[index] || selectedItem?.item_unit?.abbreviation || '';
@@ -525,11 +519,7 @@ export default function Create({ suppliers = [] }: Props) {
                             <span className="rounded-full bg-gray-100 px-2 py-0.5 text-sm text-gray-600">
                                 {orderItem.quantity} {itemUnit}
                             </span>
-                            {conversionText && (
-                                <span className="rounded-full bg-blue-50 px-2 py-0.5 text-sm text-blue-600">
-                                    {conversionText}
-                                </span>
-                            )}
+                            {conversionText && <span className="rounded-full bg-blue-50 px-2 py-0.5 text-sm text-blue-600">{conversionText}</span>}
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -624,14 +614,19 @@ export default function Create({ suppliers = [] }: Props) {
                                                         )}
                                                     >
                                                         <CalendarIcon className="mr-2 h-4 w-4" />
-                                                        {data.date ? format(data.date, 'PPP') : <span>Select date</span>}
+                                                        {data.date ? formatDate(data.date) : <span>Select date</span>}
                                                     </Button>
                                                 </PopoverTrigger>
                                                 <PopoverContent className="w-auto p-0" align="start">
                                                     <Calendar
                                                         mode="single"
-                                                        selected={data.date}
-                                                        onSelect={(date) => date && setData('date', date)}
+                                                        selected={data.date ? new Date(data.date) : undefined}
+                                                        onSelect={(date) => {
+                                                            if (date) {
+                                                                const formattedDate = formatDateToYmd(date);
+                                                                setData('date', formattedDate);
+                                                            }
+                                                        }}
                                                         initialFocus
                                                     />
                                                 </PopoverContent>
@@ -656,7 +651,7 @@ export default function Create({ suppliers = [] }: Props) {
                                                     >
                                                         <CalendarIcon className="mr-2 h-4 w-4" />
                                                         {data.expected_delivery_date ? (
-                                                            format(data.expected_delivery_date, 'PPP')
+                                                            formatDate(data.expected_delivery_date)
                                                         ) : (
                                                             <span>Select date</span>
                                                         )}
@@ -665,8 +660,13 @@ export default function Create({ suppliers = [] }: Props) {
                                                 <PopoverContent className="w-auto p-0" align="start">
                                                     <Calendar
                                                         mode="single"
-                                                        selected={data.expected_delivery_date}
-                                                        onSelect={(date) => date && setData('expected_delivery_date', date)}
+                                                        selected={data.expected_delivery_date ? new Date(data.expected_delivery_date) : undefined}
+                                                        onSelect={(date) => {
+                                                            if (date) {
+                                                                const formattedDate = formatDateToYmd(date);
+                                                                setData('expected_delivery_date', formattedDate);
+                                                            }
+                                                        }}
                                                         initialFocus
                                                     />
                                                 </PopoverContent>

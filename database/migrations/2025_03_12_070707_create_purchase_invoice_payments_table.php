@@ -16,13 +16,11 @@ return new class extends Migration
             $table->string('code', 100)->unique();
             $table->date('date');
             $table->foreignId('user_id')->constrained('users');
-            $table->unsignedSmallInteger('branch_id');
             $table->foreignId('purchase_invoice_id')->constrained('purchase_invoices');
             $table->unsignedSmallInteger('payment_method_id');
             $table->decimal('amount', 15, 2);
             $table->timestamps();
 
-            $table->foreign('branch_id')->references('id')->on('branches');
             $table->foreign('payment_method_id')->references('id')->on('payment_methods');
         });
     }

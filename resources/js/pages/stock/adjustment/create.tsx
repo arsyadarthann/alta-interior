@@ -8,10 +8,9 @@ import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToastNotification } from '@/hooks/use-toast-notification';
 import AppLayout from '@/layouts/app-layout';
-import { cn } from '@/lib/utils';
+import { cn, formatDate, formatDateToYmd } from '@/lib/utils';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
-import { format } from 'date-fns';
 import { ArrowLeft, CalendarIcon, CheckCircle, Edit, PlusCircle, Trash2 } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -73,13 +72,12 @@ export default function Create({ branches = [], warehouses = [] }: { branches?: 
     const { auth } = usePage().props as unknown as { auth: { user: { branch_id: number } } };
     const [initialized, setInitialized] = useState(false);
 
-    // Add refs to track if a fetch is in progress
     const isFetchingItems = useRef(false);
     const isFetchingCode = useRef(false);
 
     const { data, setData, post, processing, errors } = useForm({
         code: '',
-        date: new Date(),
+        date: '',
         source_able_type: '',
         source_able_id: '',
         stock_adjustment_details: [] as {
@@ -755,14 +753,14 @@ export default function Create({ branches = [], warehouses = [] }: { branches?: 
                                                         )}
                                                     >
                                                         <CalendarIcon className="mr-2 h-4 w-4" />
-                                                        {data.date ? format(data.date, 'PPP') : <span>Select date</span>}
+                                                        {data.date ? formatDate(data.date) : <span>Select date</span>}
                                                     </Button>
                                                 </PopoverTrigger>
                                                 <PopoverContent className="w-auto p-0" align="start">
                                                     <Calendar
                                                         mode="single"
-                                                        selected={data.date}
-                                                        onSelect={(date) => date && setData('date', date)}
+                                                        selected={data.date ? new Date(data.date) : undefined}
+                                                        onSelect={(date) => date && setData('date', formatDateToYmd(date))}
                                                         initialFocus
                                                     />
                                                 </PopoverContent>

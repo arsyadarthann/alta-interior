@@ -26,11 +26,6 @@ class PurchaseInvoicePayment extends Model
         return $this->belongsTo(User::class, 'user_id', 'id');
     }
 
-    public function branch(): BelongsTo
-    {
-        return $this->belongsTo(Branch::class, 'branch_id', 'id');
-    }
-
     public function purchaseInvoice(): BelongsTo
     {
         return $this->belongsTo(PurchaseInvoice::class, 'purchase_invoice_id', 'id');

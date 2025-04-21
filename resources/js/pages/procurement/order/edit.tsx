@@ -8,10 +8,9 @@ import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToastNotification } from '@/hooks/use-toast-notification';
 import AppLayout from '@/layouts/app-layout';
-import { cn, formatDecimal } from '@/lib/utils';
+import { cn, formatDate, formatDateToYmd, formatDecimal } from '@/lib/utils';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { format } from 'date-fns';
 import { ArrowLeft, CalendarIcon, CheckCircle, Edit, PlusCircle, Trash2 } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react';
 
@@ -154,11 +153,8 @@ export default function EditPurchaseOrder({ suppliers = [], purchaseOrder }: Pro
 
     // Check if an item has wholesale units
     const hasWholesaleUnit = (itemId: number): boolean => {
-        const item = items.find(item => item.id === itemId);
-        return !!(item &&
-            item.item_wholesale_unit_id !== null &&
-            item.item_wholesale_unit !== null &&
-            item.wholesale_unit_conversion !== null);
+        const item = items.find((item) => item.id === itemId);
+        return !!(item && item.item_wholesale_unit_id !== null && item.item_wholesale_unit !== null && item.wholesale_unit_conversion !== null);
     };
 
     useEffect(() => {
@@ -359,18 +355,12 @@ export default function EditPurchaseOrder({ suppliers = [], purchaseOrder }: Pro
             ? selectedItemConversionRates[data.purchase_order_details.length] || 0
             : selectedItemConversionRates[index] || 0;
 
-        const displayUnit = isAddingNew
-            ? selectedItemUnits[data.purchase_order_details.length] || ''
-            : selectedItemUnits[index] || '';
+        const displayUnit = isAddingNew ? selectedItemUnits[data.purchase_order_details.length] || '' : selectedItemUnits[index] || '';
 
-        const smallUnit = isAddingNew
-            ? selectedItemSmallUnits[data.purchase_order_details.length] || ''
-            : selectedItemSmallUnits[index] || '';
+        const smallUnit = isAddingNew ? selectedItemSmallUnits[data.purchase_order_details.length] || '' : selectedItemSmallUnits[index] || '';
 
         // Calculate the equivalent in small units
-        const equivalentAmount = useWholesale
-            ? calculateConversion(item.quantity, conversionRate)
-            : 0;
+        const equivalentAmount = useWholesale ? calculateConversion(item.quantity, conversionRate) : 0;
 
         return (
             <div className="mb-4 rounded-md border bg-gray-50 p-4">
@@ -407,8 +397,11 @@ export default function EditPurchaseOrder({ suppliers = [], purchaseOrder }: Pro
                                         if (useWholesale && selectedItem.item_wholesale_unit) {
                                             // Use wholesale unit
                                             newSelectedItemUnits[data.purchase_order_details.length] = selectedItem.item_wholesale_unit.abbreviation;
-                                            newSelectedItemSmallUnits[data.purchase_order_details.length] = selectedItem.item_unit?.abbreviation || '';
-                                            newSelectedItemConversionRates[data.purchase_order_details.length] = Number(selectedItem.wholesale_unit_conversion);
+                                            newSelectedItemSmallUnits[data.purchase_order_details.length] =
+                                                selectedItem.item_unit?.abbreviation || '';
+                                            newSelectedItemConversionRates[data.purchase_order_details.length] = Number(
+                                                selectedItem.wholesale_unit_conversion,
+                                            );
                                         } else {
                                             // No wholesale unit, use regular unit
                                             newSelectedItemUnits[data.purchase_order_details.length] = selectedItem.item_unit?.abbreviation || '';
@@ -434,8 +427,8 @@ export default function EditPurchaseOrder({ suppliers = [], purchaseOrder }: Pro
                                 isAddingNew && errors[`new_item.item_id` as keyof typeof errors]
                                     ? 'border-red-500 ring-red-100'
                                     : !isAddingNew && errors[`purchase_order_details.${index}.item_id` as keyof typeof errors]
-                                        ? 'border-red-500 ring-red-100'
-                                        : ''
+                                      ? 'border-red-500 ring-red-100'
+                                      : ''
                             }
                         />
                     </div>
@@ -469,16 +462,17 @@ export default function EditPurchaseOrder({ suppliers = [], purchaseOrder }: Pro
                                     isAddingNew && errors[`new_item.quantity` as keyof typeof errors]
                                         ? 'border-red-500 ring-red-100'
                                         : !isAddingNew && errors[`purchase_order_details.${index}.quantity` as keyof typeof errors]
-                                            ? 'border-red-500 ring-red-100'
-                                            : ''
+                                          ? 'border-red-500 ring-red-100'
+                                          : ''
                                 }`}
                             />
                             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-sm text-gray-500">
-                                {displayUnit} {useWholesale && item.quantity !== '' && (
-                                <div className="">
-                                    ({formatDecimal(equivalentAmount)} {smallUnit})
-                                </div>
-                            )}
+                                {displayUnit}{' '}
+                                {useWholesale && item.quantity !== '' && (
+                                    <div className="">
+                                        ({formatDecimal(equivalentAmount)} {smallUnit})
+                                    </div>
+                                )}
                             </div>
                         </div>
                         {!isAddingNew && errors[`purchase_order_details.${index}.quantity` as keyof typeof errors] && (
@@ -513,7 +507,8 @@ export default function EditPurchaseOrder({ suppliers = [], purchaseOrder }: Pro
         const itemName = selectedItemNames[index] || (selectedItem ? `${selectedItem.name} (${selectedItem.code})` : 'Unknown Item');
 
         // Get the correct unit display
-        const itemUnit = selectedItemUnits[index] ||
+        const itemUnit =
+            selectedItemUnits[index] ||
             (hasWholesaleUnit(orderItem.item_id) && selectedItem?.item_wholesale_unit
                 ? selectedItem.item_wholesale_unit.abbreviation
                 : selectedItem?.item_unit?.abbreviation || '');
@@ -540,11 +535,7 @@ export default function EditPurchaseOrder({ suppliers = [], purchaseOrder }: Pro
                                 {formatDecimal(typeof orderItem.quantity === 'string' ? parseFloat(orderItem.quantity) || 0 : orderItem.quantity)}{' '}
                                 {itemUnit}
                             </span>
-                            {conversionText && (
-                                <span className="rounded-full bg-blue-50 px-2 py-0.5 text-sm text-blue-600">
-                                    {conversionText}
-                                </span>
-                            )}
+                            {conversionText && <span className="rounded-full bg-blue-50 px-2 py-0.5 text-sm text-blue-600">{conversionText}</span>}
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -634,14 +625,19 @@ export default function EditPurchaseOrder({ suppliers = [], purchaseOrder }: Pro
                                                         )}
                                                     >
                                                         <CalendarIcon className="mr-2 h-4 w-4" />
-                                                        {data.date ? format(data.date, 'PPP') : <span>Select date</span>}
+                                                        {data.date ? formatDate(data.date) : <span>Select date</span>}
                                                     </Button>
                                                 </PopoverTrigger>
                                                 <PopoverContent className="w-auto p-0" align="start">
                                                     <Calendar
                                                         mode="single"
-                                                        selected={data.date}
-                                                        onSelect={(date) => date && setData('date', date)}
+                                                        selected={data.date ? new Date(data.date) : undefined}
+                                                        onSelect={(date) => {
+                                                            if (date) {
+                                                                const formattedDate = formatDateToYmd(date);
+                                                                setData('date', formattedDate);
+                                                            }
+                                                        }}
                                                     />
                                                 </PopoverContent>
                                             </Popover>
@@ -665,7 +661,7 @@ export default function EditPurchaseOrder({ suppliers = [], purchaseOrder }: Pro
                                                     >
                                                         <CalendarIcon className="mr-2 h-4 w-4" />
                                                         {data.expected_delivery_date ? (
-                                                            format(data.expected_delivery_date, 'PPP')
+                                                            formatDate(data.expected_delivery_date)
                                                         ) : (
                                                             <span>Select date</span>
                                                         )}
@@ -674,8 +670,13 @@ export default function EditPurchaseOrder({ suppliers = [], purchaseOrder }: Pro
                                                 <PopoverContent className="w-auto p-0" align="start">
                                                     <Calendar
                                                         mode="single"
-                                                        selected={data.expected_delivery_date}
-                                                        onSelect={(date) => date && setData('expected_delivery_date', date)}
+                                                        selected={data.expected_delivery_date ? new Date(data.expected_delivery_date) : undefined}
+                                                        onSelect={(date) => {
+                                                            if (date) {
+                                                                const formattedDate = formatDateToYmd(date);
+                                                                setData('expected_delivery_date', formattedDate);
+                                                            }
+                                                        }}
                                                     />
                                                 </PopoverContent>
                                             </Popover>

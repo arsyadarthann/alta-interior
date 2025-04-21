@@ -8,12 +8,11 @@ import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToastNotification } from '@/hooks/use-toast-notification';
 import AppLayout from '@/layouts/app-layout';
-import { cn, formatDecimal, formatCurrency } from '@/lib/utils';
+import { cn, formatCurrency, formatDate, formatDateToYmd, formatDecimal } from '@/lib/utils';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { format } from 'date-fns';
 import { ArrowLeft, CalendarIcon, Loader2, Plus, Trash2 } from 'lucide-react';
-import React, { useCallback, useState, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -82,7 +81,7 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
 
     const { data, setData, post, processing, errors } = useForm({
         code: '',
-        date: new Date(),
+        date: '',
         supplier_id: '',
         received_by: '',
         total_amount: '0',
@@ -122,7 +121,7 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
         if (isNaN(qty) || isNaN(prc)) return { subtotal: '0' };
 
         return {
-            subtotal: subtotal.toString()
+            subtotal: subtotal.toString(),
         };
     };
 
@@ -137,8 +136,8 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
             const totalMiscCost = parseFloat(miscellaneousCost || '0');
             let totalItemsPrice = 0;
 
-            currentPOs.forEach(po => {
-                po.goods_receipt_details.forEach(detail => {
+            currentPOs.forEach((po) => {
+                po.goods_receipt_details.forEach((detail) => {
                     totalItemsPrice += detail.total_price;
                 });
             });
@@ -154,8 +153,7 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
             for (let poIndex = 0; poIndex < currentPOs.length; poIndex++) {
                 for (let detailIndex = 0; detailIndex < currentPOs[poIndex].goods_receipt_details.length; detailIndex++) {
                     const detail = currentPOs[poIndex].goods_receipt_details[detailIndex];
-                    const isLastItem = (poIndex === currentPOs.length - 1) &&
-                        (detailIndex === currentPOs[poIndex].goods_receipt_details.length - 1);
+                    const isLastItem = poIndex === currentPOs.length - 1 && detailIndex === currentPOs[poIndex].goods_receipt_details.length - 1;
 
                     const proportion = detail.total_price / totalItemsPrice;
                     let allocatedMiscCost;
@@ -172,7 +170,7 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
                     // Calculate tax based on item price only (excluding misc cost)
                     let taxAmount = 0;
                     if (selectedTaxRate) {
-                        const taxRate = taxRates.find(t => t.id === selectedTaxRate);
+                        const taxRate = taxRates.find((t) => t.id === selectedTaxRate);
                         if (taxRate) {
                             // Calculate tax on item price only, not including miscellaneous cost
                             const itemTotal = detail.total_price;
@@ -190,12 +188,12 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
                     const quantity = detail.received_quantity || 1;
                     if (detail.wholesale_unit_conversion && detail.item_wholesale_unit) {
                         // For items with wholesale unit
-                        currentPOs[poIndex].goods_receipt_details[detailIndex].cogs =
-                            Math.ceil(totalAmount / (quantity * detail.wholesale_unit_conversion));
+                        currentPOs[poIndex].goods_receipt_details[detailIndex].cogs = Math.ceil(
+                            totalAmount / (quantity * detail.wholesale_unit_conversion),
+                        );
                     } else {
                         // For regular items
-                        currentPOs[poIndex].goods_receipt_details[detailIndex].cogs =
-                            Math.ceil(totalAmount / quantity);
+                        currentPOs[poIndex].goods_receipt_details[detailIndex].cogs = Math.ceil(totalAmount / quantity);
                     }
                 }
             }
@@ -206,7 +204,7 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
                 miscellaneous_cost: totalMiscCost.toString(),
                 tax_amount: totalTaxAmount.toString(),
                 grand_total: (totalItemsPrice + totalMiscCost + totalTaxAmount).toString(),
-                total_amount: totalItemsPrice.toString()
+                total_amount: totalItemsPrice.toString(),
             };
 
             setData(updatedState);
@@ -222,16 +220,16 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
 
         let totalAmount = 0;
 
-        data.goods_receipt_purchase_order.forEach(po => {
-            po.goods_receipt_details.forEach(detail => {
+        data.goods_receipt_purchase_order.forEach((po) => {
+            po.goods_receipt_details.forEach((detail) => {
                 totalAmount += detail.total_price;
             });
         });
 
         if (totalAmount.toString() !== data.total_amount) {
-            setData(prevData => ({
+            setData((prevData) => ({
                 ...prevData,
-                total_amount: totalAmount.toString()
+                total_amount: totalAmount.toString(),
             }));
         }
     }, [data.goods_receipt_purchase_order]);
@@ -351,7 +349,7 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
                         total_amount: '0',
                         miscellaneous_cost: '0',
                         tax_amount: '0',
-                        grand_total: '0'
+                        grand_total: '0',
                     });
                 } else {
                     showErrorToast(['Invalid response format']);
@@ -515,7 +513,7 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
         // Calculate tax based on item price only, not including misc cost
         let taxAmount = 0;
         if (selectedTaxRate) {
-            const taxRate = taxRates.find(t => t.id === selectedTaxRate);
+            const taxRate = taxRates.find((t) => t.id === selectedTaxRate);
             if (taxRate) {
                 taxAmount = subtotalNum * (taxRate.rate / 100);
             }
@@ -551,7 +549,7 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
                 converted_quantity: convertedQuantity,
                 tax_amount: taxAmount,
                 total_amount: Number(subtotal) + parseFloat(miscellaneousCost || '0') + taxAmount,
-                cogs: cogs
+                cogs: cogs,
             };
         } else {
             updatedPO.goods_receipt_details.push(newDetail);
@@ -564,12 +562,12 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
                 total_amount: subtotal,
                 miscellaneous_cost: miscellaneousCost,
                 tax_amount: taxAmount.toString(),
-                grand_total: (Number(subtotal) + parseFloat(miscellaneousCost || '0') + taxAmount).toString()
+                grand_total: (Number(subtotal) + parseFloat(miscellaneousCost || '0') + taxAmount).toString(),
             });
         } else {
             setData({
                 ...data,
-                goods_receipt_purchase_order: updatedPOs
+                goods_receipt_purchase_order: updatedPOs,
             });
         }
 
@@ -589,22 +587,20 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
         const newPurchaseOrders = [];
 
         for (const po of data.goods_receipt_purchase_order) {
-            const newDetails = po.goods_receipt_details.filter(
-                detail => detail.purchase_order_detail_id !== poDetailId
-            );
+            const newDetails = po.goods_receipt_details.filter((detail) => detail.purchase_order_detail_id !== poDetailId);
 
             if (newDetails.length > 0) {
                 newPurchaseOrders.push({
                     purchase_order_id: po.purchase_order_id,
                     purchase_order_code: po.purchase_order_code,
-                    goods_receipt_details: newDetails
+                    goods_receipt_details: newDetails,
                 });
             }
         }
 
         let newTotalAmount = 0;
-        newPurchaseOrders.forEach(po => {
-            po.goods_receipt_details.forEach(detail => {
+        newPurchaseOrders.forEach((po) => {
+            po.goods_receipt_details.forEach((detail) => {
                 newTotalAmount += detail.total_price;
             });
         });
@@ -612,7 +608,7 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
         const newState = {
             ...data,
             goods_receipt_purchase_order: newPurchaseOrders,
-            total_amount: newTotalAmount.toString()
+            total_amount: newTotalAmount.toString(),
         };
 
         setData(newState);
@@ -624,7 +620,7 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
                     goods_receipt_purchase_order: [],
                     total_amount: '0',
                     tax_amount: '0',
-                    grand_total: '0'
+                    grand_total: '0',
                 });
             } else {
                 isDistributing.current = true;
@@ -633,8 +629,8 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
                 const totalMiscCost = parseFloat(miscellaneousCost || '0');
                 let totalItemsPrice = 0;
 
-                currentPOs.forEach(po => {
-                    po.goods_receipt_details.forEach(detail => {
+                currentPOs.forEach((po) => {
+                    po.goods_receipt_details.forEach((detail) => {
                         totalItemsPrice += detail.total_price;
                     });
                 });
@@ -645,8 +641,7 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
                 for (let poIndex = 0; poIndex < currentPOs.length; poIndex++) {
                     for (let detailIndex = 0; detailIndex < currentPOs[poIndex].goods_receipt_details.length; detailIndex++) {
                         const detail = currentPOs[poIndex].goods_receipt_details[detailIndex];
-                        const isLastItem = (poIndex === currentPOs.length - 1) &&
-                            (detailIndex === currentPOs[poIndex].goods_receipt_details.length - 1);
+                        const isLastItem = poIndex === currentPOs.length - 1 && detailIndex === currentPOs[poIndex].goods_receipt_details.length - 1;
 
                         const proportion = detail.total_price / totalItemsPrice;
                         let allocatedMiscCost;
@@ -663,7 +658,7 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
                         // Calculate tax based on item price only (not including misc cost)
                         let taxAmount = 0;
                         if (selectedTaxRate) {
-                            const taxRate = taxRates.find(t => t.id === selectedTaxRate);
+                            const taxRate = taxRates.find((t) => t.id === selectedTaxRate);
                             if (taxRate) {
                                 taxAmount = detail.total_price * (taxRate.rate / 100);
                                 totalTaxAmount += taxAmount;
@@ -679,11 +674,11 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
 
                         // Calculate and ceiling COGS
                         if (detail.wholesale_unit_conversion && detail.item_wholesale_unit) {
-                            currentPOs[poIndex].goods_receipt_details[detailIndex].cogs =
-                                Math.ceil(totalAmount / (quantity * detail.wholesale_unit_conversion));
+                            currentPOs[poIndex].goods_receipt_details[detailIndex].cogs = Math.ceil(
+                                totalAmount / (quantity * detail.wholesale_unit_conversion),
+                            );
                         } else {
-                            currentPOs[poIndex].goods_receipt_details[detailIndex].cogs =
-                                Math.ceil(totalAmount / quantity);
+                            currentPOs[poIndex].goods_receipt_details[detailIndex].cogs = Math.ceil(totalAmount / quantity);
                         }
                     }
                 }
@@ -694,7 +689,7 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
                     miscellaneous_cost: totalMiscCost.toString(),
                     tax_amount: totalTaxAmount.toString(),
                     grand_total: (totalItemsPrice + totalMiscCost + totalTaxAmount).toString(),
-                    total_amount: totalItemsPrice.toString()
+                    total_amount: totalItemsPrice.toString(),
                 };
 
                 setData(completeUpdatedState);
@@ -776,7 +771,7 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
                                             {errors.code && <p className="mt-1 text-xs text-red-500">{errors.code}</p>}
                                         </div>
 
-                                        <div className="space-y-2">
+                                        <div className="relative grid gap-2 space-y-2">
                                             <Label htmlFor="supplier_id">
                                                 Supplier <span className="text-red-500">*</span>
                                             </Label>
@@ -811,14 +806,14 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
                                                         )}
                                                     >
                                                         <CalendarIcon className="mr-2 h-4 w-4" />
-                                                        {data.date ? format(data.date, 'PPP') : <span>Select date</span>}
+                                                        {data.date ? formatDate(data.date) : <span>Select date</span>}
                                                     </Button>
                                                 </PopoverTrigger>
                                                 <PopoverContent className="w-auto p-0" align="start">
                                                     <Calendar
                                                         mode="single"
-                                                        selected={data.date}
-                                                        onSelect={(date) => date && setData('date', date)}
+                                                        selected={data.date ? new Date(data.date) : undefined}
+                                                        onSelect={(date) => date && setData('date', formatDateToYmd(date))}
                                                         initialFocus
                                                     />
                                                 </PopoverContent>
@@ -840,44 +835,53 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
                                             {errors.received_by && <p className="mt-1 text-xs text-red-500">{errors.received_by}</p>}
                                         </div>
 
-                                        <div className="relative grid gap-2 space-y-2">
-                                            <Label htmlFor="tax_rate_id">Tax Rate</Label>
-                                            <Combobox
-                                                value={data.tax_rate_id ? data.tax_rate_id.toString() : ''}
-                                                onValueChange={handleTaxRateChange}
-                                                options={[
-                                                    { value: '', label: 'No Tax' },
-                                                    ...taxRates.map((tax) => ({
-                                                        value: tax.id.toString(),
-                                                        label: `${formatDecimal(tax.rate)}%`,
-                                                    })),
-                                                ]}
-                                                placeholder="Select tax rate"
-                                                searchPlaceholder="Search tax rates..."
-                                                initialDisplayCount={5}
-                                                className={errors.tax_rate_id ? 'border-red-500' : ''}
-                                            />
-                                            {errors.tax_rate_id && <p className="text-sm text-red-500">{errors.tax_rate_id}</p>}
-                                        </div>
+                                        <div className="grid grid-cols-5 gap-4">
+                                            <div className="col-span-3">
+                                                <div className="mb-2">
+                                                    <Label htmlFor="miscellaneous_cost">Miscellaneous Cost</Label>
+                                                </div>
+                                                <Input
+                                                    id="miscellaneous_cost"
+                                                    type="number"
+                                                    min="0"
+                                                    value={miscellaneousCost}
+                                                    onChange={(e) => handleMiscCostChange(e.target.value)}
+                                                    placeholder="Enter miscellaneous cost"
+                                                    className={errors.miscellaneous_cost ? 'border-red-500 ring-red-100' : ''}
+                                                    disabled={data.goods_receipt_purchase_order.length > 0}
+                                                />
+                                                {errors.miscellaneous_cost && (
+                                                    <p className="mt-1 text-xs text-red-500">{errors.miscellaneous_cost}</p>
+                                                )}
+                                                <p className="mt-1 text-xs text-gray-500">
+                                                    {data.goods_receipt_purchase_order.length > 0
+                                                        ? 'Misc cost is locked after items are added to the list.'
+                                                        : 'This cost will be distributed proportionally across all items.'}
+                                                </p>
+                                            </div>
 
-                                        <div className="relative grid gap-2 space-y-2">
-                                            <Label htmlFor="miscellaneous_cost">Miscellaneous Cost</Label>
-                                            <Input
-                                                id="miscellaneous_cost"
-                                                type="number"
-                                                min="0"
-                                                value={miscellaneousCost}
-                                                onChange={(e) => handleMiscCostChange(e.target.value)}
-                                                placeholder="Enter miscellaneous cost"
-                                                className={errors.miscellaneous_cost ? 'border-red-500 ring-red-100' : ''}
-                                                disabled={data.goods_receipt_purchase_order.length > 0}
-                                            />
-                                            {errors.miscellaneous_cost && <p className="mt-1 text-xs text-red-500">{errors.miscellaneous_cost}</p>}
-                                            <p className="text-xs text-gray-500">
-                                                {data.goods_receipt_purchase_order.length > 0
-                                                    ? 'Misc cost is locked after items are added to the list.'
-                                                    : 'This cost will be distributed proportionally across all items.'}
-                                            </p>
+                                            <div className="col-span-2">
+                                                <div className="mb-2">
+                                                    <Label htmlFor="tax_rate_id">Tax Rate</Label>
+                                                </div>
+                                                <Combobox
+                                                    value={data.tax_rate_id ? data.tax_rate_id.toString() : ''}
+                                                    onValueChange={handleTaxRateChange}
+                                                    options={[
+                                                        { value: '', label: 'No Tax' },
+                                                        ...taxRates.map((tax) => ({
+                                                            value: tax.id.toString(),
+                                                            label: `${formatDecimal(tax.rate)}%`,
+                                                        })),
+                                                    ]}
+                                                    placeholder="Select tax rate"
+                                                    searchPlaceholder="Search tax rates..."
+                                                    initialDisplayCount={5}
+                                                    className={errors.tax_rate_id ? 'border-red-500' : ''}
+                                                    disabled={data.goods_receipt_purchase_order.length > 0}
+                                                />
+                                                {errors.tax_rate_id && <p className="mt-1 text-xs text-red-500">{errors.tax_rate_id}</p>}
+                                            </div>
                                         </div>
 
                                         <div className="border-t pt-4">

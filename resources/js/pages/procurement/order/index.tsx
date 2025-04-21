@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useToastNotification } from '@/hooks/use-toast-notification';
 import AppLayout from '@/layouts/app-layout';
+import { formatDate } from '@/lib/utils';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
 import { type ColumnDef, Row } from '@tanstack/react-table';
@@ -63,12 +64,6 @@ export default function Index({ purchaseOrders }: Props) {
             cell: ({ row }: { row: Row<PurchaseOrder> }) => {
                 const date = row.getValue('date') as string;
 
-                const formatDate = (dateString: string): string => {
-                    const date = new Date(dateString);
-                    const [year, month, day] = date.toISOString().split('T')[0].split('-');
-                    return `${year}-${month}-${day}`;
-                };
-
                 return formatDate(date);
             },
         },
@@ -81,12 +76,6 @@ export default function Index({ purchaseOrders }: Props) {
             header: 'Expected Delivery',
             cell: ({ row }: { row: Row<PurchaseOrder> }) => {
                 const expected_delivery_date = row.getValue('expected_delivery_date') as string;
-
-                const formatDate = (dateString: string): string => {
-                    const date = new Date(dateString);
-                    const [year, month, day] = date.toISOString().split('T')[0].split('-');
-                    return `${year}-${month}-${day}`;
-                };
 
                 return formatDate(expected_delivery_date);
             },

@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useToastNotification } from '@/hooks/use-toast-notification';
 import AppLayout from '@/layouts/app-layout';
+import { formatDate } from '@/lib/utils';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { type ColumnDef, Row } from '@tanstack/react-table';
@@ -71,7 +72,7 @@ export default function Index({ stockAudits, branches, warehouses, selectedSourc
     const { auth } = usePage().props as unknown as {
         auth: { user: { branch_id: number } };
     };
-    const [isLoading, setIsLoading] = useState(false);
+    const [, setIsLoading] = useState(false);
     const initialLoadComplete = useRef(false);
 
     const getDefaultSourceValue = () => {
@@ -178,6 +179,10 @@ export default function Index({ stockAudits, branches, warehouses, selectedSourc
         {
             accessorKey: 'date',
             header: 'Date',
+            cell: ({ row }: { row: Row<StockAudit> }) => {
+                const date = row.getValue('date') as string;
+                return formatDate(date);
+            },
         },
         {
             accessorKey: 'source_able.name',

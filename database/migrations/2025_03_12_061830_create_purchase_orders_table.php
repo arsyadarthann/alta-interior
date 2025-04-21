@@ -17,10 +17,6 @@ return new class extends Migration
             $table->date('date');
             $table->foreignId('supplier_id')->constrained('suppliers');
             $table->date('expected_delivery_date');
-            $table->decimal('total_amount', 15, 2);
-            $table->unsignedSmallInteger('tax_rate_id')->nullable();
-            $table->decimal('tax_amount', 15, 2);
-            $table->decimal('grand_total', 15, 2);
             $table->enum('status', ['pending', 'partially_received', 'received'])->default('pending');
             $table->timestamps();
 

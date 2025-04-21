@@ -21,7 +21,7 @@ class PurchaseInvoice extends Model
         'due_date',
         'supplier_id',
         'total_amount',
-        'tax_rate_id',
+        'miscellaneous_cost',
         'tax_amount',
         'grand_total',
         'status',
@@ -39,11 +39,6 @@ class PurchaseInvoice extends Model
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(Supplier::class, 'supplier_id', 'id');
-    }
-
-    public function taxRate(): BelongsTo
-    {
-        return $this->belongsTo(TaxRate::class, 'tax_rate_id', 'id');
     }
 
     public function isUnpaid(): bool

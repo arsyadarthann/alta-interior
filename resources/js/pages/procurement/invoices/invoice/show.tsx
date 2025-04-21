@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
+import { formatCurrency, formatDecimal } from '@/lib/utils';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link } from '@inertiajs/react';
 import { type ColumnDef } from '@tanstack/react-table';
@@ -13,12 +14,6 @@ import { ArrowLeft, FileEdit } from 'lucide-react';
 interface Supplier {
     id: number;
     name: string;
-}
-
-interface TaxRate {
-    id: number;
-    name?: string;
-    rate: number;
 }
 
 interface PurchaseOrder {
@@ -77,6 +72,9 @@ interface GoodsReceiptDetail {
     received_quantity: string;
     price_per_unit: string;
     total_price: string;
+    miscellaneous_cost: string; // Added field for miscellaneous cost per item
+    tax_amount: string;
+    total_amount: string;
     cogs: string;
     created_at: string;
     updated_at: string;
@@ -91,6 +89,11 @@ interface GoodsReceipt {
     date: string;
     supplier_id: number;
     received_by: string;
+    total_amount: string;
+    miscellaneous_cost: string; // Added field for miscellaneous cost
+    tax_rate_id: number;
+    tax_amount: string;
+    grand_total: string;
     status: string;
     created_at: string;
     updated_at: string;
@@ -135,7 +138,7 @@ interface PurchaseInvoiceProps {
         due_date: string;
         supplier_id: number;
         total_amount: string;
-        tax_rate_id: number | null;
+        miscellaneous_cost: string; // Added field for miscellaneous cost
         tax_amount: string;
         grand_total: string;
         status: string;
@@ -143,7 +146,6 @@ interface PurchaseInvoiceProps {
         created_at: string;
         updated_at: string;
         supplier: Supplier;
-        tax_rate: TaxRate | null;
         goods_receipts: GoodsReceipt[];
         purchase_invoice_payments?: PurchaseInvoicePayment[];
     };
@@ -164,35 +166,6 @@ export default function Show({ purchaseInvoice }: PurchaseInvoiceProps) {
             href: route('procurement.invoices.show', purchaseInvoice.id),
         },
     ];
-
-    const formatCurrency = (value: string | number): string => {
-        const numValue = typeof value === 'string' ? parseFloat(value) : value;
-        const rounded = Math.round(numValue * 100) / 100;
-
-        const parts = rounded.toString().split('.');
-
-        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-
-        if (parts.length > 1 && parts[1] !== '00' && parseInt(parts[1]) !== 0) {
-            return 'Rp ' + parts[0] + ',' + (parts[1].length === 1 ? parts[1] + '0' : parts[1]);
-        }
-
-        return 'Rp ' + parts[0];
-    };
-
-    const formatDecimal = (value: string | number): string => {
-        if (value === null || value === undefined) return '0';
-
-        const numValue = typeof value === 'string' ? parseFloat(value) : value;
-
-        if (isNaN(numValue)) return '0';
-
-        if (Number.isInteger(numValue)) {
-            return numValue.toString();
-        }
-
-        return numValue.toFixed(2).replace(/\.?0+$/, '');
-    };
 
     const allInvoiceItems = purchaseInvoice.goods_receipts.flatMap((receipt) =>
         receipt.goods_receipt_details.map((detail) => ({
@@ -279,6 +252,7 @@ export default function Show({ purchaseInvoice }: PurchaseInvoiceProps) {
                 code: receipt.code,
                 date: receipt.date,
                 total: receiptTotal,
+                miscellaneous_cost: receipt.miscellaneous_cost || '0',
                 details: receipt.goods_receipt_details,
             };
 
@@ -291,6 +265,7 @@ export default function Show({ purchaseInvoice }: PurchaseInvoiceProps) {
                 code: string;
                 date: string;
                 total: number;
+                miscellaneous_cost: string;
                 details: GoodsReceiptDetail[];
             }
         >,
@@ -399,9 +374,17 @@ export default function Show({ purchaseInvoice }: PurchaseInvoiceProps) {
                                         <h3 className="mb-3 text-sm font-semibold text-gray-900">Invoice Summary</h3>
                                         <div className="space-y-2">
                                             {Object.entries(detailsByReceipt).map(([receiptCode, receipt]) => (
-                                                <div className="flex justify-between" key={receiptCode}>
-                                                    <span className="text-sm text-gray-600">Receipt: {receipt.code}</span>
-                                                    <span className="text-sm font-medium">{formatCurrency(receipt.total)}</span>
+                                                <div key={receiptCode}>
+                                                    <div className="flex justify-between">
+                                                        <span className="text-sm text-gray-600">Receipt: {receipt.code}</span>
+                                                        <span className="text-sm font-medium">{formatCurrency(receipt.total)}</span>
+                                                    </div>
+                                                    {parseFloat(receipt.miscellaneous_cost) > 0 && (
+                                                        <div className="flex justify-between pl-4">
+                                                            <span className="text-sm text-gray-500">Miscellaneous Cost</span>
+                                                            <span className="text-sm">{formatCurrency(receipt.miscellaneous_cost)}</span>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             ))}
 
@@ -410,17 +393,17 @@ export default function Show({ purchaseInvoice }: PurchaseInvoiceProps) {
                                                 <span className="text-sm font-medium">{formatCurrency(purchaseInvoice.total_amount)}</span>
                                             </div>
 
-                                            {purchaseInvoice.tax_rate ? (
+                                            {parseFloat(purchaseInvoice.miscellaneous_cost || '0') > 0 && (
                                                 <div className="flex justify-between">
-                                                    <span className="text-sm text-gray-600">Tax ({purchaseInvoice.tax_rate.rate}%)</span>
-                                                    <span className="text-sm font-medium">{formatCurrency(purchaseInvoice.tax_amount)}</span>
-                                                </div>
-                                            ) : (
-                                                <div className="flex justify-between">
-                                                    <span className="text-sm text-gray-600">Tax (0%)</span>
-                                                    <span className="text-sm font-medium">{formatCurrency(purchaseInvoice.tax_amount)}</span>
+                                                    <span className="text-sm text-gray-600">Miscellaneous Cost</span>
+                                                    <span className="text-sm font-medium">{formatCurrency(purchaseInvoice.miscellaneous_cost)}</span>
                                                 </div>
                                             )}
+
+                                            <div className="flex justify-between">
+                                                <span className="text-sm text-gray-600">Tax Amount</span>
+                                                <span className="text-sm font-medium">{formatCurrency(purchaseInvoice.tax_amount)}</span>
+                                            </div>
 
                                             <div className="mt-2 flex justify-between border-t pt-2">
                                                 <span className="font-medium">Grand Total</span>

@@ -9,11 +9,11 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToastNotification } from '@/hooks/use-toast-notification';
 import AppLayout from '@/layouts/app-layout';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency, formatDecimal } from '@/lib/utils';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { format } from 'date-fns';
-import { ArrowLeft, CalendarIcon, Loader2 } from 'lucide-react';
+import { ArrowLeft, CalendarIcon, CreditCard, FileText, Loader2, Receipt } from 'lucide-react';
 import React, { useCallback, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -36,45 +36,107 @@ type Supplier = {
     name: string;
 };
 
-type PurchaseInvoice = {
+type ItemUnit = {
     id: number;
+    name: string;
+    abbreviation: string;
+    created_at: string;
+    updated_at: string;
+    deleted_at: null | string;
+};
+
+type ItemWholesaleUnit = {
+    id: number;
+    name: string;
+    abbreviation: string;
+    created_at: string;
+    updated_at: string;
+    deleted_at: null | string;
+};
+
+type Item = {
+    id: number;
+    name: string;
     code: string;
-    date: string;
-    due_date: string;
-    total_amount: number;
-    tax_amount: number;
-    grand_total: number;
-    remaining_amount: number;
-    status: string;
-    goods_receipts?: GoodsReceipt[];
+    item_category_id: number;
+    item_unit_id: number;
+    price: string;
+    created_at: string;
+    updated_at: string;
+    deleted_at: null | string;
+    item_unit: ItemUnit;
+    item_wholesale_unit?: ItemWholesaleUnit;
+    wholesale_unit_conversion?: string;
+};
+
+type PurchaseOrderDetail = {
+    id: number;
+    purchase_order_id: number;
+    item_id: number;
+    quantity: string;
+    unit_price: string;
+    total_price: string;
+    created_at: string;
+    updated_at: string;
+    item: Item;
+    purchase_order?: {
+        id: number;
+        code: string;
+    };
+};
+
+type GoodsReceiptDetail = {
+    id: number;
+    goods_receipt_purchase_order_id: number;
+    purchase_order_detail_id: number;
+    received_quantity: string | number;
+    price_per_unit: string | number;
+    total_price: string | number;
+    miscellaneous_cost: string | number;
+    tax_amount: string | number;
+    total_amount: string | number;
+    cogs: string | number;
+    purchase_order_detail: PurchaseOrderDetail;
+    laravel_through_key?: number;
 };
 
 type GoodsReceipt = {
     id: number;
     code: string;
     date: string;
+    supplier_id: number;
+    received_by: string;
+    total_amount: string;
+    miscellaneous_cost: string;
+    tax_rate_id: number;
+    tax_amount: string;
+    grand_total: string;
     status: string;
+    created_at: string;
+    updated_at: string;
     goods_receipt_details: GoodsReceiptDetail[];
+    pivot?: {
+        purchase_invoice_id: number;
+        goods_receipt_id: number;
+        created_at: string;
+        updated_at: string;
+    };
 };
 
-type GoodsReceiptDetail = {
+type PurchaseInvoice = {
     id: number;
-    received_quantity: string | number;
-    price_per_unit: string | number;
-    total_price: string | number;
-    purchase_order_detail: {
-        item: {
-            name: string;
-            code: string;
-            item_unit: {
-                name: string;
-                abbreviation: string;
-            };
-        };
-        purchase_order: {
-            code: string;
-        };
-    };
+    code: string;
+    date: string;
+    due_date: string;
+    supplier_id: number;
+    total_amount: string | number;
+    miscellaneous_cost: string | number;
+    tax_rate_id: number | null;
+    tax_amount: string | number;
+    grand_total: string | number;
+    status: string;
+    remaining_amount: string | number;
+    goods_receipts?: GoodsReceipt[];
 };
 
 type PaymentMethod = {
@@ -93,6 +155,7 @@ export default function Create({ code = '', suppliers = [], paymentMethods = [] 
     const [loading, setLoading] = useState(false);
     const [notPaidInvoices, setNotPaidInvoices] = useState<PurchaseInvoice[]>([]);
     const [selectedInvoice, setSelectedInvoice] = useState<PurchaseInvoice | null>(null);
+    const [activeTab, setActiveTab] = useState<'summary' | 'details'>('summary');
 
     const { data, setData, post, processing, errors } = useForm({
         code: code,
@@ -112,39 +175,26 @@ export default function Create({ code = '', suppliers = [], paymentMethods = [] 
         return format(date, 'dd MMM yyyy');
     };
 
-    const formatDecimal = (value: string | number): string => {
-        if (value === null || value === undefined) return '0';
+    // Add function for displaying quantity with wholesale calculation
+    const displayQuantityWithWholesale = (detail: GoodsReceiptDetail) => {
+        const item = detail.purchase_order_detail.item;
 
-        const numValue = typeof value === 'string' ? parseFloat(value) : value;
+        if (item.item_wholesale_unit && item.wholesale_unit_conversion) {
+            const quantity = parseFloat(detail.received_quantity as string);
+            const wholesaleUnit = item.item_wholesale_unit.abbreviation;
 
-        if (isNaN(numValue)) return '0';
-
-        if (Number.isInteger(numValue)) {
-            return numValue.toString();
+            return (
+                <>
+                    {formatDecimal(quantity)} {wholesaleUnit}
+                </>
+            );
         }
 
-        return numValue.toFixed(2).replace(/\.?0+$/, '');
-    };
-
-    const formatCurrency = (value: string | number): string => {
-        if (value === null || value === undefined) return 'Rp 0';
-
-        const numValue = typeof value === 'string' ? parseFloat(value) : value;
-
-        if (isNaN(numValue)) return 'Rp 0';
-
-        const formattedValue = numValue.toFixed(2);
-
-        const integerPart = Math.floor(numValue)
-            .toString()
-            .replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-
-        if (formattedValue.endsWith('.00')) {
-            return `Rp ${integerPart}`;
-        } else {
-            const decimalPart = formattedValue.split('.')[1];
-            return `Rp ${integerPart},${decimalPart}`;
-        }
+        return (
+            <>
+                {formatDecimal(detail.received_quantity)} {item.item_unit.abbreviation}
+            </>
+        );
     };
 
     const handleSupplierChange = (supplierId: string) => {
@@ -231,6 +281,8 @@ export default function Create({ code = '', suppliers = [], paymentMethods = [] 
 
                 if (responseData && responseData.data) {
                     setSelectedInvoice(responseData.data);
+                    // Default to summary tab when an invoice is selected
+                    setActiveTab('summary');
                 } else {
                     console.error('Unexpected response format:', responseData);
                     showErrorToast(['Invalid response format']);
@@ -258,6 +310,33 @@ export default function Create({ code = '', suppliers = [], paymentMethods = [] 
         });
     };
 
+    // Calculate total items in all receipts
+    const getTotalItems = () => {
+        if (!selectedInvoice || !selectedInvoice.goods_receipts) return 0;
+
+        return selectedInvoice.goods_receipts.reduce((total, receipt) => {
+            return total + (receipt.goods_receipt_details ? receipt.goods_receipt_details.length : 0);
+        }, 0);
+    };
+
+    // Group items by receipt for better organization
+    const getGroupedItems = () => {
+        if (!selectedInvoice || !selectedInvoice.goods_receipts) return [];
+
+        return selectedInvoice.goods_receipts.map((receipt) => {
+            const totalReceiptAmount = receipt.goods_receipt_details.reduce(
+                (sum, detail) => sum + parseFloat((detail.total_amount || detail.total_price).toString()),
+                0,
+            );
+
+            return {
+                receipt,
+                totalAmount: totalReceiptAmount,
+                details: receipt.goods_receipt_details,
+            };
+        });
+    };
+
     const canSubmit =
         data.code &&
         data.date &&
@@ -266,7 +345,7 @@ export default function Create({ code = '', suppliers = [], paymentMethods = [] 
         data.amount &&
         parseFloat(data.amount) > 0 &&
         selectedInvoice &&
-        parseFloat(data.amount) <= selectedInvoice.remaining_amount;
+        parseFloat(data.amount) <= parseFloat(selectedInvoice.remaining_amount.toString());
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -306,7 +385,7 @@ export default function Create({ code = '', suppliers = [], paymentMethods = [] 
                                                     ) : (
                                                         <div className="flex items-center gap-2">
                                                             <span className="inline-block h-2 w-2 rounded-full bg-yellow-400"></span>
-                                                            <span className="text-sm text-gray-600">Loading purchase order code...</span>
+                                                            <span className="text-sm text-gray-600">Loading payment code...</span>
                                                         </div>
                                                     )}
                                                 </div>
@@ -427,7 +506,7 @@ export default function Create({ code = '', suppliers = [], paymentMethods = [] 
                                                 className={errors.amount ? 'border-red-500 ring-red-100' : ''}
                                             />
                                             {errors.amount && <p className="mt-1 text-xs text-red-500">{errors.amount}</p>}
-                                            {selectedInvoice && parseFloat(data.amount) > selectedInvoice.remaining_amount && (
+                                            {selectedInvoice && parseFloat(data.amount) > parseFloat(selectedInvoice.remaining_amount.toString()) && (
                                                 <p className="mt-1 text-xs text-red-500">
                                                     Amount cannot exceed the remaining balance of {formatCurrency(selectedInvoice.remaining_amount)}
                                                 </p>
@@ -441,174 +520,246 @@ export default function Create({ code = '', suppliers = [], paymentMethods = [] 
                         <div className="lg:col-span-2">
                             <Card className="h-full border-0 shadow-sm">
                                 <div className="p-6">
-                                    <h2 className="mb-4 text-base font-semibold text-gray-900">Invoice Details</h2>
-
                                     {loading ? (
-                                        <div className="flex items-center justify-center py-8">
+                                        <div className="flex items-center justify-center py-12">
                                             <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
                                             <span className="ml-2 text-gray-500">Loading invoice details...</span>
                                         </div>
                                     ) : !selectedInvoice ? (
-                                        <div className="rounded-md border border-gray-200 bg-gray-50 p-8 text-center text-gray-500">
-                                            Select a supplier and invoice to view details
+                                        <div className="flex flex-col items-center justify-center rounded-md border border-gray-200 bg-gray-50 p-12 text-center text-gray-500">
+                                            <Receipt className="mb-4 h-12 w-12 text-gray-300" />
+                                            <h3 className="text-lg font-medium text-gray-700">No Invoice Selected</h3>
+                                            <p className="mt-2 text-gray-500">Select a supplier and invoice to view details and process payment</p>
                                         </div>
                                     ) : (
                                         <div className="space-y-6">
-                                            <div className="grid grid-cols-2 gap-4 rounded-md border bg-gray-50 p-4">
-                                                <div>
-                                                    <p className="text-sm font-medium text-gray-500">Invoice Code</p>
-                                                    <p className="font-medium">{selectedInvoice.code}</p>
+                                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+                                                <div className="rounded-lg border border-l-4 border-l-blue-500 bg-white p-4 shadow-sm">
+                                                    <h3 className="mb-2 text-xs font-medium text-gray-500 uppercase">Invoice Code</h3>
+                                                    <p className="flex items-center text-lg font-semibold text-gray-800">
+                                                        <FileText className="mr-2 h-5 w-5 text-blue-500" />
+                                                        {selectedInvoice.code}
+                                                    </p>
+                                                    <p className="mt-1 text-xs text-gray-500">Invoice Date: {formatDate(selectedInvoice.date)}</p>
                                                 </div>
-                                                <div>
-                                                    <p className="text-sm font-medium text-gray-500">Invoice Date</p>
-                                                    <p>{formatDate(selectedInvoice.date)}</p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-sm font-medium text-gray-500">Due Date</p>
-                                                    <p>{formatDate(selectedInvoice.due_date)}</p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-sm font-medium text-gray-500">Status</p>
-                                                    <div
-                                                        className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${
-                                                            selectedInvoice.status === 'paid'
-                                                                ? 'bg-green-100 text-green-800'
+                                                <div className="rounded-lg border border-l-4 border-l-amber-500 bg-white p-4 shadow-sm">
+                                                    <h3 className="mb-2 text-xs font-medium text-gray-500 uppercase">Due Date</h3>
+                                                    <p className="text-lg font-semibold text-gray-800">{formatDate(selectedInvoice.due_date)}</p>
+                                                    <p className="mt-1 text-xs text-gray-500">
+                                                        Status:{' '}
+                                                        <span
+                                                            className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                                                                selectedInvoice.status === 'paid'
+                                                                    ? 'bg-green-100 text-green-800'
+                                                                    : selectedInvoice.status === 'partially_paid'
+                                                                      ? 'bg-amber-100 text-amber-800'
+                                                                      : 'bg-blue-100 text-blue-800'
+                                                            }`}
+                                                        >
+                                                            {selectedInvoice.status === 'paid'
+                                                                ? 'Paid'
                                                                 : selectedInvoice.status === 'partially_paid'
-                                                                  ? 'bg-amber-100 text-amber-800'
-                                                                  : 'bg-blue-100 text-blue-800'
+                                                                  ? 'Partially Paid'
+                                                                  : 'Unpaid'}
+                                                        </span>
+                                                    </p>
+                                                </div>
+                                                <div className="rounded-lg border border-l-4 border-l-red-500 bg-white p-4 shadow-sm">
+                                                    <h3 className="mb-2 text-xs font-medium text-gray-500 uppercase">Remaining</h3>
+                                                    <p className="text-lg font-semibold text-red-600">
+                                                        {formatCurrency(selectedInvoice.remaining_amount)}
+                                                    </p>
+                                                    <p className="mt-1 text-xs text-gray-500">Total: {formatCurrency(selectedInvoice.grand_total)}</p>
+                                                </div>
+                                                <div className="rounded-lg border border-l-4 border-l-green-500 bg-white p-4 shadow-sm">
+                                                    <h3 className="mb-2 text-xs font-medium text-gray-500 uppercase">Current Payment</h3>
+                                                    <p className="flex items-center text-lg font-semibold text-green-600">
+                                                        <CreditCard className="mr-2 h-5 w-5 text-green-500" />
+                                                        {data.amount ? formatCurrency(data.amount) : 'Rp 0'}
+                                                    </p>
+                                                    <p className="mt-1 text-xs text-green-600">
+                                                        {data.amount &&
+                                                        parseFloat(data.amount) >= parseFloat(selectedInvoice.remaining_amount.toString())
+                                                            ? 'Fully paid ✓'
+                                                            : data.amount && parseFloat(data.amount) > 0
+                                                              ? 'Partially paid'
+                                                              : 'Not paid yet'}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            {/* Tab navigation */}
+                                            <div className="mb-4 border-b">
+                                                <div className="flex space-x-6">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setActiveTab('summary')}
+                                                        className={`-mb-px py-3 text-sm font-medium ${
+                                                            activeTab === 'summary'
+                                                                ? 'border-b-2 border-blue-500 text-blue-600'
+                                                                : 'text-gray-500 hover:text-gray-700'
                                                         }`}
                                                     >
-                                                        {selectedInvoice.status === 'paid'
-                                                            ? 'Paid'
-                                                            : selectedInvoice.status === 'partially_paid'
-                                                              ? 'Partially Paid'
-                                                              : 'Unpaid'}
-                                                    </div>
+                                                        Payment Summary
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setActiveTab('details')}
+                                                        className={`-mb-px py-3 text-sm font-medium ${
+                                                            activeTab === 'details'
+                                                                ? 'border-b-2 border-blue-500 text-blue-600'
+                                                                : 'text-gray-500 hover:text-gray-700'
+                                                        }`}
+                                                    >
+                                                        Invoice Items ({getTotalItems()})
+                                                    </button>
                                                 </div>
                                             </div>
 
-                                            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-                                                <div className="lg:col-span-2">
-                                                    {/* Invoice Items */}
-                                                    <div className="h-full rounded-md border">
-                                                        <div className="border-b bg-gray-50 px-4 py-2">
-                                                            <h3 className="text-sm font-medium text-gray-700">Invoice Items</h3>
+                                            {/* Tab content */}
+                                            {activeTab === 'summary' ? (
+                                                <div className="rounded-lg border bg-white p-6 shadow-sm">
+                                                    <h3 className="mb-4 text-base font-medium text-gray-800">Payment Summary</h3>
+                                                    <div className="space-y-3">
+                                                        <div className="flex justify-between border-b border-gray-100 pb-2">
+                                                            <span className="text-sm text-gray-600">Subtotal:</span>
+                                                            <span className="font-medium">{formatCurrency(selectedInvoice.total_amount)}</span>
                                                         </div>
-                                                        <div className="max-h-[220px] overflow-y-auto">
-                                                            <table className="w-full border-collapse text-sm">
-                                                                <thead className="sticky top-0 bg-white">
-                                                                    <tr className="border-b bg-gray-50">
-                                                                        <th className="px-3 py-2 text-left font-medium text-gray-500">Item</th>
-                                                                        <th className="px-3 py-2 text-center font-medium text-gray-500">Qty</th>
-                                                                        <th className="px-3 py-2 text-right font-medium text-gray-500">Price</th>
-                                                                        <th className="px-3 py-2 text-right font-medium text-gray-500">Total</th>
-                                                                    </tr>
-                                                                </thead>
-                                                                <tbody>
-                                                                    {selectedInvoice.goods_receipts && selectedInvoice.goods_receipts.length > 0 ? (
-                                                                        selectedInvoice.goods_receipts.flatMap((receipt) =>
-                                                                            receipt.goods_receipt_details.map((detail) => (
-                                                                                <tr key={detail.id} className="border-b hover:bg-gray-50">
-                                                                                    <td className="px-3 py-2">
-                                                                                        <div className="font-medium">
-                                                                                            {detail.purchase_order_detail.item.name}
-                                                                                        </div>
-                                                                                        <div className="flex gap-2 text-xs text-gray-500">
-                                                                                            <span>{detail.purchase_order_detail.item.code}</span>
-                                                                                            <span>|</span>
-                                                                                            <span>GR: {receipt.code}</span>
-                                                                                        </div>
-                                                                                    </td>
-                                                                                    <td className="px-3 py-2 text-center">
-                                                                                        {formatDecimal(detail.received_quantity)}{' '}
-                                                                                        {detail.purchase_order_detail.item.item_unit.abbreviation}
-                                                                                    </td>
-                                                                                    <td className="px-3 py-2 text-right">
-                                                                                        {formatCurrency(detail.price_per_unit)}
-                                                                                    </td>
-                                                                                    <td className="px-3 py-2 text-right">
-                                                                                        {formatCurrency(detail.total_price)}
-                                                                                    </td>
-                                                                                </tr>
-                                                                            )),
-                                                                        )
-                                                                    ) : (
-                                                                        <tr>
-                                                                            <td colSpan={4} className="px-3 py-3 text-center text-gray-500">
-                                                                                No detailed items available
-                                                                            </td>
+                                                        <div className="flex justify-between border-b border-gray-100 pb-2">
+                                                            <span className="text-sm text-gray-600">Miscellaneous Cost:</span>
+                                                            <span className="font-medium">
+                                                                {formatCurrency(selectedInvoice.miscellaneous_cost || 0)}
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex justify-between border-b border-gray-100 pb-2">
+                                                            <span className="text-sm text-gray-600">Tax Amount:</span>
+                                                            <span className="font-medium">{formatCurrency(selectedInvoice.tax_amount)}</span>
+                                                        </div>
+                                                        <div className="flex justify-between bg-gray-50 px-3 py-2">
+                                                            <span className="font-medium text-gray-800">Total Amount:</span>
+                                                            <span className="font-semibold text-gray-800">
+                                                                {formatCurrency(selectedInvoice.grand_total)}
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex justify-between">
+                                                            <span className="text-sm text-gray-600">Already Paid:</span>
+                                                            <span className="font-medium text-green-600">
+                                                                {formatCurrency(
+                                                                    parseFloat(selectedInvoice.grand_total.toString()) -
+                                                                        parseFloat(selectedInvoice.remaining_amount.toString()),
+                                                                )}
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex justify-between bg-blue-50 px-3 py-2">
+                                                            <span className="font-medium text-blue-800">Remaining:</span>
+                                                            <span className="font-semibold text-blue-800">
+                                                                {formatCurrency(selectedInvoice.remaining_amount)}
+                                                            </span>
+                                                        </div>
+
+                                                        {data.amount && parseFloat(data.amount) > 0 && (
+                                                            <>
+                                                                <div className="flex justify-between">
+                                                                    <span className="text-sm text-gray-600">Current Payment:</span>
+                                                                    <span className="font-medium text-green-600">{formatCurrency(data.amount)}</span>
+                                                                </div>
+                                                                <div className="flex justify-between bg-green-50 px-3 py-2">
+                                                                    <span className="font-medium text-green-800">New Balance:</span>
+                                                                    <span className="font-semibold text-green-800">
+                                                                        {formatCurrency(
+                                                                            Math.max(
+                                                                                0,
+                                                                                parseFloat(selectedInvoice.remaining_amount.toString()) -
+                                                                                    parseFloat(data.amount),
+                                                                            ),
+                                                                        )}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="mt-4 rounded-md bg-gray-50 p-3 text-center">
+                                                                    <span className="text-sm font-medium text-gray-700">New Status: </span>
+                                                                    <span
+                                                                        className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${
+                                                                            parseFloat(data.amount) >=
+                                                                            parseFloat(selectedInvoice.remaining_amount.toString())
+                                                                                ? 'bg-green-100 text-green-800'
+                                                                                : 'bg-amber-100 text-amber-800'
+                                                                        }`}
+                                                                    >
+                                                                        {parseFloat(data.amount) >=
+                                                                        parseFloat(selectedInvoice.remaining_amount.toString())
+                                                                            ? 'Paid'
+                                                                            : 'Partially Paid'}
+                                                                    </span>
+                                                                </div>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="rounded-lg border bg-white shadow-sm">
+                                                    {getGroupedItems().map((group, idx) => (
+                                                        <div key={idx} className="border-b last:border-b-0">
+                                                            <div className="flex items-center justify-between bg-gray-50 px-4 py-3">
+                                                                <h3 className="text-sm font-medium text-gray-800">
+                                                                    <span className="mr-2 rounded-md bg-blue-100 px-2 py-1 text-xs text-blue-700">
+                                                                        Receipt: {group.receipt.code}
+                                                                    </span>
+                                                                    <span className="text-xs text-gray-500">
+                                                                        {formatDate(group.receipt.date)} •{' '}
+                                                                        {group.receipt.goods_receipt_details.length} items
+                                                                    </span>
+                                                                </h3>
+                                                                <span className="font-medium text-gray-700">{formatCurrency(group.totalAmount)}</span>
+                                                            </div>
+                                                            <div className="max-h-[220px] overflow-y-auto">
+                                                                <table className="w-full border-collapse text-sm">
+                                                                    <thead className="sticky top-0 bg-white">
+                                                                        <tr className="border-b bg-gray-50">
+                                                                            <th className="px-3 py-2 text-left font-medium text-gray-500">Item</th>
+                                                                            <th className="px-3 py-2 text-center font-medium text-gray-500">Qty</th>
+                                                                            <th className="px-3 py-2 text-right font-medium text-gray-500">Price</th>
+                                                                            <th className="px-3 py-2 text-right font-medium text-gray-500">Misc</th>
+                                                                            <th className="px-3 py-2 text-right font-medium text-gray-500">Total</th>
                                                                         </tr>
-                                                                    )}
-                                                                </tbody>
-                                                            </table>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        {group.details.map((detail) => (
+                                                                            <tr key={detail.id} className="border-b hover:bg-gray-50">
+                                                                                <td className="px-3 py-2">
+                                                                                    <div className="font-medium">
+                                                                                        {detail.purchase_order_detail.item.name}
+                                                                                    </div>
+                                                                                    <div className="text-xs text-gray-500">
+                                                                                        {detail.purchase_order_detail.item.code}
+                                                                                    </div>
+                                                                                </td>
+                                                                                <td className="px-3 py-2 text-center">
+                                                                                    {displayQuantityWithWholesale(detail)}
+                                                                                </td>
+                                                                                <td className="px-3 py-2 text-right">
+                                                                                    {formatCurrency(detail.price_per_unit)}
+                                                                                </td>
+                                                                                <td className="px-3 py-2 text-right">
+                                                                                    {formatCurrency(detail.miscellaneous_cost || 0)}
+                                                                                </td>
+                                                                                <td className="px-3 py-2 text-right font-medium">
+                                                                                    {formatCurrency(detail.total_amount || detail.total_price)}
+                                                                                </td>
+                                                                            </tr>
+                                                                        ))}
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                </div>
+                                                    ))}
 
-                                                <div className="lg:col-span-1">
-                                                    <div className="h-full rounded-md border">
-                                                        <div className="border-b bg-gray-50 px-4 py-2">
-                                                            <h3 className="text-sm font-medium text-gray-700">Payment Summary</h3>
+                                                    {getGroupedItems().length === 0 && (
+                                                        <div className="p-8 text-center text-gray-500">
+                                                            <p>No detailed items available for this invoice</p>
                                                         </div>
-                                                        <div className="space-y-2 p-3">
-                                                            <div className="flex justify-between">
-                                                                <span className="text-sm text-gray-600">Total Amount:</span>
-                                                                <span className="font-medium">{formatCurrency(selectedInvoice.grand_total)}</span>
-                                                            </div>
-                                                            <div className="flex justify-between">
-                                                                <span className="text-sm text-gray-600">Already Paid:</span>
-                                                                <span className="font-medium">
-                                                                    {formatCurrency(selectedInvoice.grand_total - selectedInvoice.remaining_amount)}
-                                                                </span>
-                                                            </div>
-                                                            <div className="flex justify-between border-t pt-2">
-                                                                <span className="font-medium">Remaining:</span>
-                                                                <span className="font-medium text-blue-600">
-                                                                    {formatCurrency(selectedInvoice.remaining_amount)}
-                                                                </span>
-                                                            </div>
-                                                            <div className="flex justify-between border-t pt-2">
-                                                                <span className="font-medium">Current Payment:</span>
-                                                                <span className="font-medium text-green-600">
-                                                                    {data.amount ? formatCurrency(data.amount) : 'Rp 0'}
-                                                                </span>
-                                                            </div>
-                                                            <div className="flex justify-between border-t pt-2">
-                                                                <span className="font-medium">New Balance:</span>
-                                                                <span className="font-medium">
-                                                                    {data.amount && !isNaN(parseFloat(data.amount))
-                                                                        ? formatCurrency(
-                                                                              Math.max(0, selectedInvoice.remaining_amount - parseFloat(data.amount)),
-                                                                          )
-                                                                        : formatCurrency(selectedInvoice.remaining_amount)}
-                                                                </span>
-                                                            </div>
-                                                            <div className="border-t pt-2 text-center">
-                                                                <span className="text-sm font-medium">New Status: </span>
-                                                                <span
-                                                                    className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${
-                                                                        data.amount && parseFloat(data.amount) >= selectedInvoice.remaining_amount
-                                                                            ? 'bg-green-100 text-green-800'
-                                                                            : (data.amount && parseFloat(data.amount) > 0) ||
-                                                                                selectedInvoice.status === 'partially_paid'
-                                                                              ? 'bg-amber-100 text-amber-800'
-                                                                              : 'bg-blue-100 text-blue-800'
-                                                                    }`}
-                                                                >
-                                                                    {data.amount && parseFloat(data.amount) >= selectedInvoice.remaining_amount
-                                                                        ? 'Paid'
-                                                                        : (data.amount && parseFloat(data.amount) > 0) ||
-                                                                            selectedInvoice.status === 'partially_paid'
-                                                                          ? 'Partially Paid'
-                                                                          : selectedInvoice.status === 'partially_paid'
-                                                                            ? 'Partially Paid'
-                                                                            : 'Unpaid'}
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
+                                                    )}
                                                 </div>
-                                            </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>

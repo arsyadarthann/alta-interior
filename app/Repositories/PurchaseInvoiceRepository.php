@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
 class PurchaseInvoiceRepository implements PurchaseInvoiceInterface
 {
     const GENERAL_RELATIONSHIPS = [
-        'supplier:id,name', 'taxRate:id,rate'
+        'supplier:id,name'
     ];
 
     public function __construct(private PurchaseInvoice $purchaseInvoice, private PurchaseInvoiceGoodsReceipt $purchaseInvoiceGoodsReceipt, private PurchaseInvoiceDetail $purchaseInvoiceDetail, private GoodsReceipt $goodsReceipt) {}
@@ -39,6 +39,7 @@ class PurchaseInvoiceRepository implements PurchaseInvoiceInterface
             'purchaseInvoicePayments.user',
             'purchaseInvoicePayments.paymentMethod',
             'goodsReceipts.goodsReceiptDetails.purchaseOrderDetail.item.itemUnit',
+            'goodsReceipts.goodsReceiptDetails.purchaseOrderDetail.item.itemWholesaleUnit',
             'goodsReceipts.goodsReceiptDetails.purchaseOrderDetail.purchaseOrder:id,code',
         ])->find($id);
     }
@@ -67,8 +68,8 @@ class PurchaseInvoiceRepository implements PurchaseInvoiceInterface
                 'date' => $data['date'],
                 'due_date' => $data['due_date'],
                 'supplier_id' => $data['supplier_id'],
-                'total_amount' => $data['total_amount'],
-                'tax_rate_id' => $data['tax_rate_id'] ?? null,
+                'total_amount' => $data['total_amount'] - $data['miscellaneous_cost'] - $data['tax_amount'],
+                'miscellaneous_cost' => $data['miscellaneous_cost'],
                 'tax_amount' => $data['tax_amount'],
                 'grand_total' => $data['grand_total'],
                 'remaining_amount' => $data['grand_total'],
@@ -94,6 +95,9 @@ class PurchaseInvoiceRepository implements PurchaseInvoiceInterface
                         'quantity' => $goodsReceiptDetail->received_quantity,
                         'unit_price' => $goodsReceiptDetail->price_per_unit,
                         'total_price' => $goodsReceiptDetail->total_price,
+                        'miscellaneous_cost' => $goodsReceiptDetail->miscellaneous_cost,
+                        'tax_amount' => $goodsReceiptDetail->tax_amount,
+                        'grand_total' => $goodsReceiptDetail->total_amount,
                     ]);
                 }
 
@@ -115,7 +119,7 @@ class PurchaseInvoiceRepository implements PurchaseInvoiceInterface
                 'due_date' => $data['due_date'],
                 'supplier_id' => $data['supplier_id'],
                 'total_amount' => $data['total_amount'],
-                'tax_rate_id' => $data['tax_rate_id'] ?? null,
+                'miscellaneous_cost' => $data['miscellaneous_cost'],
                 'tax_amount' => $data['tax_amount'],
                 'grand_total' => $data['grand_total'],
                 'remaining_amount' => $data['grand_total'],
@@ -164,6 +168,9 @@ class PurchaseInvoiceRepository implements PurchaseInvoiceInterface
                             'quantity' => $goodsReceiptDetail->received_quantity,
                             'unit_price' => $goodsReceiptDetail->price_per_unit,
                             'total_price' => $goodsReceiptDetail->total_price,
+                            'miscellaneous_cost' => $goodsReceiptDetail->miscellaneous_cost,
+                            'tax_amount' => $goodsReceiptDetail->tax_amount,
+                            'grand_total' => $goodsReceiptDetail->total_amount,
                         ]);
                     }
 

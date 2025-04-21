@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/button';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useToastNotification } from '@/hooks/use-toast-notification';
 import AppLayout from '@/layouts/app-layout';
+import { formatDate } from '@/lib/utils';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
-import { type ColumnDef } from '@tanstack/react-table';
+import { type ColumnDef, Row } from '@tanstack/react-table';
 import { Eye, Plus } from 'lucide-react';
 import { useState } from 'react';
 
@@ -54,7 +55,7 @@ type StockTransfer = {
 export default function Index({ stockTransfers }: Props) {
     useToastNotification();
     const { hasPermission } = usePermissions();
-    const [isLoading, setIsLoading] = useState(false);
+    const [, setIsLoading] = useState(false);
 
     const handlePageChange = (page: number) => {
         setIsLoading(true);
@@ -79,6 +80,10 @@ export default function Index({ stockTransfers }: Props) {
         {
             accessorKey: 'date',
             header: 'Date',
+            cell: ({ row }: { row: Row<StockTransfer> }) => {
+                const date = row.getValue('date') as string;
+                return formatDate(date);
+            },
         },
         {
             accessorKey: 'source_able.name',
