@@ -102,6 +102,10 @@ class PermissionSeeder extends Seeder
             'delete_sales_invoice',
             'read_sales_invoice_payment',
             'create_sales_invoice_payment',
+            'read_expense',
+            'create_expense',
+            'update_expense',
+            'delete_expense',
         ];
 
         foreach ($permissions as $permission) {

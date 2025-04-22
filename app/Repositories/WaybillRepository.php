@@ -94,12 +94,13 @@ class WaybillRepository implements WaybillInterface
                     'description' => $waybillDetail['description']
                 ]);
 
-                $item = $this->salesOrderDetail->find($waybillDetail['sales_order_detail_id'])->item;
+                $salesOrderDetail = $this->salesOrderDetail->find($waybillDetail['sales_order_detail_id']);
+                $item = $salesOrderDetail->item;
 
-                $dataQuantity = app(ItemRepository::class)->reduceBatch($item->id, request()->user()->branch_id, 'Branch', $waybillDetail['quantity']);
+                $dataQuantity = app(ItemRepository::class)->reduceBatch($item->id, $salesOrderDetail->item_source_able_id, $salesOrderDetail->item_source_able_type, $waybillDetail['quantity']);
 
                 foreach ($dataQuantity as $dataQuantityItem) {
-                    app(StockMovementRepository::class)->createStockMovement($dataQuantityItem['item_batch_id'], request()->user()->branch_id, Branch::class, 'out', $dataQuantityItem['data_quantity'], $wbDetail);
+                    app(StockMovementRepository::class)->createStockMovement($dataQuantityItem['item_batch_id'], $salesOrderDetail->item_source_able_id, $salesOrderDetail->item_source_able_type, 'out', $dataQuantityItem['data_quantity'], $wbDetail);
                 }
             }
 

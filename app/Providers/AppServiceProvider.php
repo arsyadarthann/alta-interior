@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Interface\BranchInterface;
 use App\Interface\CustomerInterface;
+use App\Interface\ExpenseInterface;
 use App\Interface\GoodsReceiptInterface;
 use App\Interface\ItemCategoryInterface;
 use App\Interface\ItemInterface;
@@ -29,6 +30,7 @@ use App\Interface\WarehouseInterface;
 use App\Interface\WaybillInterface;
 use App\Repositories\BranchRepository;
 use App\Repositories\CustomerRepository;
+use App\Repositories\ExpenseRepository;
 use App\Repositories\GoodsReceiptRepository;
 use App\Repositories\ItemCategoryRepository;
 use App\Repositories\ItemRepository;
@@ -86,6 +88,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(WaybillInterface::class, WaybillRepository::class);
         $this->app->bind(SalesInvoiceInterface::class, SalesInvoiceRepository::class);
         $this->app->bind(SalesInvoicePaymentInterface::class, SalesInvoicePaymentRepository::class);
+        $this->app->bind(ExpenseInterface::class, ExpenseRepository::class);;
     }
 
     /**

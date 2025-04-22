@@ -83,7 +83,7 @@
         .summary-table .value {
             font-weight: bold;
             text-align: right;
-            width: 30%;
+            width: 50%;
         }
         .grand-total {
             background-color: #f8f8f8;
@@ -213,13 +213,13 @@
                     <table class="item-table">
                         <thead>
                         <tr>
-                            <th class="text-center" style="width: 5%;">No</th>
+                            <th class="text-center" style="width: 3%;">No</th>
                             <th style="width: 30%;">Item</th>
                             <th style="width: 15%;">Item Location</th>
                             <th class="text-center" style="width: 10%;">Quantity</th>
-                            <th class="text-center" style="width: 10%;">Unit</th>
-                            <th class="text-right" style="width: 12%;">Unit Price</th>
-                            <th class="text-right" style="width: 18%;">Total</th>
+                            <th class="text-center" style="width: 6%;">Unit</th>
+                            <th class="text-center" style="width: 16%;">Unit Price</th>
+                            <th class="text-center" style="width: 20%;">Total</th>
                         </tr>
                         </thead>
                         <tbody>

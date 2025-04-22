@@ -97,4 +97,9 @@ class User extends Authenticatable
         return $this->hasMany(SalesInvoicePayment::class, 'user_id', 'id');
     }
 
+    public function expenses(): HasMany
+    {
+        return $this->hasMany(Expense::class, 'user_id', 'id');
+    }
+
 }

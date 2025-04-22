@@ -325,6 +325,18 @@ export default function Create({ code, salesInvoices, paymentMethods }: Props) {
         }, 0);
     };
 
+    // Calculate total value of all waybills in the invoice
+    const calculateTotalWaybillsValue = (): number => {
+        if (!invoiceDetails?.sales_invoice_details) return 0;
+
+        return invoiceDetails.sales_invoice_details.reduce((total, detail) => {
+            if (detail.waybill) {
+                return total + calculateWaybillTotal(detail.waybill);
+            }
+            return total;
+        }, 0);
+    };
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Create Payment" />
@@ -652,7 +664,49 @@ export default function Create({ code, salesInvoices, paymentMethods }: Props) {
                                             <h3 className="mb-3 font-medium">Payment Summary</h3>
                                             <div className="space-y-3">
                                                 <div className="flex justify-between">
-                                                    <span className="text-gray-600">Invoice Total:</span>
+                                                    <span className="text-gray-600">Subtotal:</span>
+                                                    <span className="font-medium">{formatCurrency(parseFloat(invoiceDetails.total_amount))}</span>
+                                                </div>
+
+                                                {/* Display Invoice Discount */}
+                                                {(invoiceDetails.discount_type === 'percentage' &&
+                                                    parseFloat(invoiceDetails.discount_percentage) > 0) ||
+                                                (invoiceDetails.discount_type === 'amount' && parseFloat(invoiceDetails.discount_amount) > 0) ? (
+                                                    <div className="flex justify-between">
+                                                        <span className="text-gray-600">
+                                                            Discount
+                                                            {invoiceDetails.discount_type === 'percentage' &&
+                                                                parseFloat(invoiceDetails.discount_percentage) > 0 && (
+                                                                    <span className="ml-1 text-gray-500">
+                                                                        ({formatDecimal(invoiceDetails.discount_percentage)}%)
+                                                                    </span>
+                                                                )}
+                                                            :
+                                                        </span>
+                                                        <span className="font-medium text-red-600">
+                                                            -{formatCurrency(parseFloat(invoiceDetails.discount_amount))}
+                                                        </span>
+                                                    </div>
+                                                ) : null}
+
+                                                {/* Display tax if applicable */}
+                                                {invoiceDetails.tax_rate_id && parseFloat(invoiceDetails.tax_amount) > 0 && (
+                                                    <div className="flex justify-between">
+                                                        <span className="text-gray-600">
+                                                            Tax
+                                                            {invoiceDetails.tax_rate && (
+                                                                <span className="ml-1 text-gray-500">
+                                                                    ({formatDecimal(invoiceDetails.tax_rate.rate)}%)
+                                                                </span>
+                                                            )}
+                                                            :
+                                                        </span>
+                                                        <span className="font-medium">{formatCurrency(parseFloat(invoiceDetails.tax_amount))}</span>
+                                                    </div>
+                                                )}
+
+                                                <div className="flex justify-between border-t pt-2">
+                                                    <span className="font-medium">Invoice Total:</span>
                                                     <span className="font-medium">{formatCurrency(parseFloat(invoiceDetails.grand_total))}</span>
                                                 </div>
                                                 <div className="flex justify-between">

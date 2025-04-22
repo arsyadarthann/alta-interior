@@ -28,7 +28,7 @@ return new class extends Migration
             $table->decimal('tax_amount', 15, 2);
             $table->decimal('grand_total', 15, 2);
             $table->enum('paid_status', ['unpaid', 'partially_paid', 'paid'])->default('unpaid');
-            $table->decimal('paid_amount', 15, 2);
+            $table->decimal('paid_amount', 15, 2)->default(0);
             $table->decimal('remaining_amount', 15, 2);
             $table->timestamps();
 

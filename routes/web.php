@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Expense\ExpenseController;
 use App\Http\Controllers\Master\CustomerController;
 use App\Http\Controllers\Master\SupplierController;
 use App\Http\Controllers\Procurement\PurchaseInvoiceController;
@@ -163,6 +164,17 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/', [SalesInvoicePaymentController::class, 'store'])->middleware('permission:create_sales_invoice_payment')->name('sales.payment.store');
             Route::get('/getSalesInvoiceData', [SalesInvoicePaymentController::class, 'getSalesInvoiceData'])->middleware('permission:read_sales_invoice_payment')->name('sales.payment.getSalesInvoiceData');
         });
+    });
+
+    Route::group(['prefix' => 'expenses'], function () {
+        Route::get('/', [ExpenseController::class, 'index'])->middleware('permission:read_expense')->name('expense.index');
+        Route::get('/create', [ExpenseController::class, 'create'])->middleware('permission:create_expense')->name('expense.create');
+        Route::post('/', [ExpenseController::class, 'store'])->middleware('permission:create_expense')->name('expense.store');
+        Route::get('/{id}', [ExpenseController::class, 'show'])->middleware('permission:read_expense')->name('expense.show');
+        Route::get('/{id}/edit', [ExpenseController::class, 'edit'])->middleware('permission:update_expense')->name('expense.edit');
+        Route::put('/{id}', [ExpenseController::class, 'update'])->middleware('permission:update_expense')->name('expense.update');
+        Route::delete('/{id}', [ExpenseController::class, 'destroy'])->middleware('permission:delete_expense')->name('expense.destroy');
+        Route::patch('/{id}/lock', [ExpenseController::class, 'lockExpense'])->middleware('permission:update_expense')->name('expense.lock');
     });
 
     Route::fallback(function () {

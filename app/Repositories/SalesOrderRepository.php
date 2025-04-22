@@ -74,6 +74,7 @@ class SalesOrderRepository implements SalesOrderInterface
                 ]);
             }
 
+
             TransactionCode::confirmTransactionCode('Sales Order', $data['code'], Branch::class, $data['branch_id']);
         });
     }
