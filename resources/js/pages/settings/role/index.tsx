@@ -9,7 +9,7 @@ import {usePermissions} from "@/hooks/use-permissions";
 import {ColumnDef, Row} from "@tanstack/react-table";
 import {createNumberColumn} from "@/components/data-table/columns";
 import {ActionColumn} from "@/components/data-table/action-column";
-import {Pencil, Trash2} from "lucide-react";
+import { Pencil, Plus, Trash2 } from 'lucide-react';
 import {Button} from "@/components/ui/button";
 import {DataTable} from "@/components/data-table";
 
@@ -83,11 +83,14 @@ export default function Role({ roles } : Props) {
                             description="Manage your roles."
                         />
 
-                        <Button
-                            onClick={() => router.visit(route('roles.create'))}
-                        >
-                            Create Role
-                        </Button>
+                        { hasPermission('create_role') && (
+                            <Button
+                                onClick={() => router.visit(route('roles.create'))}
+                            >
+                                <Plus className="h-4 w-4" />
+                                Add Role
+                            </Button>
+                        )}
                     </div>
 
                     <DataTable

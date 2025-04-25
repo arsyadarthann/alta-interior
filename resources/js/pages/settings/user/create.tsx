@@ -1,5 +1,5 @@
 import { type BreadcrumbItem } from '@/types';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
 import React from 'react';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
@@ -26,13 +26,20 @@ interface Props {
         id: number;
         name: string;
     }[];
+    branches: Branch[];
 }
 
-export default function CreateUser({ roles }: Props) {
+type Branch = {
+    id: number;
+    name: string;
+}
+
+export default function CreateUser({ roles, branches }: Props) {
     const { data, setData, post, processing } = useForm({
         name: '',
         email: '',
         role: '',
+        branch_id: ''
     });
 
     const { showErrorToast } = useToastNotification();
@@ -63,27 +70,29 @@ export default function CreateUser({ roles }: Props) {
 
                     <form onSubmit={handleSubmit} className="space-y-6">
                         <div className="space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="name">Name</Label>
+                            <div className="relative grid gap-2">
+                                <Label htmlFor="name">Name <span className="text-red-500">*</span></Label>
                                 <Input
                                     id="name"
                                     value={data.name}
                                     onChange={e => setData('name', e.target.value)}
+                                    placeholder="Enter full name"
                                 />
                             </div>
 
-                            <div className="space-y-2">
-                                <Label htmlFor="email">Email</Label>
+                            <div className="relative grid gap-2">
+                                <Label htmlFor="email">Email <span className="text-red-500">*</span></Label>
                                 <Input
                                     id="email"
                                     type="email"
                                     value={data.email}
                                     onChange={e => setData('email', e.target.value)}
+                                    placeholder="Enter email address"
                                 />
                             </div>
 
-                            <div className="space-y-2">
-                                <Label htmlFor="role">Role</Label>
+                            <div className="relative grid gap-2">
+                                <Label htmlFor="role">Role <span className="text-red-500">*</span></Label>
                                 <Select
                                     value={data.role}
                                     onValueChange={(value) => setData('role', value)}
@@ -100,22 +109,43 @@ export default function CreateUser({ roles }: Props) {
                                     </SelectContent>
                                 </Select>
                             </div>
-                        </div>
 
-                        <div className="flex justify-end gap-3 py-4">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => window.history.back()}
-                            >
-                                Cancel
-                            </Button>
-                            <Button
-                                type="submit"
-                                disabled={processing}
-                            >
-                                Create User
-                            </Button>
+                            { (!['super_admin', ''].includes(data.role)) &&
+                                <div className="relative grid gap-2">
+                                    <Label htmlFor="branch_id">Branch</Label>
+                                    <Select
+                                        value={data.branch_id}
+                                        onValueChange={(value) => setData('branch_id', value)}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select branch" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {branches.map((branch) => (
+                                                <SelectItem key={branch.id} value={branch.id.toString()}>
+                                                    {formatRoleName(branch.name)}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            }
+
+                            <div className="flex justify-end gap-3 py-4">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => router.visit(route('users.index'))}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    disabled={processing}
+                                >
+                                    Create User
+                                </Button>
+                            </div>
                         </div>
                     </form>
                 </div>

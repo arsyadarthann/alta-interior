@@ -38,7 +38,7 @@ export function useToastNotification() {
         };
     }, [flash]);
 
-    const showErrorToast = (err?: ErrorResponse) => {
+    const showErrorToast = (err?: ErrorResponse | string[]) => {
         dismiss();
 
         if (err && Object.keys(err).length > 0) {

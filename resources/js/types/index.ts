@@ -13,6 +13,7 @@ export interface NavItem {
     title: string;
     url: string;
     icon?: LucideIcon | null;
+    matchPatch?: string[];
     isActive?: boolean;
     description?: string;
 }

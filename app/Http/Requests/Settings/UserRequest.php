@@ -21,6 +21,7 @@ class UserRequest extends FormRequest
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email',
             'role' => 'required|string|exists:roles,name',
+            'branch_id' => 'nullable|numeric|exists:branches,id'
         ];
     }
 
@@ -30,6 +31,7 @@ class UserRequest extends FormRequest
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,'.$this->route('id'),
             'role' => 'required|string|exists:roles,name',
+            'branch_id' => 'nullable|numeric|exists:branches,id'
         ];
     }
 

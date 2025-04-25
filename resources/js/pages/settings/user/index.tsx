@@ -8,7 +8,7 @@ import { useToastNotification } from "@/hooks/use-toast-notification";
 import {ColumnDef, Row} from "@tanstack/react-table";
 import { createNumberColumn } from "@/components/data-table/columns";
 import { ActionColumn } from "@/components/data-table/action-column";
-import {KeyRound, Pencil, Trash2} from "lucide-react";
+import { KeyRound, Pencil, Plus, Trash2 } from 'lucide-react';
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import { usePermissions } from "@/hooks/use-permissions";
@@ -30,6 +30,10 @@ type User = {
             name: string;
         }
     ];
+    branch: {
+        id: number;
+        name: string;
+    }
 }
 
 interface Props {
@@ -58,6 +62,11 @@ export default function User({ users } : Props) {
             accessorKey: "email",
             header: "Email",
             cell: ({ row }: { row: Row<User> }) => row.original.email
+        },
+        {
+            accessorKey: "branch",
+            header: "Branch",
+            cell: ({ row }: { row: Row<User> }) => row.original.branch ? row.original.branch.name : '-',
         },
         {
             accessorKey: "roles",
@@ -119,11 +128,14 @@ export default function User({ users } : Props) {
                             description="Manage your user account."
                         />
 
-                        <Button
-                            onClick={() => router.visit(route('users.create'))}
-                        >
-                            Create User
-                        </Button>
+                        { hasPermission('create_user') && (
+                            <Button
+                                onClick={() => router.visit(route('users.create'))}
+                            >
+                                <Plus className="h-4 w-4" />
+                                Add User
+                            </Button>
+                        )}
                     </div>
 
                     <DataTable

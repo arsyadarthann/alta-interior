@@ -3,9 +3,7 @@ import { type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronDown } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
-// Extend NavItem type to include optional children
 interface NavItemWithChildren extends NavItem {
     children?: NavItem[];
 }
@@ -19,13 +17,38 @@ export function NavMainWithSubmenu({
 }) {
     const page = usePage();
 
+    const isActiveOrHasActiveChild = (itemUrl: string) => {
+        if (!itemUrl) return false;
+
+        const currentUrl = page.url;
+
+        const currentUrlWithoutQuery = currentUrl.split('?')[0];
+
+        return currentUrl === itemUrl ||
+            currentUrlWithoutQuery === itemUrl ||
+            (
+                currentUrl.startsWith(itemUrl) &&
+                (itemUrl.endsWith('/') || currentUrl.charAt(itemUrl.length) === '/')
+            );
+    };
+
+
     const renderMenuItem = (item: NavItemWithChildren) => {
+        const isActive = isActiveOrHasActiveChild(item.url);
+
         if (item.children) {
+            const hasActiveChild = item.children.some(child =>
+                isActiveOrHasActiveChild(child.url)
+            );
+
             return (
                 <SidebarMenuItem key={item.title}>
-                    <Collapsible>
+                    <Collapsible defaultOpen={hasActiveChild}>
                         <CollapsibleTrigger asChild>
-                            <SidebarMenuButton className="w-full justify-between">
+                            <SidebarMenuButton
+                                className="w-full justify-between"
+                                isActive={isActive || hasActiveChild}
+                            >
                                 <div className="flex items-center">
                                     {item.icon && <item.icon className="mr-2 h-4 w-4" />}
                                     <span>{item.title}</span>
@@ -35,15 +58,14 @@ export function NavMainWithSubmenu({
                         </CollapsibleTrigger>
                         <CollapsibleContent>
                             <div className="ml-4 border-l pl-2">
-                                {/* Gunakan div alih-alih SidebarMenuItem untuk child items */}
                                 {item.children.map((child) => (
-                                    <div key={child.title} className="py-1"> {/* Ganti SidebarMenuItem dengan div */}
+                                    <div key={child.title} className="py-1">
                                         <SidebarMenuButton
                                             asChild
-                                            isActive={child.url === page.url}
+                                            isActive={isActiveOrHasActiveChild(child.url)}
                                         >
                                             <Link href={child.url}>
-                                                {child.icon && <child.icon className="mr-2 h-4 w-4" />}
+                                                {child.icon && <child.icon className="h-4 w-4" />}
                                                 <span>{child.title}</span>
                                             </Link>
                                         </SidebarMenuButton>
@@ -58,9 +80,9 @@ export function NavMainWithSubmenu({
 
         return (
             <SidebarMenuItem key={item.title}>
-                <SidebarMenuButton asChild isActive={item.url === page.url}>
+                <SidebarMenuButton asChild isActive={isActive}>
                     <Link href={item.url}>
-                        {item.icon && <item.icon />}
+                        {item.icon && <item.icon className="h-4 w-4" />}
                         <span>{item.title}</span>
                     </Link>
                 </SidebarMenuButton>

@@ -14,12 +14,8 @@ class PermissionController extends Controller
 
     public function index(Request $request)
     {
-        $editingId = $request->query('id');
-        $editingPermission = $editingId ? $this->permission->getById($editingId) : null;
-
         return Inertia::render('settings/permission/index', [
-            'permissions' => $this->permission->getAll(),
-            'editingPermission' => $editingPermission
+            'permissions' => $this->permission->getAll()
         ]);
     }
 

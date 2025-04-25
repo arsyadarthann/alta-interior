@@ -5,6 +5,7 @@ namespace App\Interface;
 interface SupplierInterface
 {
     public function getAll();
+    public function getAllPaginate();
     public function getById(int $id);
     public function store(array $data);
     public function update(int $id, array $data);

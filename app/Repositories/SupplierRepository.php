@@ -15,6 +15,11 @@ class SupplierRepository implements SupplierInterface
         return $this->supplier->all();
     }
 
+    public function getAllPaginate()
+    {
+        return $this->supplier->orderBy('id')->paginate(10);
+    }
+
     public function getById(int $id)
     {
         return $this->supplier->find($id);

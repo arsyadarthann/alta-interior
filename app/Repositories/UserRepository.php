@@ -12,12 +12,12 @@ class UserRepository implements UserInterface
 
     public function getAll()
     {
-        return $this->user->with('roles')->orderBy('id')->get();
+        return $this->user->with(['roles', 'branch:id,name'])->orderBy('id')->get();
     }
 
     public function getById(int $id)
     {
-        return $this->user->with('roles')->find($id);
+        return $this->user->with(['roles', 'branch:id,name'])->find($id);
     }
 
     public function store(array $data)
@@ -27,6 +27,7 @@ class UserRepository implements UserInterface
                 'name' => $data['name'],
                 'email' => $data['email'],
                 'password' => bcrypt('password'),
+                'branch_id' => $data['branch_id'] ?? null
             ]);
 
             $user->assignRole($data['role']);
@@ -41,6 +42,7 @@ class UserRepository implements UserInterface
             $user->update([
                 'name' => $data['name'],
                 'email' => $data['email'],
+                'branch_id' => $data['branch_id'] ?? null,
             ]);
 
             $user->syncRoles($data['role']);

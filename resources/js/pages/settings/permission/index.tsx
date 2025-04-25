@@ -1,19 +1,20 @@
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, useForm } from '@inertiajs/react';
-import React from 'react';
+import React, { useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import HeadingSmall from '@/components/heading-small';
 import { useToastNotification } from "@/hooks/use-toast-notification";
-import {ColumnDef, Row} from "@tanstack/react-table";
+import { ColumnDef, Row } from "@tanstack/react-table";
 import { createNumberColumn } from "@/components/data-table/columns";
 import { ActionColumn } from "@/components/data-table/action-column";
-import { Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2 } from "lucide-react";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { usePermissions } from "@/hooks/use-permissions";
+import { FormDialog } from "@/components/form-dialog";
 
 type Permission = {
     id: number;
@@ -22,70 +23,68 @@ type Permission = {
 
 interface Props {
     permissions: Permission[];
-    editingPermission?: Permission;
 }
 
-export default function Permission({ permissions, editingPermission }: Props) {
+export default function Permission({ permissions }: Props) {
     const { hasPermission } = usePermissions();
     const { showErrorToast } = useToastNotification();
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [selectedPermission, setSelectedPermission] = useState<Permission | undefined>();
 
     const createForm = useForm({
         name: '',
     });
 
     const editForm = useForm({
-        name: editingPermission?.name || '',
+        name: selectedPermission?.name || '',
     });
 
-    const handleCreateSubmit = (e: { preventDefault: () => void; }) => {
+    const handleCreateSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         createForm.post(route('permissions.store'), {
             preserveScroll: true,
             onError: showErrorToast,
             onSuccess: () => {
+                setIsCreateModalOpen(false);
                 createForm.reset('name');
             }
         });
     };
 
-    const handleEditSubmit = (e: { preventDefault: () => void; }) => {
+    const handleEditSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!editingPermission) return;
+        if (!selectedPermission) return;
 
-        editForm.put(route('permissions.update', editingPermission.id), {
+        editForm.put(route('permissions.update', selectedPermission.id), {
             preserveScroll: true,
-            onError: showErrorToast
+            onError: showErrorToast,
+            onSuccess: () => {
+                setIsEditModalOpen(false);
+                setSelectedPermission(undefined);
+            }
         });
     };
 
-    const orderedPermissions = [...permissions].sort((a, b) => {
-        if (a.id === editingPermission?.id) return -1;
-        if (b.id === editingPermission?.id) return 1;
-        return 0;
-    });
-
-
-    // @ts-ignore
     const columns: ColumnDef<Permission>[] = [
         createNumberColumn<Permission>(),
         {
             accessorKey: "name",
             header: "Name",
-            cell: ({ row }: { row : Row<Permission>}) => row.original.name
+            cell: ({ row }: { row: Row<Permission> }) => row.original.name
         },
         (hasPermission('update_permission') || hasPermission('delete_permission')) && (
             ActionColumn<Permission>({
                 hasPermission: hasPermission,
-                isHighlighted: (permission) => permission.id === editingPermission?.id,
                 actions: (permission) => [
                     {
                         label: "Edit",
                         icon: <Pencil className="h-4 w-4" />,
-                        onClick: (data) => router.visit(route('permissions.index', {
-                            id: data.id
-                        }), {
-                            preserveScroll: true
-                        }),
+                        onClick: (data) => {
+                            setSelectedPermission(data);
+                            editForm.setData('name', data.name);
+                            setIsEditModalOpen(true);
+                        },
                         permission: 'update_permission',
                     },
                     {
@@ -115,82 +114,73 @@ export default function Permission({ permissions, editingPermission }: Props) {
 
             <SettingsLayout>
                 <div className="space-y-6">
-                    <HeadingSmall
-                        title="Permissions"
-                        description="Manage your permissions."
-                    />
+                    <div className="flex items-center justify-between">
+                        <HeadingSmall
+                            title="Permissions"
+                            description="Manage your permissions."
+                        />
 
-                    {editingPermission ? (
-                        <form onSubmit={handleEditSubmit} className="mb-6">
-                            <div className="flex items-center gap-4">
-                                <div className="flex-grow">
-                                    <Label htmlFor="edit_name" className="sr-only">
-                                        Permission Name
-                                    </Label>
-                                    <Input
-                                        id="edit_name"
-                                        type="text"
-                                        value={editForm.data.name}
-                                        onChange={e => editForm.setData('name', e.target.value)}
-                                        placeholder="Enter permission name"
-                                        className={editForm.errors.name ? "border-red-500 ring-red-100" : ""}
-                                    />
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <Button
-                                        type="submit"
-                                        disabled={editForm.processing}
-                                        className="px-8"
-                                    >
-                                        {editForm.processing ? 'Saving...' : 'Save Changes'}
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={() => router.visit(route('permissions.index'))}
-                                    >
-                                        Cancel
-                                    </Button>
-                                </div>
-                            </div>
-                        </form>
-                    ) : (
-                        hasPermission('create_permission') && (
-                            <form onSubmit={handleCreateSubmit} className="mb-6">
-                                <div className="flex items-center gap-4">
-                                    <div className="flex-grow">
-                                        <Label htmlFor="name" className="sr-only">
-                                            Permission Name
-                                        </Label>
-                                        <Input
-                                            id="name"
-                                            type="text"
-                                            value={createForm.data.name}
-                                            onChange={e => createForm.setData('name', e.target.value)}
-                                            placeholder="Enter permission name"
-                                            className={createForm.errors.name ? "border-red-500 ring-red-100" : ""}
-                                        />
-                                    </div>
-                                    <Button
-                                        type="submit"
-                                        disabled={createForm.processing}
-                                        className="px-8"
-                                    >
-                                        {createForm.processing ? 'Creating...' : 'Create Permission'}
-                                    </Button>
-                                </div>
-                            </form>
-                        )
-                    )}
+                        {hasPermission('create_permission') && (
+                            <Button
+                                onClick={() => setIsCreateModalOpen(true)}
+                                className="flex items-center gap-2"
+                            >
+                                <Plus className="h-4 w-4" />
+                                Add Permission
+                            </Button>
+                        )}
+                    </div>
 
                     <DataTable
                         columns={columns}
-                        data={orderedPermissions}
-                        rowClassName={(row) =>
-                            row.original.id === editingPermission?.id ?
-                                "bg-gray-200" : ""
-                        }
+                        data={permissions}
                     />
+
+                    <FormDialog
+                        title="Add Permission"
+                        description="Add a new permission to the system."
+                        isOpen={isCreateModalOpen}
+                        onClose={() => setIsCreateModalOpen(false)}
+                        onSubmit={handleCreateSubmit}
+                        isProcessing={createForm.processing}
+                        submitLabel="Create"
+                        processingLabel="Creating..."
+                    >
+                        <div className="space-y-2 relative grid gap-2">
+                            <Label htmlFor="name">Permission Name</Label>
+                            <Input
+                                id="name"
+                                type="text"
+                                value={createForm.data.name}
+                                onChange={e => createForm.setData('name', e.target.value)}
+                                placeholder="Enter permission name"
+                                className={createForm.errors.name ? "border-red-500 ring-red-100" : ""}
+                            />
+                        </div>
+                    </FormDialog>
+
+                    <FormDialog
+                        title="Edit Permission"
+                        description="Update permission details."
+                        isOpen={isEditModalOpen}
+                        onClose={() => setIsEditModalOpen(false)}
+                        onSubmit={handleEditSubmit}
+                        isProcessing={editForm.processing}
+                        submitLabel="Save Changes"
+                        processingLabel="Saving..."
+                    >
+                        <div className="space-y-2 relative grid gap-2">
+                            <Label htmlFor="edit_name">Permission Name</Label>
+                            <Input
+                                id="edit_name"
+                                type="text"
+                                value={editForm.data.name}
+                                onChange={e => editForm.setData('name', e.target.value)}
+                                placeholder="Enter permission name"
+                                className={editForm.errors.name ? "border-red-500 ring-red-100" : ""}
+                            />
+                        </div>
+                    </FormDialog>
                 </div>
             </SettingsLayout>
         </AppLayout>
