@@ -25,6 +25,11 @@ class PaymentMethod extends Model
         return $this->hasMany(PurchaseInvoicePayment::class, 'payment_method_id', 'id');
     }
 
+    public function salesInvoices(): HasMany
+    {
+        return $this->hasMany(SalesInvoice::class, 'payment_method_id', 'id');
+    }
+
     public function salesInvoicePayments(): HasMany
     {
         return $this->hasMany(SalesInvoicePayment::class, 'payment_method_id', 'id');

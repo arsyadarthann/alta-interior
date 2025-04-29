@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Sales\SalesInvoiceRequest;
 use App\Interface\BranchInterface;
 use App\Interface\CustomerInterface;
+use App\Interface\PaymentMethodInterface;
 use App\Interface\SalesInvoiceInterface;
 use App\Interface\TaxRateInterface;
 use App\Interface\WaybillInterface;
@@ -16,7 +17,7 @@ use Inertia\Inertia;
 
 class SalesInvoiceController extends Controller
 {
-    public function __construct(private SalesInvoiceInterface $salesInvoice, private WaybillInterface $waybill, private BranchInterface $branch, private CustomerInterface $customer, private TaxRateInterface $taxRate) {}
+    public function __construct(private SalesInvoiceInterface $salesInvoice, private WaybillInterface $waybill, private BranchInterface $branch, private CustomerInterface $customer, private TaxRateInterface $taxRate, private PaymentMethodInterface $paymentMethod) {}
 
     public function index(Request $request)
     {
@@ -47,6 +48,7 @@ class SalesInvoiceController extends Controller
             'waybills' => $this->waybill->getWaybillNotInvoiced($request->user()->branch_id),
             'customers' => $this->customer->getAllNoPaginate(),
             'taxRates' => $this->taxRate->getAll(),
+            'paymentMethods' => $this->paymentMethod->getAll(),
         ]);
     }
 
@@ -172,6 +174,7 @@ class SalesInvoiceController extends Controller
             'waybills' => $this->waybill->getWaybillNotInvoiced($salesInvoice->branch_id),
             'customers' => $this->customer->getAllNoPaginate(),
             'taxRates' => $this->taxRate->getAll(),
+            'paymentMethods' => $this->paymentMethod->getAll(),
         ]);
     }
 

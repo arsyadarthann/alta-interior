@@ -27,6 +27,7 @@ return new class extends Migration
             $table->unsignedSmallInteger('tax_rate_id')->nullable();
             $table->decimal('tax_amount', 15, 2);
             $table->decimal('grand_total', 15, 2);
+            $table->unsignedSmallInteger('payment_method_id');
             $table->enum('paid_status', ['unpaid', 'partially_paid', 'paid'])->default('unpaid');
             $table->decimal('paid_amount', 15, 2)->default(0);
             $table->decimal('remaining_amount', 15, 2);
@@ -34,6 +35,7 @@ return new class extends Migration
 
             $table->foreign('branch_id')->references('id')->on('branches');
             $table->foreign('tax_rate_id')->references('id')->on('tax_rates');
+            $table->foreign('payment_method_id')->references('id')->on('payment_methods');
         });
     }
 

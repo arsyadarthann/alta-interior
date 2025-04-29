@@ -30,6 +30,7 @@ class SalesInvoiceRequest extends FormRequest
             'tax_rate_id' => 'nullable|exists:tax_rates,id',
             'tax_amount' => 'required|numeric',
             'grand_total' => 'required|numeric',
+            'payment_method_id' => 'required|exists:payment_methods,id',
             'sales_invoice_details' => 'required|array',
             'sales_invoice_details.*.waybill_id' => 'required|exists:waybills,id',
         ];
@@ -50,6 +51,7 @@ class SalesInvoiceRequest extends FormRequest
             'tax_rate_id' => 'nullable|exists:tax_rates,id',
             'tax_amount' => 'required|numeric',
             'grand_total' => 'required|numeric',
+            'payment_method_id' => 'required|exists:payment_methods,id',
             'sales_invoice_details' => 'required|array',
             'sales_invoice_details.*.waybill_id' => 'required|exists:waybills,id',
         ];

@@ -183,9 +183,17 @@
             <td style="width: 4%;"></td>
             <td style="width: 48%; vertical-align: top; border: 1px solid black; padding: 3mm;">
                 <div class="company-label">Payment Information</div>
-                <div>Bank: BCA</div>
-                <div>Account Number: 1234567890</div>
-                <div>Account Name: PT Alta Interior</div>
+                @if($salesInvoice->paymentMethod)
+                    <div>Method: {{ $salesInvoice->paymentMethod->name }}</div>
+                    @if($salesInvoice->paymentMethod->account_number)
+                        <div>Account Number: {{ $salesInvoice->paymentMethod->account_number }}</div>
+                    @endif
+                    @if($salesInvoice->paymentMethod->account_name)
+                        <div>Account Name: {{ $salesInvoice->paymentMethod->account_name }}</div>
+                    @endif
+                @else
+                    <div>Payment method not specified</div>
+                @endif
             </td>
         </tr>
     </table>

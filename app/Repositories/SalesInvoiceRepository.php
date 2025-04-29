@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\DB;
 class SalesInvoiceRepository implements SalesInvoiceInterface
 {
     const GENERAL_RELATIONSHIPS = [
-        'user:id,name', 'branch:id,name', 'customer', 'taxRate:id,rate'
+        'user:id,name', 'branch:id,name', 'customer', 'taxRate:id,rate', 'paymentMethod'
     ];
 
     public function __construct(private SalesInvoice $salesInvoice, private Waybill $waybill) {}
@@ -56,6 +56,7 @@ class SalesInvoiceRepository implements SalesInvoiceInterface
                 'tax_rate_id' => $data['tax_rate_id'] ?? null,
                 'tax_amount' => $data['tax_amount'],
                 'grand_total' => $data['grand_total'],
+                'payment_method_id' => $data['payment_method_id'] ?? null,
                 'remaining_amount' => $data['grand_total'],
             ]);
 
@@ -103,6 +104,7 @@ class SalesInvoiceRepository implements SalesInvoiceInterface
                 'tax_rate_id' => $data['tax_rate_id'] ?? null,
                 'tax_amount' => $data['tax_amount'],
                 'grand_total' => $data['grand_total'],
+                'payment_method_id' => $data['payment_method_id'] ?? null,
                 'remaining_amount' => $data['grand_total'],
             ]);
 

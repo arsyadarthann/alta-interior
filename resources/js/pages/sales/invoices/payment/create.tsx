@@ -127,6 +127,7 @@ type SalesInvoice = {
     tax_rate_id: number;
     tax_amount: string;
     grand_total: string;
+    payment_method_id: number;
     paid_status: 'unpaid' | 'partially_paid' | 'paid';
     paid_amount: string;
     remaining_amount: string;
@@ -145,6 +146,7 @@ type SalesInvoice = {
         id: number;
         rate: string;
     };
+    payment_method?: PaymentMethod[];
     sales_invoice_details?: SalesInvoiceDetail[];
 };
 
@@ -152,6 +154,8 @@ type PaymentMethod = {
     id: number;
     name: string;
     charge_percentage: string;
+    account_number: string | null;
+    account_name: string | null;
     created_at: string;
     updated_at: string;
     deleted_at: null | string;
@@ -251,6 +255,11 @@ export default function Create({ code, salesInvoices, paymentMethods }: Props) {
                 if (responseData && responseData.data) {
                     setInvoiceDetails(responseData.data);
 
+                    // Set payment_method_id from invoice if available
+                    if (responseData.data.payment_method_id) {
+                        setData('payment_method_id', responseData.data.payment_method_id.toString());
+                    }
+
                     if (responseData.data.sales_invoice_details) {
                         const initialExpandState = {};
                         responseData.data.sales_invoice_details.forEach((detail, index) => {
@@ -275,6 +284,8 @@ export default function Create({ code, salesInvoices, paymentMethods }: Props) {
     const handleInvoiceChange = (invoiceId: string) => {
         setData('sales_invoice_id', invoiceId);
         setData('amount', '');
+        // Reset payment_method_id first to avoid issues if new invoice doesn't have a payment method
+        setData('payment_method_id', '');
         fetchInvoiceDetails(invoiceId);
     };
 
@@ -435,7 +446,7 @@ export default function Create({ code, salesInvoices, paymentMethods }: Props) {
                                             <SelectContent>
                                                 {paymentMethods.map((method) => (
                                                     <SelectItem key={method.id} value={method.id.toString()}>
-                                                        {method.name}
+                                                        {method.name} {method.account_number && `(${method.account_number})`}
                                                         {parseFloat(method.charge_percentage) > 0 &&
                                                             ` (${formatDecimal(method.charge_percentage)}% charge)`}
                                                     </SelectItem>

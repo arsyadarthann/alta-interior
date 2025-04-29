@@ -51,6 +51,17 @@ type TaxRate = {
     deleted_at: string | null;
 };
 
+type PaymentMethod = {
+    id: number;
+    name: string;
+    charge_percentage: string;
+    account_number: string | null;
+    account_name: string | null;
+    created_at: string;
+    updated_at: string;
+    deleted_at: string | null;
+};
+
 type User = {
     id: number;
     name: string;
@@ -181,6 +192,7 @@ type SalesInvoice = {
     paid_status: string;
     paid_amount: string;
     remaining_amount: string;
+    payment_method_id: number | null;
     created_at: string;
     updated_at: string;
     user: User;
@@ -201,11 +213,13 @@ export default function Edit({
     waybills = [],
     taxRates = [],
     customers = [],
+    paymentMethods = [],
 }: {
     salesInvoice: SalesInvoice;
     waybills?: Waybill[];
     taxRates?: TaxRate[];
     customers?: Customer[];
+    paymentMethods?: PaymentMethod[];
 }) {
     const { showErrorToast } = useToastNotification();
     const [initialized, setInitialized] = useState(false);
@@ -231,6 +245,7 @@ export default function Edit({
         tax_rate_id: salesInvoice.tax_rate_id,
         tax_amount: parseFloat(salesInvoice.tax_amount),
         grand_total: parseFloat(salesInvoice.grand_total),
+        payment_method_id: salesInvoice.payment_method_id,
         sales_invoice_details: salesInvoice.sales_invoice_details.map((detail) => ({
             id: detail.id,
             waybill_id: detail.waybill_id,
@@ -299,6 +314,12 @@ export default function Edit({
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+
+        // Validate payment method is selected
+        if (!data.payment_method_id) {
+            showErrorToast(['Please select a payment method']);
+            return;
+        }
 
         put(route('sales.invoices.update', salesInvoice.id), {
             preserveScroll: true,
@@ -434,6 +455,14 @@ export default function Edit({
             setData('tax_rate_id', null);
         } else {
             setData('tax_rate_id', parseInt(value, 10));
+        }
+    };
+
+    const handlePaymentMethodChange = (value: string) => {
+        if (!value) {
+            setData('payment_method_id', null);
+        } else {
+            setData('payment_method_id', parseInt(value, 10));
         }
     };
 
@@ -715,6 +744,26 @@ export default function Edit({
                                             <input type="hidden" name="customer_name" value={data.customer_name || ''} />
                                         </div>
 
+                                        {/* Payment Method selection */}
+                                        <div className="relative grid gap-2">
+                                            <Label htmlFor="payment_method">
+                                                Payment Method <span className="text-red-500">*</span>
+                                            </Label>
+                                            <Combobox
+                                                value={data.payment_method_id ? String(data.payment_method_id) : ''}
+                                                onValueChange={handlePaymentMethodChange}
+                                                options={paymentMethods.map((method) => ({
+                                                    value: String(method.id),
+                                                    label: method.name + (method.account_number ? ` (${method.account_number})` : ''),
+                                                }))}
+                                                placeholder="Select payment method"
+                                                searchPlaceholder="Search payment methods..."
+                                                initialDisplayCount={5}
+                                                className={errors.payment_method_id ? 'border-red-500 ring-red-100' : ''}
+                                            />
+                                            {errors.payment_method_id && <p className="mt-1 text-xs text-red-500">{errors.payment_method_id}</p>}
+                                        </div>
+
                                         <div className="relative grid gap-2">
                                             <Label htmlFor="discount_type">Discount Type</Label>
                                             <RadioGroup
@@ -855,7 +904,11 @@ export default function Edit({
                         <Button
                             type="submit"
                             disabled={
-                                processing || data.sales_invoice_details.length === 0 || !data.code || (!data.customer_id && !data.customer_name)
+                                processing ||
+                                data.sales_invoice_details.length === 0 ||
+                                !data.code ||
+                                (!data.customer_id && !data.customer_name) ||
+                                !data.payment_method_id
                             }
                             className="px-8"
                         >
