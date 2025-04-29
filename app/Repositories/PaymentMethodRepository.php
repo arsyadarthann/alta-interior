@@ -26,6 +26,8 @@ class PaymentMethodRepository implements PaymentMethodInterface
             $this->paymentMethod->create([
                 'name' => $data['name'],
                 'charge_percentage' => $data['charge_percentage'],
+                'account_number' => $data['account_number'] ?? null,
+                'account_name' => $data['account_name'] ?? null,
             ]);
         });
     }
@@ -37,6 +39,8 @@ class PaymentMethodRepository implements PaymentMethodInterface
             $paymentMethod->update([
                 'name' => $data['name'],
                 'charge_percentage' => $data['charge_percentage'],
+                'account_number' => $data['account_number'] ?? null,
+                'account_name' => $data['account_name'] ?? null,
             ]);
         });
     }

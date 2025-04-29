@@ -16,6 +16,8 @@ class PaymentMethod extends Model
     protected $fillable = [
         'name',
         'charge_percentage',
+        'account_number',
+        'account_name'
     ];
 
     public function purchaseInvoicePayments(): HasMany

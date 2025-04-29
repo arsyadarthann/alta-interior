@@ -218,7 +218,7 @@ export function AppSidebar() {
         },
     ];
 
-    const reportItems: NavItem[] = [
+    const reportItems: NavItemWithChildren[] = [
         {
             title: 'Sales',
             url: '/reports/sales',
@@ -230,9 +230,10 @@ export function AppSidebar() {
             icon: Receipt,
         },
         {
-            title: 'inventory Movement',
-            url: '/reports/inventory-movement',
+            title: 'Stock Movement',
+            url: '/reports/stock-movements',
             icon: Box,
+            matchPatch: ['/reports/stock-movements', '/reports/stock-movements?*'],
         },
     ];
 
@@ -267,7 +268,7 @@ export function AppSidebar() {
                     hasPermission('read_purchase_invoice_payments')) && <NavMainWithSubmenu items={procurementItems} title="Procurement" />}
                 <NavMainWithSubmenu items={salesItems} title="Sales" />
                 <NavMain items={financeItems} title="Finance" />
-                <NavMain items={reportItems} title="Reports" />
+                <NavMainWithSubmenu items={reportItems} title="Reports" />
             </SidebarContent>
 
             <SidebarFooter>
