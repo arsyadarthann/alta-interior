@@ -89,6 +89,8 @@ type SalesInvoicePayment = {
         id: number;
         name: string;
         charge_percentage: string;
+        account_number: string | null;
+        account_name: string | null;
     };
 };
 
@@ -211,7 +213,7 @@ export default function Index({ salesInvoicePayments, branches, selectedBranchId
             header: 'Payment Method',
             cell: ({ row }: { row: Row<SalesInvoicePayment> }) => {
                 const payment = row.original;
-                return payment.payment_method.name;
+                return payment.payment_method.name + (payment.payment_method.account_number ? ` (${payment.payment_method.account_number})` : '');
             },
         },
         {
@@ -238,47 +240,6 @@ export default function Index({ salesInvoicePayments, branches, selectedBranchId
             accessorKey: 'user.name',
             header: 'Created By',
         },
-        // ActionColumn<SalesInvoicePayment>({
-        //     hasPermission: hasPermission,
-        //     actions: (payment) => [
-        //         {
-        //             label: 'View Detail',
-        //             icon: <Eye className="h-4 w-4" />,
-        //             onClick: (data) => router.visit(route('sales.payment.show', data.id)),
-        //             permission: 'read_sales_payment',
-        //         },
-        //         {
-        //             label: 'Edit',
-        //             icon: <Pencil className="h-4 w-4" />,
-        //             onClick: (data) => router.visit(route('sales.payment.edit', data.id)),
-        //             permission: 'update_sales_payment',
-        //         },
-        //         {
-        //             label: 'Print Receipt',
-        //             icon: <Printer className="h-4 w-4" />,
-        //             onClick: (data) => {
-        //                 window.open(route('sales.payment.generate-pdf', data.id), '_blank');
-        //             },
-        //             permission: 'read_sales_payment',
-        //         },
-        //         {
-        //             label: 'Delete',
-        //             icon: <Trash2 className="h-4 w-4" />,
-        //             className: 'text-red-600',
-        //             showConfirmDialog: true,
-        //             confirmDialogProps: {
-        //                 title: 'Delete Payment',
-        //                 description: `This action cannot be undone. This will permanently delete payment ${payment.code}.`,
-        //             },
-        //             onClick: (data) => {
-        //                 router.delete(route('sales.payment.destroy', data.id), {
-        //                     preserveScroll: true,
-        //                 });
-        //             },
-        //             permission: 'delete_sales_payment',
-        //         },
-        //     ],
-        // }),
     ].filter(Boolean) as ColumnDef<SalesInvoicePayment>[];
 
     return (
