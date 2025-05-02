@@ -13,15 +13,16 @@ class Expense extends Model
     protected $fillable = [
         'code',
         'date',
-        'branch_id',
+        'source_able_id',
+        'source_able_type',
         'total_amount',
         'is_locked',
         'user_id'
     ];
 
-    public function branch(): BelongsTo
+    public function source_able(): BelongsTo
     {
-        return $this->belongsTo(Branch::class, 'branch_id', 'id');
+        return $this->morphTo();
     }
 
     public function user(): BelongsTo

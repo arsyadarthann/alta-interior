@@ -7,26 +7,34 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Expense\ExpenseRequest;
 use App\Interface\BranchInterface;
 use App\Interface\ExpenseInterface;
+use App\Interface\WarehouseInterface;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class ExpenseController extends Controller
 {
-    public function __construct(private ExpenseInterface $expense, private BranchInterface $branch) {}
+    public function __construct(private ExpenseInterface $expense, private BranchInterface $branch, private WarehouseInterface $warehouse) {}
 
     public function index(Request $request)
     {
-        if ($request->query('branch_id')) {
-            $expenses = $this->expense->getAll($request->query('branch_id'))->appends([
-                'branch_id' => $request->query('branch_id'),
+        $sourceAbleId = $request->query('source_able_id');
+        $sourceAbleType = $request->query('source_able_type');
+
+        if ($sourceAbleId) {
+            $expenses = $this->expense->getAll($sourceAbleId, $sourceAbleType)->appends([
+                'source_able_id' => $sourceAbleId,
+                'source_able_type' => $sourceAbleType,
             ]);
         } else {
             $expenses = $this->expense->getAll();
         }
+
         return Inertia::render('expense/index', [
             'expenses' => $expenses,
             'branches' => $this->branch->getAll(),
-            'selectedBranchId' => $request->query('branch_id'),
+            'warehouses' => $this->warehouse->getAll(),
+            'selectedSourceAbleId' => $sourceAbleId,
+            'selectedSourceAbleType' => $sourceAbleType,
         ]);
     }
 
@@ -35,6 +43,7 @@ class ExpenseController extends Controller
         return Inertia::render('expense/create', [
             'transactionCode' => TransactionCode::generateTransactionCode('Expense'),
             'branches' => $this->branch->getAll(),
+            'warehouses' => $this->warehouse->getAll(),
         ]);
     }
 
@@ -158,6 +167,7 @@ class ExpenseController extends Controller
         return Inertia::render('expense/edit', [
             'expense' => $expense,
             'branches' => $this->branch->getAll(),
+            'warehouses' => $this->warehouse->getAll(),
         ]);
     }
 

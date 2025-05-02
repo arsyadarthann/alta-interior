@@ -10,7 +10,7 @@ import { useToastNotification } from '@/hooks/use-toast-notification';
 import AppLayout from '@/layouts/app-layout';
 import { cn, formatCurrency, formatDate, formatDateToYmd, formatDecimal } from '@/lib/utils';
 import { type BreadcrumbItem } from '@/types';
-import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { ArrowLeft, CalendarIcon, CheckCircle, Edit, PlusCircle, Trash2 } from 'lucide-react';
 import React, { useState } from 'react';
 
@@ -24,7 +24,8 @@ type Expense = {
     id: number;
     code: string;
     date: string;
-    branch_id: number;
+    source_able_id: number;
+    source_able_type: string;
     user_id: number;
     total_amount: string;
     is_locked: boolean;
@@ -32,7 +33,7 @@ type Expense = {
         id: number;
         name: string;
     };
-    branch: {
+    source_able: {
         id: number;
         name: string;
     };
@@ -45,13 +46,20 @@ interface Props {
         id: number;
         name: string;
     }[];
-    userBranchId?: number;
+    warehouses: {
+        id: number;
+        name: string;
+    }[];
 }
 
-export default function ExpenseEdit({ expense, branches, userBranchId }: Props) {
+export default function ExpenseEdit({ expense, branches, warehouses }: Props) {
     const { showErrorToast } = useToastNotification();
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
     const [addingItem, setAddingItem] = useState<boolean>(false);
+
+    const { auth } = usePage().props as unknown as {
+        auth: { user: { branch_id: number } };
+    };
 
     const breadcrumbs: BreadcrumbItem[] = [
         {
@@ -71,7 +79,8 @@ export default function ExpenseEdit({ expense, branches, userBranchId }: Props) 
     const { data, setData, put, processing, errors } = useForm({
         code: expense.code,
         date: expense.date,
-        branch_id: expense.branch_id.toString(),
+        source_able_id: expense.source_able_id.toString(),
+        source_able_type: expense.source_able_type,
         total_amount: parseFloat(expense.total_amount),
         expense_details: expense.expense_details.map((detail) => ({
             id: detail.id,
@@ -168,6 +177,42 @@ export default function ExpenseEdit({ expense, branches, userBranchId }: Props) 
             expense_details: updatedItems,
             total_amount: newTotal,
         }));
+    };
+
+    // Handle source selection
+    const handleSourceChange = (value: string) => {
+        if (auth.user.branch_id) {
+            // If user is branch-restricted, don't allow changing
+            return;
+        }
+
+        const [type, id] = value.split(':');
+
+        setData((prev) => ({
+            ...prev,
+            source_able_id: id,
+            source_able_type: type,
+        }));
+    };
+
+    // Format the current source value for the select component
+    const getCurrentSourceValue = () => {
+        if (data.source_able_id && data.source_able_type) {
+            return `${data.source_able_type}:${data.source_able_id}`;
+        }
+        return 'placeholder';
+    };
+
+    // Find source name by ID and type
+    const getSourceName = () => {
+        if (data.source_able_type === 'App\\Models\\Branch') {
+            const branch = branches.find((b) => b.id.toString() === data.source_able_id);
+            return branch ? branch.name : 'Unknown Branch';
+        } else if (data.source_able_type === 'App\\Models\\Warehouse') {
+            const warehouse = warehouses.find((w) => w.id.toString() === data.source_able_id);
+            return warehouse ? warehouse.name : 'Unknown Warehouse';
+        }
+        return 'Select location';
     };
 
     const renderExpenseItemForm = (
@@ -351,30 +396,42 @@ export default function ExpenseEdit({ expense, branches, userBranchId }: Props) 
                                         </div>
 
                                         <div className="relative grid gap-2 space-y-2">
-                                            <Label htmlFor="branch_id">Branch {!userBranchId && <span className="text-red-500">*</span>}</Label>
-                                            {userBranchId ? (
-                                                <Input
-                                                    id="branch_id"
-                                                    type="text"
-                                                    value={branches.find((b) => b.id === userBranchId)?.name || 'Unknown Branch'}
-                                                    readOnly
-                                                    className="bg-gray-50"
-                                                />
+                                            <Label htmlFor="source">
+                                                Location <span className="text-red-500">*</span>
+                                            </Label>
+                                            {auth.user.branch_id ? (
+                                                <Input id="source" type="text" value={getSourceName()} readOnly className="bg-gray-50" />
                                             ) : (
-                                                <Select value={data.branch_id} onValueChange={(value) => setData('branch_id', value)}>
-                                                    <SelectTrigger className={errors.branch_id ? 'border-red-500 ring-red-100' : ''}>
-                                                        <SelectValue placeholder="Select branch" />
+                                                <Select value={getCurrentSourceValue()} onValueChange={handleSourceChange}>
+                                                    <SelectTrigger
+                                                        className={
+                                                            errors.source_able_id || errors.source_able_type ? 'border-red-500 ring-red-100' : ''
+                                                        }
+                                                    >
+                                                        <SelectValue placeholder="Select location" />
                                                     </SelectTrigger>
                                                     <SelectContent>
+                                                        <SelectItem value="placeholder" disabled>
+                                                            Select location
+                                                        </SelectItem>
+                                                        {warehouses.map((warehouse) => (
+                                                            <SelectItem
+                                                                key={`warehouse-${warehouse.id}`}
+                                                                value={`App\\Models\\Warehouse:${warehouse.id}`}
+                                                            >
+                                                                {warehouse.name}
+                                                            </SelectItem>
+                                                        ))}
                                                         {branches.map((branch) => (
-                                                            <SelectItem key={branch.id} value={branch.id.toString()}>
+                                                            <SelectItem key={`branch-${branch.id}`} value={`App\\Models\\Branch:${branch.id}`}>
                                                                 {branch.name}
                                                             </SelectItem>
                                                         ))}
                                                     </SelectContent>
                                                 </Select>
                                             )}
-                                            {errors.branch_id && <p className="mt-1 text-xs text-red-500">{errors.branch_id}</p>}
+                                            {errors.source_able_id && <p className="mt-1 text-xs text-red-500">{errors.source_able_id}</p>}
+                                            {errors.source_able_type && <p className="mt-1 text-xs text-red-500">{errors.source_able_type}</p>}
                                         </div>
 
                                         <div className="relative grid gap-2 space-y-2">
@@ -444,7 +501,11 @@ export default function ExpenseEdit({ expense, branches, userBranchId }: Props) 
                         <Button variant="outline" type="button" onClick={() => router.visit(route('expense.index'))}>
                             Cancel
                         </Button>
-                        <Button type="submit" disabled={processing || data.expense_details.length === 0} className="px-8">
+                        <Button
+                            type="submit"
+                            disabled={processing || data.expense_details.length === 0 || !data.source_able_id || !data.source_able_type}
+                            className="px-8"
+                        >
                             {processing ? 'Saving...' : 'Save Changes'}
                         </Button>
                     </div>

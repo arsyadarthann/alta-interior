@@ -35,10 +35,17 @@ interface Props {
         total: number;
     };
     branches: Branch[];
-    selectedBranchId?: string;
+    warehouses: Warehouse[];
+    selectedSourceAbleId?: string;
+    selectedSourceAbleType?: string;
 }
 
 type Branch = {
+    id: number;
+    name: string;
+};
+
+type Warehouse = {
     id: number;
     name: string;
 };
@@ -47,7 +54,7 @@ type Expense = {
     id: number;
     code: string;
     date: string;
-    branch: {
+    source_able: {
         id: number;
         name: string;
     };
@@ -59,7 +66,7 @@ type Expense = {
     is_locked: boolean;
 };
 
-export default function Index({ expenses, branches, selectedBranchId = '' }: Props) {
+export default function Index({ expenses, branches, warehouses, selectedSourceAbleId = '', selectedSourceAbleType = '' }: Props) {
     useToastNotification();
 
     const { hasPermission } = usePermissions();
@@ -69,38 +76,41 @@ export default function Index({ expenses, branches, selectedBranchId = '' }: Pro
     const [, setIsLoading] = useState(false);
     const initialLoadComplete = useRef(false);
 
-    const getDefaultBranchValue = () => {
+    const getDefaultSourceValue = () => {
         if (auth.user.branch_id) {
-            return `${auth.user.branch_id}`;
+            return `App\\Models\\Branch:${auth.user.branch_id}`;
         }
 
-        if (selectedBranchId) {
-            return selectedBranchId;
+        if (selectedSourceAbleId && selectedSourceAbleType) {
+            return `${selectedSourceAbleType}:${selectedSourceAbleId}`;
         }
 
         return 'all';
     };
 
-    const [currentBranch, setCurrentBranch] = useState(getDefaultBranchValue());
+    const [currentSource, setCurrentSource] = useState(getDefaultSourceValue());
 
     useEffect(() => {
         if (!initialLoadComplete.current && auth?.user?.branch_id) {
             const urlParams = new URLSearchParams(window.location.search);
-            const urlBranchId = urlParams.get('branch_id');
+            const urlSourceId = urlParams.get('source_able_id');
+            const urlSourceType = urlParams.get('source_able_type');
 
-            if (urlBranchId !== auth.user.branch_id.toString()) {
+            if (urlSourceId !== auth.user.branch_id.toString() || urlSourceType !== 'App\\Models\\Branch') {
                 initialLoadComplete.current = true;
 
                 if (window.history && window.history.replaceState) {
                     const url = new URL(window.location.href);
-                    url.searchParams.set('branch_id', auth.user.branch_id.toString());
+                    url.searchParams.set('source_able_id', auth.user.branch_id.toString());
+                    url.searchParams.set('source_able_type', 'App\\Models\\Branch');
                     window.history.replaceState({}, '', url.toString());
                 }
 
                 setTimeout(() => {
                     router.reload({
                         data: {
-                            branch_id: auth.user.branch_id.toString(),
+                            source_able_id: auth.user.branch_id.toString(),
+                            source_able_type: 'App\\Models\\Branch',
                         },
                         only: ['expenses'],
                     });
@@ -113,26 +123,28 @@ export default function Index({ expenses, branches, selectedBranchId = '' }: Pro
         }
     }, []);
 
-    const handleBranchChange = (value: string) => {
+    const handleSourceChange = (value: string) => {
         if (auth.user.branch_id) {
             // If user is branch-restricted, don't allow changing
             return;
         }
 
-        setCurrentBranch(value);
+        setCurrentSource(value);
         setIsLoading(true);
 
         let params = {};
         if (value !== 'all') {
+            const [type, id] = value.split(':');
             params = {
-                branch_id: value,
+                source_able_id: id,
+                source_able_type: type,
             };
         }
 
         router.get(route('expense.index'), params, {
             preserveState: true,
             preserveScroll: true,
-            only: ['expenses', 'branches', 'selectedBranchId'],
+            only: ['expenses', 'branches', 'warehouses', 'selectedSourceAbleId', 'selectedSourceAbleType'],
             onFinish: () => setIsLoading(false),
         });
     };
@@ -141,11 +153,14 @@ export default function Index({ expenses, branches, selectedBranchId = '' }: Pro
         setIsLoading(true);
         let params: any = { page };
 
-        // Maintain branch filtering when changing pages
-        if (currentBranch !== 'all' && !auth.user.branch_id) {
-            params.branch_id = currentBranch;
+        // Maintain source filtering when changing pages
+        if (currentSource !== 'all' && !auth.user.branch_id) {
+            const [type, id] = currentSource.split(':');
+            params.source_able_id = id;
+            params.source_able_type = type;
         } else if (auth.user.branch_id) {
-            params.branch_id = auth.user.branch_id;
+            params.source_able_id = auth.user.branch_id;
+            params.source_able_type = 'App\\Models\\Branch';
         }
 
         router.get(route('expense.index'), params, {
@@ -171,8 +186,8 @@ export default function Index({ expenses, branches, selectedBranchId = '' }: Pro
             },
         },
         {
-            accessorKey: 'branch.name',
-            header: 'Branch',
+            accessorKey: 'source_able.name',
+            header: 'Location',
         },
         {
             accessorKey: 'total_amount',
@@ -269,21 +284,25 @@ export default function Index({ expenses, branches, selectedBranchId = '' }: Pro
                 <div className="mb-4 flex items-center justify-between">
                     {!auth.user.branch_id ? (
                         <div className="flex items-center gap-2">
-                            <Label htmlFor="branch" className="whitespace-nowrap">
-                                Branch Filter:
+                            <Label htmlFor="source" className="whitespace-nowrap">
+                                Location Filter:
                             </Label>
                             <Combobox
-                                value={currentBranch}
-                                onValueChange={handleBranchChange}
+                                value={currentSource}
+                                onValueChange={handleSourceChange}
                                 options={[
-                                    { value: 'all', label: 'All Branches' },
+                                    { value: 'all', label: 'All Locations' },
+                                    ...warehouses.map((warehouse) => ({
+                                        value: `App\\Models\\Warehouse:${warehouse.id}`,
+                                        label: warehouse.name,
+                                    })),
                                     ...branches.map((branch) => ({
-                                        value: `${branch.id}`,
+                                        value: `App\\Models\\Branch:${branch.id}`,
                                         label: branch.name,
                                     })),
                                 ]}
-                                placeholder="Select branch"
-                                searchPlaceholder="Search branches..."
+                                placeholder="Select location"
+                                searchPlaceholder="Search locations..."
                                 className="w-[200px]"
                             />
                         </div>

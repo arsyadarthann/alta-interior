@@ -19,7 +19,8 @@ class ExpenseRequest extends FormRequest
         return [
             'code' => 'required|string|max:100|unique:expenses,code',
             'date' => 'required|date',
-            'branch_id' => 'nullable|exists:branches,id',
+            'source_able_id' => 'required|numeric',
+            'source_able_type' => 'required|string',
             'total_amount' => 'required|numeric',
             'expense_details' => 'required|array',
             'expense_details.*.name' => 'required|string|max:255',
@@ -32,7 +33,8 @@ class ExpenseRequest extends FormRequest
         return [
             'code' => 'required|string|max:100|unique:expenses,code,' . $this->route('id'),
             'date' => 'required|date',
-            'branch_id' => 'nullable|exists:branches,id',
+            'source_able_id' => 'required|numeric',
+            'source_able_type' => 'required|string',
             'total_amount' => 'required|numeric',
             'expense_details' => 'required|array',
             'expense_details.*.id' => 'nullable|exists:expense_details,id',
