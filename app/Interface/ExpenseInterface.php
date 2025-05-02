@@ -4,7 +4,7 @@ namespace App\Interface;
 
 interface ExpenseInterface
 {
-    public function getAll($branchId = null);
+    public function getAll($sourceAbleId = null, $sourceAbleType = null);
     public function getById(int $id);
     public function store(array $data);
     public function update(int $id, array $data);
