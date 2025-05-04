@@ -92,7 +92,6 @@ type GoodsReceiptDetail = {
     received_quantity: string | number;
     price_per_unit: string | number;
     total_price: string | number;
-    miscellaneous_cost: string | number;
     tax_amount: string | number;
     total_amount: string | number;
     cogs: string | number;
@@ -107,8 +106,6 @@ type GoodsReceipt = {
     supplier_id: number;
     received_by: string;
     total_amount: string;
-    miscellaneous_cost: string;
-    tax_rate_id: number;
     tax_amount: string;
     grand_total: string;
     status: string;
@@ -130,7 +127,6 @@ type PurchaseInvoice = {
     due_date: string;
     supplier_id: number;
     total_amount: string | number;
-    miscellaneous_cost: string | number;
     tax_rate_id: number | null;
     tax_amount: string | number;
     grand_total: string | number;
@@ -626,12 +622,6 @@ export default function Create({ code = '', suppliers = [], paymentMethods = [] 
                                                             <span className="font-medium">{formatCurrency(selectedInvoice.total_amount)}</span>
                                                         </div>
                                                         <div className="flex justify-between border-b border-gray-100 pb-2">
-                                                            <span className="text-sm text-gray-600">Miscellaneous Cost:</span>
-                                                            <span className="font-medium">
-                                                                {formatCurrency(selectedInvoice.miscellaneous_cost || 0)}
-                                                            </span>
-                                                        </div>
-                                                        <div className="flex justify-between border-b border-gray-100 pb-2">
                                                             <span className="text-sm text-gray-600">Tax Amount:</span>
                                                             <span className="font-medium">{formatCurrency(selectedInvoice.tax_amount)}</span>
                                                         </div>
@@ -718,7 +708,7 @@ export default function Create({ code = '', suppliers = [], paymentMethods = [] 
                                                                             <th className="px-3 py-2 text-left font-medium text-gray-500">Item</th>
                                                                             <th className="px-3 py-2 text-center font-medium text-gray-500">Qty</th>
                                                                             <th className="px-3 py-2 text-right font-medium text-gray-500">Price</th>
-                                                                            <th className="px-3 py-2 text-right font-medium text-gray-500">Misc</th>
+                                                                            <th className="px-3 py-2 text-right font-medium text-gray-500">Tax</th>
                                                                             <th className="px-3 py-2 text-right font-medium text-gray-500">Total</th>
                                                                         </tr>
                                                                     </thead>
@@ -740,7 +730,7 @@ export default function Create({ code = '', suppliers = [], paymentMethods = [] 
                                                                                     {formatCurrency(detail.price_per_unit)}
                                                                                 </td>
                                                                                 <td className="px-3 py-2 text-right">
-                                                                                    {formatCurrency(detail.miscellaneous_cost || 0)}
+                                                                                    {formatCurrency(detail.tax_amount || 0)}
                                                                                 </td>
                                                                                 <td className="px-3 py-2 text-right font-medium">
                                                                                     {formatCurrency(detail.total_amount || detail.total_price)}

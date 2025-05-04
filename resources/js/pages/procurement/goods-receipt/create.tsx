@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Card } from '@/components/ui/card';
 import { Combobox } from '@/components/ui/combobox';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -11,7 +12,7 @@ import AppLayout from '@/layouts/app-layout';
 import { cn, formatCurrency, formatDate, formatDateToYmd, formatDecimal } from '@/lib/utils';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { ArrowLeft, CalendarIcon, Loader2, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, CalendarIcon, Edit, Loader2, Plus, Trash2, X } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -60,6 +61,13 @@ type GroupedPurchaseOrder = {
     details: UnreceivedPurchaseOrderDetail[];
 };
 
+// New type for miscellaneous cost details
+type MiscellaneousCostDetail = {
+    id: string;
+    name: string;
+    amount: string;
+};
+
 interface Props {
     suppliers?: Supplier[];
     taxRates?: TaxRate[];
@@ -79,6 +87,16 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
     const isDistributing = useRef(false);
     const isRemoving = useRef(false);
 
+    // New states for miscellaneous cost dialog
+    const [miscDialogOpen, setMiscDialogOpen] = useState(false);
+    const [miscCostDetails, setMiscCostDetails] = useState<MiscellaneousCostDetail[]>([]);
+    const [currentMiscDetail, setCurrentMiscDetail] = useState<MiscellaneousCostDetail>({
+        id: '',
+        name: '',
+        amount: '',
+    });
+    const [editingMiscIndex, setEditingMiscIndex] = useState<number | null>(null);
+
     const { data, setData, post, processing, errors } = useForm({
         code: '',
         date: '',
@@ -89,6 +107,7 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
         tax_rate_id: '',
         tax_amount: '0',
         grand_total: '0',
+        miscellaneous_cost_details: [] as MiscellaneousCostDetail[],
         goods_receipt_purchase_order: [] as {
             purchase_order_id: number;
             purchase_order_code: string;
@@ -251,6 +270,7 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
         }
     };
 
+    // Modified to update both the form data and sync with miscellaneous cost details
     const handleMiscCostChange = (value: string) => {
         setMiscellaneousCost(value);
 
@@ -261,6 +281,73 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
                 distributeFeesAndCalculateTotals(true);
             }, 50);
         }
+    };
+
+    // Updates the total miscellaneous cost from the details
+    const updateTotalMiscCost = (details: MiscellaneousCostDetail[]) => {
+        const total = details.reduce((sum, item) => {
+            const amount = parseFloat(item.amount) || 0;
+            return sum + amount;
+        }, 0);
+
+        setMiscellaneousCost(total.toString());
+        setData('miscellaneous_cost', total.toString());
+        setData('miscellaneous_cost_details', details);
+
+        if (data.goods_receipt_purchase_order.length > 0) {
+            setTimeout(() => {
+                distributeFeesAndCalculateTotals(true);
+            }, 50);
+        }
+    };
+
+    // Handler for adding new miscellaneous cost detail
+    const handleAddMiscCostDetail = () => {
+        if (!currentMiscDetail.name || !currentMiscDetail.amount || parseFloat(currentMiscDetail.amount) <= 0) {
+            showErrorToast(['Please enter a valid name and amount']);
+            return;
+        }
+
+        let updatedDetails;
+
+        if (editingMiscIndex !== null) {
+            // Update existing detail
+            updatedDetails = [...miscCostDetails];
+            updatedDetails[editingMiscIndex] = {
+                ...currentMiscDetail,
+                id: currentMiscDetail.id || crypto.randomUUID(),
+            };
+        } else {
+            // Add new detail
+            updatedDetails = [
+                ...miscCostDetails,
+                {
+                    ...currentMiscDetail,
+                    id: crypto.randomUUID(),
+                },
+            ];
+        }
+
+        setMiscCostDetails(updatedDetails);
+        updateTotalMiscCost(updatedDetails);
+
+        // Reset form
+        setCurrentMiscDetail({ id: '', name: '', amount: '' });
+        setEditingMiscIndex(null);
+    };
+
+    // Handler to edit a miscellaneous cost detail
+    const handleEditMiscCostDetail = (index: number) => {
+        setCurrentMiscDetail(miscCostDetails[index]);
+        setEditingMiscIndex(index);
+    };
+
+    // Handler to remove a miscellaneous cost detail
+    const handleRemoveMiscCostDetail = (index: number) => {
+        const updatedDetails = [...miscCostDetails];
+        updatedDetails.splice(index, 1);
+        setMiscCostDetails(updatedDetails);
+        updateTotalMiscCost(updatedDetails);
     };
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -276,6 +363,7 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
         const submitData = {
             ...data,
             goods_receipt_purchase_order: filteredPOs,
+            miscellaneous_cost_details: miscCostDetails,
         };
 
         post(route('procurement.receipt.store', submitData), {
@@ -341,6 +429,7 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
                     setReceiptPrices({});
                     setReceiptTotals({});
                     setMiscellaneousCost('0');
+                    setMiscCostDetails([]); // Reset misc cost details
 
                     setData({
                         ...data,
@@ -348,6 +437,7 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
                         goods_receipt_purchase_order: [],
                         total_amount: '0',
                         miscellaneous_cost: '0',
+                        miscellaneous_cost_details: [],
                         tax_amount: '0',
                         grand_total: '0',
                     });
@@ -708,6 +798,18 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
         );
     };
 
+    // Open miscellaneous cost dialog
+    const openMiscCostDialog = () => {
+        setMiscDialogOpen(true);
+    };
+
+    // Close miscellaneous cost dialog
+    const closeMiscCostDialog = () => {
+        setCurrentMiscDetail({ id: '', name: '', amount: '' });
+        setEditingMiscIndex(null);
+        setMiscDialogOpen(false);
+    };
+
     const getCurrentPOWithFilteredItems = () => {
         if (!selectedPO) return null;
 
@@ -840,24 +942,50 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
                                                 <div className="mb-2">
                                                     <Label htmlFor="miscellaneous_cost">Miscellaneous Cost</Label>
                                                 </div>
-                                                <Input
-                                                    id="miscellaneous_cost"
-                                                    type="number"
-                                                    min="0"
-                                                    value={miscellaneousCost}
-                                                    onChange={(e) => handleMiscCostChange(e.target.value)}
-                                                    placeholder="Enter miscellaneous cost"
-                                                    className={errors.miscellaneous_cost ? 'border-red-500 ring-red-100' : ''}
-                                                    disabled={data.goods_receipt_purchase_order.length > 0}
-                                                />
+                                                <div className="flex gap-2">
+                                                    <Input
+                                                        id="miscellaneous_cost"
+                                                        type="number"
+                                                        min="0"
+                                                        value={miscellaneousCost}
+                                                        readOnly
+                                                        placeholder="Total miscellaneous cost"
+                                                        className={cn(errors.miscellaneous_cost ? 'border-red-500 ring-red-100' : '', 'flex-1')}
+                                                    />
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        onClick={openMiscCostDialog}
+                                                        disabled={data.goods_receipt_purchase_order.length > 0}
+                                                    >
+                                                        <Edit className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
                                                 {errors.miscellaneous_cost && (
                                                     <p className="mt-1 text-xs text-red-500">{errors.miscellaneous_cost}</p>
+                                                )}
+                                                {errors.miscellaneous_cost_details && (
+                                                    <p className="mt-1 text-xs text-red-500">Miscellaneous cost details are required</p>
                                                 )}
                                                 <p className="mt-1 text-xs text-gray-500">
                                                     {data.goods_receipt_purchase_order.length > 0
                                                         ? 'Misc cost is locked after items are added to the list.'
                                                         : 'This cost will be distributed proportionally across all items.'}
                                                 </p>
+
+                                                {miscCostDetails.length > 0 && (
+                                                    <div className="mt-2">
+                                                        <p className="mb-1 text-xs font-medium text-gray-700">Cost breakdown:</p>
+                                                        <div className="ml-2 text-xs text-gray-600">
+                                                            {miscCostDetails.map((detail, index) => (
+                                                                <div key={detail.id} className="mb-0.5 flex justify-between">
+                                                                    <span>{detail.name}:</span>
+                                                                    <span>{formatCurrency(detail.amount)}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
 
                                             <div className="col-span-2">
@@ -1134,6 +1262,86 @@ export default function Create({ suppliers = [], taxRates = [] }: Props) {
                     </div>
                 </form>
             </div>
+
+            {/* Miscellaneous Cost Dialog */}
+            <Dialog open={miscDialogOpen} onOpenChange={setMiscDialogOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Miscellaneous Costs</DialogTitle>
+                        <DialogDescription>Add detailed breakdown of miscellaneous costs.</DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4 py-4">
+                        <div className="grid grid-cols-12 items-end gap-4">
+                            <div className="col-span-6">
+                                <Label htmlFor="cost-name">Cost Name</Label>
+                                <Input
+                                    id="cost-name"
+                                    value={currentMiscDetail.name}
+                                    onChange={(e) => setCurrentMiscDetail({ ...currentMiscDetail, name: e.target.value })}
+                                    placeholder="e.g. Shipping, Handling, etc."
+                                    className="mt-1"
+                                />
+                            </div>
+                            <div className="col-span-5">
+                                <Label htmlFor="cost-amount">Amount</Label>
+                                <Input
+                                    id="cost-amount"
+                                    type="number"
+                                    min="0"
+                                    step="1"
+                                    value={currentMiscDetail.amount}
+                                    onChange={(e) => setCurrentMiscDetail({ ...currentMiscDetail, amount: e.target.value })}
+                                    placeholder="Enter amount"
+                                    className="mt-1"
+                                />
+                            </div>
+                            <div className="col-span-1 flex justify-end">
+                                <Button type="button" variant="ghost" onClick={handleAddMiscCostDetail} className="px-2">
+                                    <Plus className="h-5 w-5" />
+                                </Button>
+                            </div>
+                        </div>
+
+                        {miscCostDetails.length > 0 && (
+                            <div>
+                                <h4 className="mb-2 text-sm font-medium">Cost Breakdown</h4>
+                                <div className="max-h-[200px] space-y-2 overflow-y-auto">
+                                    {miscCostDetails.map((detail, index) => (
+                                        <div key={detail.id} className="flex items-center justify-between rounded bg-gray-50 p-2">
+                                            <div>
+                                                <span className="text-sm font-medium">{detail.name}</span>
+                                                <span className="ml-2 text-gray-500">{formatCurrency(detail.amount)}</span>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <Button type="button" variant="ghost" size="sm" onClick={() => handleEditMiscCostDetail(index)}>
+                                                    <Edit className="h-4 w-4" />
+                                                </Button>
+                                                <Button type="button" variant="ghost" size="sm" onClick={() => handleRemoveMiscCostDetail(index)}>
+                                                    <X className="h-4 w-4 text-red-500" />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="mt-4 flex items-center justify-between border-t pt-2">
+                                    <span className="font-medium">Total:</span>
+                                    <span className="font-bold">{formatCurrency(miscellaneousCost)}</span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <DialogFooter>
+                        <Button type="button" variant="outline" onClick={closeMiscCostDialog}>
+                            Cancel
+                        </Button>
+                        <Button type="button" onClick={closeMiscCostDialog}>
+                            Save
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </AppLayout>
     );
 }

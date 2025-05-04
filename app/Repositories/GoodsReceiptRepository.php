@@ -3,7 +3,9 @@
 namespace App\Repositories;
 
 use App\Helpers\SKUCode;
+use App\Helpers\TransactionCode;
 use App\Interface\GoodsReceiptInterface;
+use App\Models\Expense;
 use App\Models\GoodsReceipt;
 use App\Models\GoodsReceiptDetail;
 use App\Models\GoodsReceiptPurchaseOrder;
@@ -20,7 +22,7 @@ class GoodsReceiptRepository implements GoodsReceiptInterface
     public function getAll()
     {
         return $this->goodsReceipt->with('supplier')
-            ->orderBy('id')->orderByDesc('date')->Paginate(10);
+            ->orderByDesc('id')->orderByDesc('date')->Paginate(10);
     }
 
     public function getById(int $id)
@@ -84,6 +86,21 @@ class GoodsReceiptRepository implements GoodsReceiptInterface
                 'tax_amount' => $data['tax_amount'],
                 'grand_total' => $data['grand_total'],
             ]);
+
+            if ($data['miscellaneous_cost'] != 0) {
+                $expenseData = [
+                    'code' => TransactionCode::generateTransactionCode('Expense'),
+                    'date' => $data['date'],
+                    'source_able_id' => Warehouse::first()->id,
+                    'source_able_type' => Warehouse::class,
+                    'total_amount' => $data['miscellaneous_cost'],
+                    'expense_details' => $data['miscellaneous_cost_details'],
+                ];
+
+                $expense = app(ExpenseRepository::class)->store($expenseData);
+
+                app(ExpenseRepository::class)->lockExpense($expense->id);
+            }
 
             foreach ($data['goods_receipt_purchase_order'] as $goodsReceiptPurchaseOrder) {
                 $goodsReceipt->purchaseOrders()->attach($goodsReceiptPurchaseOrder['purchase_order_id']);

@@ -72,7 +72,6 @@ interface GoodsReceiptDetail {
     received_quantity: string;
     price_per_unit: string;
     total_price: string;
-    miscellaneous_cost: string; // Added field for miscellaneous cost per item
     tax_amount: string;
     total_amount: string;
     cogs: string;
@@ -90,8 +89,6 @@ interface GoodsReceipt {
     supplier_id: number;
     received_by: string;
     total_amount: string;
-    miscellaneous_cost: string; // Added field for miscellaneous cost
-    tax_rate_id: number;
     tax_amount: string;
     grand_total: string;
     status: string;
@@ -138,7 +135,6 @@ interface PurchaseInvoiceProps {
         due_date: string;
         supplier_id: number;
         total_amount: string;
-        miscellaneous_cost: string; // Added field for miscellaneous cost
         tax_amount: string;
         grand_total: string;
         status: string;
@@ -224,9 +220,31 @@ export default function Show({ purchaseInvoice }: PurchaseInvoiceProps) {
         },
         {
             accessorKey: 'total_price',
-            header: 'Total Price',
+            header: 'Subtotal',
             cell: ({ row }) => {
                 return formatCurrency(row.getValue('total_price'));
+            },
+            meta: {
+                className: 'text-right',
+            },
+        },
+        {
+            accessorKey: 'tax_amount',
+            header: 'Tax Amount',
+            cell: ({ row }) => {
+                return formatCurrency(row.getValue('tax_amount') || 0);
+            },
+            meta: {
+                className: 'text-right',
+            },
+        },
+        {
+            accessorKey: 'total_amount',
+            header: 'Total',
+            cell: ({ row }) => {
+                const totalPrice = parseFloat(row.getValue('total_price') || 0);
+                const taxAmount = parseFloat(row.getValue('tax_amount') || 0);
+                return formatCurrency(totalPrice + taxAmount);
             },
             meta: {
                 className: 'text-right font-medium',
@@ -246,13 +264,15 @@ export default function Show({ purchaseInvoice }: PurchaseInvoiceProps) {
     const detailsByReceipt = purchaseInvoice.goods_receipts.reduce(
         (acc, receipt) => {
             const receiptTotal = receipt.goods_receipt_details.reduce((sum, detail) => sum + parseFloat(detail.total_price), 0);
+            const taxTotal = receipt.goods_receipt_details.reduce((sum, detail) => sum + parseFloat(detail.tax_amount || '0'), 0);
 
             acc[receipt.code] = {
                 id: receipt.id,
                 code: receipt.code,
                 date: receipt.date,
-                total: receiptTotal,
-                miscellaneous_cost: receipt.miscellaneous_cost || '0',
+                subtotal: receiptTotal,
+                tax_amount: taxTotal,
+                total: receiptTotal + taxTotal,
                 details: receipt.goods_receipt_details,
             };
 
@@ -264,8 +284,9 @@ export default function Show({ purchaseInvoice }: PurchaseInvoiceProps) {
                 id: number;
                 code: string;
                 date: string;
+                subtotal: number;
+                tax_amount: number;
                 total: number;
-                miscellaneous_cost: string;
                 details: GoodsReceiptDetail[];
             }
         >,
@@ -377,12 +398,12 @@ export default function Show({ purchaseInvoice }: PurchaseInvoiceProps) {
                                                 <div key={receiptCode}>
                                                     <div className="flex justify-between">
                                                         <span className="text-sm text-gray-600">Receipt: {receipt.code}</span>
-                                                        <span className="text-sm font-medium">{formatCurrency(receipt.total)}</span>
+                                                        <span className="text-sm font-medium">{formatCurrency(receipt.subtotal)}</span>
                                                     </div>
-                                                    {parseFloat(receipt.miscellaneous_cost) > 0 && (
+                                                    {receipt.tax_amount > 0 && (
                                                         <div className="flex justify-between pl-4">
-                                                            <span className="text-sm text-gray-500">Miscellaneous Cost</span>
-                                                            <span className="text-sm">{formatCurrency(receipt.miscellaneous_cost)}</span>
+                                                            <span className="text-sm text-gray-500">Tax Amount</span>
+                                                            <span className="text-sm">{formatCurrency(receipt.tax_amount)}</span>
                                                         </div>
                                                     )}
                                                 </div>
@@ -392,13 +413,6 @@ export default function Show({ purchaseInvoice }: PurchaseInvoiceProps) {
                                                 <span className="text-sm text-gray-600">Subtotal</span>
                                                 <span className="text-sm font-medium">{formatCurrency(purchaseInvoice.total_amount)}</span>
                                             </div>
-
-                                            {parseFloat(purchaseInvoice.miscellaneous_cost || '0') > 0 && (
-                                                <div className="flex justify-between">
-                                                    <span className="text-sm text-gray-600">Miscellaneous Cost</span>
-                                                    <span className="text-sm font-medium">{formatCurrency(purchaseInvoice.miscellaneous_cost)}</span>
-                                                </div>
-                                            )}
 
                                             <div className="flex justify-between">
                                                 <span className="text-sm text-gray-600">Tax Amount</span>

@@ -21,13 +21,14 @@ class PurchaseInvoiceRepository implements PurchaseInvoiceInterface
     public function getAll()
     {
         return $this->purchaseInvoice->with(self::GENERAL_RELATIONSHIPS)
-            ->orderByRaw("id ASC,
+            ->orderByRaw("
                 CASE
                     WHEN status = 'unpaid' THEN 1
                     WHEN status = 'partially_paid' THEN 2
                     WHEN status = 'paid' THEN 3
                     ELSE 4
                 END
+                ,id DESC
             ")
             ->paginate(10);
     }
@@ -68,8 +69,7 @@ class PurchaseInvoiceRepository implements PurchaseInvoiceInterface
                 'date' => $data['date'],
                 'due_date' => $data['due_date'],
                 'supplier_id' => $data['supplier_id'],
-                'total_amount' => $data['total_amount'] - $data['miscellaneous_cost'] - $data['tax_amount'],
-                'miscellaneous_cost' => $data['miscellaneous_cost'],
+                'total_amount' => $data['total_amount'] - $data['tax_amount'],
                 'tax_amount' => $data['tax_amount'],
                 'grand_total' => $data['grand_total'],
                 'remaining_amount' => $data['grand_total'],
@@ -95,7 +95,6 @@ class PurchaseInvoiceRepository implements PurchaseInvoiceInterface
                         'quantity' => $goodsReceiptDetail->received_quantity,
                         'unit_price' => $goodsReceiptDetail->price_per_unit,
                         'total_price' => $goodsReceiptDetail->total_price,
-                        'miscellaneous_cost' => $goodsReceiptDetail->miscellaneous_cost,
                         'tax_amount' => $goodsReceiptDetail->tax_amount,
                         'grand_total' => $goodsReceiptDetail->total_amount,
                     ]);
@@ -119,7 +118,6 @@ class PurchaseInvoiceRepository implements PurchaseInvoiceInterface
                 'due_date' => $data['due_date'],
                 'supplier_id' => $data['supplier_id'],
                 'total_amount' => $data['total_amount'],
-                'miscellaneous_cost' => $data['miscellaneous_cost'],
                 'tax_amount' => $data['tax_amount'],
                 'grand_total' => $data['grand_total'],
                 'remaining_amount' => $data['grand_total'],
@@ -168,7 +166,6 @@ class PurchaseInvoiceRepository implements PurchaseInvoiceInterface
                             'quantity' => $goodsReceiptDetail->received_quantity,
                             'unit_price' => $goodsReceiptDetail->price_per_unit,
                             'total_price' => $goodsReceiptDetail->total_price,
-                            'miscellaneous_cost' => $goodsReceiptDetail->miscellaneous_cost,
                             'tax_amount' => $goodsReceiptDetail->tax_amount,
                             'grand_total' => $goodsReceiptDetail->total_amount,
                         ]);
