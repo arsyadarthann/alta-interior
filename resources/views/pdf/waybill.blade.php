@@ -94,8 +94,8 @@
             <td style="width: 48%; vertical-align: top; border: none;">
                 <div class="company-label">From</div>
                 <div>Alta Interior</div>
-                <div>Jl. Cawas - Tawang No. 3, Ngreco, Weru, Sukoharjo</div>
-                <div>Phone/Fax: 085741601168</div>
+                <div>Jln. Tawang - Cawas No. 03, Tawang Rejo, Ngreco, Weru, Sukoharjo</div>
+                <div>Phone: 085741601168</div>
                 <div>Branch: {{ $waybill->branch->name }}</div>
             </td>
             <td style="width: 4%; border: none;"></td>

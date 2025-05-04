@@ -153,8 +153,8 @@
             <td style="width: 48%; vertical-align: top;">
                 <div class="company-label">From</div>
                 <div>Alta Interior</div>
-                <div>Jl. Cawas - Tawang No. 3, Ngreco, Weru, Sukoharjo</div>
-                <div>Phone/Fax: 085741601168</div>
+                <div>Jln. Tawang - Cawas No. 03, Tawang Rejo, Ngreco, Weru, Sukoharjo</div>
+                <div>Phone: 085741601168</div>
                 <div>Branch: {{ $salesInvoice->branch ? $salesInvoice->branch->name : 'Main Branch' }}</div>
             </td>
             <td style="width: 4%;"></td>
@@ -183,7 +183,7 @@
             <td style="width: 4%;"></td>
             <td style="width: 48%; vertical-align: top; border: 1px solid black; padding: 3mm;">
                 <div class="company-label">Payment Information</div>
-                @if($salesInvoice->paymentMethod)
+                @if($salesInvoice->paymentMethod != "Cash")
                     <div>Method: {{ $salesInvoice->paymentMethod->name }}</div>
                     @if($salesInvoice->paymentMethod->account_number)
                         <div>Account Number: {{ $salesInvoice->paymentMethod->account_number }}</div>
@@ -191,6 +191,8 @@
                     @if($salesInvoice->paymentMethod->account_name)
                         <div>Account Name: {{ $salesInvoice->paymentMethod->account_name }}</div>
                     @endif
+                @elseif($salesInvoice->paymnetMethod == "Cash")
+                    <div>Method: Cash</div>
                 @else
                     <div>Payment method not specified</div>
                 @endif
