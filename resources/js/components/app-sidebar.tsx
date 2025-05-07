@@ -25,11 +25,12 @@ import AppLogo from './app-logo';
 export function AppSidebar() {
     const { hasPermission } = usePermissions();
 
-    const mainNavItems: NavItem[] = [
+    const MainNavItems: NavItemWithChildren[] = [
         {
             title: 'Dashboard',
             url: '/dashboard',
             icon: LayoutGrid,
+            matchPatch: ['/dashboard', '/dashboard?*'],
         },
     ];
 
@@ -246,7 +247,7 @@ export function AppSidebar() {
             </SidebarHeader>
 
             <SidebarContent>
-                <NavMain items={mainNavItems} title="Dashboard" />
+                <NavMainWithSubmenu items={MainNavItems} title="Dashboard" />
                 {(hasPermission('read_customer') || hasPermission('read_supplier')) && (
                     <NavMain items={customersAndSuppliersItems} title="Customers & Suppliers" />
                 )}
