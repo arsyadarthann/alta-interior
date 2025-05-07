@@ -19,8 +19,6 @@ return new class extends Migration
             $table->date('expected_delivery_date');
             $table->enum('status', ['pending', 'partially_received', 'received'])->default('pending');
             $table->timestamps();
-
-            $table->foreign('tax_rate_id')->references('id')->on('tax_rates');
         });
     }
 
