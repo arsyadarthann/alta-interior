@@ -28,6 +28,7 @@ class SalesInvoice extends Model
         'tax_rate_id',
         'tax_amount',
         'grand_total',
+        'payment_method_id',
         'paid_status',
         'paid_amount',
         'remaining_amount'
@@ -58,6 +59,11 @@ class SalesInvoice extends Model
     public function taxRate(): BelongsTo
     {
         return $this->belongsTo(TaxRate::class, 'tax_rate_id', 'id');
+    }
+
+    public function paymentMethod(): BelongsTo
+    {
+        return $this->belongsTo(PaymentMethod::class, 'payment_method_id', 'id');
     }
 
     public function isUnpaid(): bool

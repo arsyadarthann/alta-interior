@@ -1,26 +1,28 @@
-import { type BreadcrumbItem } from '@/types';
-import { Head, router, useForm } from '@inertiajs/react';
-import React, { useState } from 'react';
+import { DataTable } from '@/components/data-table';
+import { ActionColumn } from '@/components/data-table/action-column';
+import { createNumberColumn } from '@/components/data-table/columns';
+import { FormDialog } from '@/components/form-dialog';
+import HeadingSmall from '@/components/heading-small';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { usePermissions } from '@/hooks/use-permissions';
+import { useToastNotification } from '@/hooks/use-toast-notification';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
-import HeadingSmall from '@/components/heading-small';
-import { useToastNotification } from "@/hooks/use-toast-notification";
-import { ColumnDef, Row } from "@tanstack/react-table";
-import { createNumberColumn } from "@/components/data-table/columns";
-import { ActionColumn } from "@/components/data-table/action-column";
+import { type BreadcrumbItem } from '@/types';
+import { Head, router, useForm } from '@inertiajs/react';
+import { ColumnDef, Row } from '@tanstack/react-table';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
-import { DataTable } from "@/components/data-table";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { usePermissions } from "@/hooks/use-permissions";
-import { FormDialog } from "@/components/form-dialog";
+import React, { useState } from 'react';
 
 type PaymentMethod = {
     id: number;
     name: string;
     charge_percentage: number;
-}
+    account_number?: string;
+    account_name?: string;
+};
 
 interface Props {
     paymentMethods: PaymentMethod[];
@@ -36,11 +38,15 @@ export default function PaymentMethod({ paymentMethods }: Props) {
     const createForm = useForm({
         name: '',
         charge_percentage: '',
+        account_number: '',
+        account_name: '',
     });
 
     const editForm = useForm({
         name: '',
         charge_percentage: '',
+        account_number: '',
+        account_name: '',
     });
 
     const handleCreateSubmit = (e: React.FormEvent) => {
@@ -78,6 +84,8 @@ export default function PaymentMethod({ paymentMethods }: Props) {
                 paymentMethod.charge_percentage % 1 === 0
                     ? Math.floor(paymentMethod.charge_percentage).toString()
                     : paymentMethod.charge_percentage.toString(),
+            account_number: paymentMethod.account_number || '',
+            account_name: paymentMethod.account_name || '',
         });
         setIsEditModalOpen(true);
     };
@@ -97,41 +105,55 @@ export default function PaymentMethod({ paymentMethods }: Props) {
                 return `${formattedCharge}%`;
             },
         },
+        {
+            accessorKey: 'account_number',
+            header: 'Account Number',
+            cell: ({ row }: { row: Row<PaymentMethod> }) => {
+                return row.original.account_number ?? '-';
+            },
+        },
+        {
+            accessorKey: 'account_name',
+            header: 'Account Name',
+            cell: ({ row }: { row: Row<PaymentMethod> }) => {
+                return row.original.account_name ?? '-';
+            },
+        },
         (hasPermission('update_payment_method') || hasPermission('delete_payment_method')) &&
-        ActionColumn<PaymentMethod>({
-            hasPermission: hasPermission,
-            actions: (paymentMethod) => [
-                {
-                    label: 'Edit',
-                    icon: <Pencil className="h-4 w-4" />,
-                    onClick: handleEditClick,
-                    permission: 'update_payment_method',
-                },
-                {
-                    label: 'Delete',
-                    icon: <Trash2 className="h-4 w-4" />,
-                    className: 'text-red-600',
-                    showConfirmDialog: true,
-                    confirmDialogProps: {
-                        title: 'Delete Payment Method',
-                        description: `This action cannot be undone. This will permanently delete ${paymentMethod.name}.`,
+            ActionColumn<PaymentMethod>({
+                hasPermission: hasPermission,
+                actions: (paymentMethod) => [
+                    {
+                        label: 'Edit',
+                        icon: <Pencil className="h-4 w-4" />,
+                        onClick: handleEditClick,
+                        permission: 'update_payment_method',
                     },
-                    onClick: (data) => {
-                        router.delete(route('payment-methods.destroy', data.id), {
-                            preserveScroll: true,
-                        });
+                    {
+                        label: 'Delete',
+                        icon: <Trash2 className="h-4 w-4" />,
+                        className: 'text-red-600',
+                        showConfirmDialog: true,
+                        confirmDialogProps: {
+                            title: 'Delete Payment Method',
+                            description: `This action cannot be undone. This will permanently delete ${paymentMethod.name}.`,
+                        },
+                        onClick: (data) => {
+                            router.delete(route('payment-methods.destroy', data.id), {
+                                preserveScroll: true,
+                            });
+                        },
+                        permission: 'delete_payment_method',
                     },
-                    permission: 'delete_payment_method',
-                },
-            ],
-        }),
+                ],
+            }),
     ].filter(Boolean) as ColumnDef<PaymentMethod>[];
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Payment Methods" />
 
-            <SettingsLayout>
+            <SettingsLayout fullWidth>
                 <div className="space-y-6">
                     <div className="flex items-center justify-between">
                         <HeadingSmall title="Payment Methods" description="Manage your payment methods." />
@@ -157,17 +179,17 @@ export default function PaymentMethod({ paymentMethods }: Props) {
                         processingLabel="Creating..."
                     >
                         <div className="space-y-4">
-                            <div className="space-y-2 relative grid gap-2">
+                            <div className="relative grid gap-2 space-y-2">
                                 <Label htmlFor="create-name">Name</Label>
                                 <Input
                                     id="create-name"
                                     value={createForm.data.name}
                                     onChange={(e) => createForm.setData('name', e.target.value)}
                                     placeholder="Enter payment method name"
-                                    className={createForm.errors.name ? "border-red-500 ring-red-100" : ""}
+                                    className={createForm.errors.name ? 'border-red-500 ring-red-100' : ''}
                                 />
                             </div>
-                            <div className="space-y-2 relative grid gap-2">
+                            <div className="relative grid gap-2 space-y-2">
                                 <Label htmlFor="create-charge">Charge Percentage (%)</Label>
                                 <Input
                                     id="create-charge"
@@ -178,7 +200,27 @@ export default function PaymentMethod({ paymentMethods }: Props) {
                                     placeholder="Enter payment method charge percentage"
                                     min="0"
                                     max="100"
-                                    className={createForm.errors.charge_percentage ? "border-red-500 ring-red-100" : ""}
+                                    className={createForm.errors.charge_percentage ? 'border-red-500 ring-red-100' : ''}
+                                />
+                            </div>
+                            <div className="relative grid gap-2 space-y-2">
+                                <Label htmlFor="create-account-number">Account Number (Optional)</Label>
+                                <Input
+                                    id="create-account-number"
+                                    value={createForm.data.account_number}
+                                    onChange={(e) => createForm.setData('account_number', e.target.value)}
+                                    placeholder="Enter account number"
+                                    className={createForm.errors.account_number ? 'border-red-500 ring-red-100' : ''}
+                                />
+                            </div>
+                            <div className="relative grid gap-2 space-y-2">
+                                <Label htmlFor="create-account-name">Account Name (Optional)</Label>
+                                <Input
+                                    id="create-account-name"
+                                    value={createForm.data.account_name}
+                                    onChange={(e) => createForm.setData('account_name', e.target.value)}
+                                    placeholder="Enter account name"
+                                    className={createForm.errors.account_name ? 'border-red-500 ring-red-100' : ''}
                                 />
                             </div>
                         </div>
@@ -195,17 +237,17 @@ export default function PaymentMethod({ paymentMethods }: Props) {
                         processingLabel="Saving..."
                     >
                         <div className="space-y-4">
-                            <div className="space-y-2 relative grid gap-2">
+                            <div className="relative grid gap-2 space-y-2">
                                 <Label htmlFor="edit-name">Name</Label>
                                 <Input
                                     id="edit-name"
                                     value={editForm.data.name}
                                     onChange={(e) => editForm.setData('name', e.target.value)}
                                     placeholder="Enter payment method name"
-                                    className={editForm.errors.name ? "border-red-500 ring-red-100" : ""}
+                                    className={editForm.errors.name ? 'border-red-500 ring-red-100' : ''}
                                 />
                             </div>
-                            <div className="space-y-2 relative grid gap-2">
+                            <div className="relative grid gap-2 space-y-2">
                                 <Label htmlFor="edit-charge">Charge Percentage (%)</Label>
                                 <Input
                                     id="edit-charge"
@@ -216,7 +258,27 @@ export default function PaymentMethod({ paymentMethods }: Props) {
                                     placeholder="Enter payment method charge percentage"
                                     min="0"
                                     max="100"
-                                    className={editForm.errors.charge_percentage ? "border-red-500 ring-red-100" : ""}
+                                    className={editForm.errors.charge_percentage ? 'border-red-500 ring-red-100' : ''}
+                                />
+                            </div>
+                            <div className="relative grid gap-2 space-y-2">
+                                <Label htmlFor="edit-account-number">Account Number (Optional)</Label>
+                                <Input
+                                    id="edit-account-number"
+                                    value={editForm.data.account_number}
+                                    onChange={(e) => editForm.setData('account_number', e.target.value)}
+                                    placeholder="Enter account number"
+                                    className={editForm.errors.account_number ? 'border-red-500 ring-red-100' : ''}
+                                />
+                            </div>
+                            <div className="relative grid gap-2 space-y-2">
+                                <Label htmlFor="edit-account-name">Account Name (Optional)</Label>
+                                <Input
+                                    id="edit-account-name"
+                                    value={editForm.data.account_name}
+                                    onChange={(e) => editForm.setData('account_name', e.target.value)}
+                                    placeholder="Enter account name"
+                                    className={editForm.errors.account_name ? 'border-red-500 ring-red-100' : ''}
                                 />
                             </div>
                         </div>
@@ -231,5 +293,5 @@ const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Payment Method',
         href: route('payment-methods.index'),
-    }
+    },
 ];

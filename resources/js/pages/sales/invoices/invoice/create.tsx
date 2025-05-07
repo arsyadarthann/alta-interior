@@ -41,6 +41,14 @@ type TaxRate = {
     rate: number;
 };
 
+type PaymentMethod = {
+    id: number;
+    name: string;
+    charge_percentage: string;
+    account_number: string | null;
+    account_name: string | null;
+};
+
 type Waybill = {
     id: number;
     code: string;
@@ -149,11 +157,13 @@ export default function Create({
     waybills = [],
     taxRates = [],
     customers = [],
+    paymentMethods = [],
 }: {
     code?: string;
     waybills?: Waybill[];
     taxRates?: TaxRate[];
     customers?: Customer[];
+    paymentMethods?: PaymentMethod[];
 }) {
     const { showErrorToast } = useToastNotification();
     const [initialized, setInitialized] = useState(false);
@@ -179,6 +189,7 @@ export default function Create({
         tax_rate_id: null as number | null,
         tax_amount: 0,
         grand_total: 0,
+        payment_method_id: null as number | null,
         sales_invoice_details: [] as InvoiceWaybillItem[],
     });
 
@@ -269,6 +280,12 @@ export default function Create({
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+
+        // Validate payment method is selected
+        if (!data.payment_method_id) {
+            showErrorToast(['Please select a payment method']);
+            return;
+        }
 
         post(route('sales.invoices.store'), {
             preserveScroll: true,
@@ -404,6 +421,14 @@ export default function Create({
             setData('tax_rate_id', null);
         } else {
             setData('tax_rate_id', parseInt(value, 10));
+        }
+    };
+
+    const handlePaymentMethodChange = (value: string) => {
+        if (!value) {
+            setData('payment_method_id', null);
+        } else {
+            setData('payment_method_id', parseInt(value, 10));
         }
     };
 
@@ -724,6 +749,25 @@ export default function Create({
                                         )}
 
                                         <div className="relative grid gap-2">
+                                            <Label htmlFor="payment_method">
+                                                Payment Method <span className="text-red-500">*</span>
+                                            </Label>
+                                            <Combobox
+                                                value={data.payment_method_id ? String(data.payment_method_id) : ''}
+                                                onValueChange={handlePaymentMethodChange}
+                                                options={paymentMethods.map((method) => ({
+                                                    value: String(method.id),
+                                                    label: method.name + (method.account_number ? ` (${method.account_number})` : ''),
+                                                }))}
+                                                placeholder="Select payment method"
+                                                searchPlaceholder="Search payment methods..."
+                                                initialDisplayCount={5}
+                                                className={errors.payment_method_id ? 'border-red-500 ring-red-100' : ''}
+                                            />
+                                            {errors.payment_method_id && <p className="mt-1 text-xs text-red-500">{errors.payment_method_id}</p>}
+                                        </div>
+
+                                        <div className="relative grid gap-2">
                                             <Label htmlFor="discount_type">Discount Type</Label>
                                             <RadioGroup
                                                 id="discount_type"
@@ -872,7 +916,11 @@ export default function Create({
                         <Button
                             type="submit"
                             disabled={
-                                processing || data.sales_invoice_details.length === 0 || !data.code || (!data.customer_id && !data.customer_name)
+                                processing ||
+                                data.sales_invoice_details.length === 0 ||
+                                !data.code ||
+                                (!data.customer_id && !data.customer_name) ||
+                                !data.payment_method_id
                             }
                             className="px-8"
                         >

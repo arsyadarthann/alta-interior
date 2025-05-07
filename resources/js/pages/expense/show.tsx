@@ -27,7 +27,8 @@ interface ExpenseProps {
         id: number;
         code: string;
         date: string;
-        branch_id: number;
+        source_able_id: number;
+        source_able_type: string;
         user_id: number;
         total_amount: string;
         is_locked: boolean;
@@ -37,7 +38,7 @@ interface ExpenseProps {
             id: number;
             name: string;
         };
-        branch: {
+        source_able: {
             id: number;
             name: string;
         };
@@ -70,6 +71,16 @@ export default function Show({ expense }: ExpenseProps) {
 
     const handleToggleLock = () => {
         router.patch(route('expense.lock', expense.id));
+    };
+
+    // Get the source type label (Branch or Warehouse)
+    const getSourceTypeLabel = () => {
+        if (expense.source_able_type === 'App\\Models\\Branch') {
+            return 'Branch';
+        } else if (expense.source_able_type === 'App\\Models\\Warehouse') {
+            return 'Warehouse';
+        }
+        return 'Location';
     };
 
     const columns: ColumnDef<ExpenseDetail>[] = [
@@ -135,8 +146,8 @@ export default function Show({ expense }: ExpenseProps) {
                                     </div>
                                     <div className="flex items-center">
                                         <div className="flex-1">
-                                            <h3 className="text-sm font-medium text-gray-500">Branch</h3>
-                                            <p className="mt-1 text-sm text-gray-900">{expense.branch.name}</p>
+                                            <h3 className="text-sm font-medium text-gray-500">{getSourceTypeLabel()}</h3>
+                                            <p className="mt-1 text-sm text-gray-900">{expense.source_able.name}</p>
                                         </div>
                                         <div className="flex-1">
                                             <h3 className="text-sm font-medium text-gray-500">Created By</h3>

@@ -7,6 +7,7 @@ use App\Http\Controllers\Procurement\PurchaseInvoiceController;
 use App\Http\Controllers\Procurement\PurchaseInvoicePaymentController;
 use App\Http\Controllers\Procurement\PurchaseOrderController;
 use App\Http\Controllers\Procurement\GoodsReceiptController;
+use App\Http\Controllers\Report\ReportController;
 use App\Http\Controllers\Sales\SalesInvoiceController;
 use App\Http\Controllers\Sales\SalesInvoicePaymentController;
 use App\Http\Controllers\Sales\SalesOrderController;
@@ -25,9 +26,7 @@ Route::get('/', function () {
 })->name('home');
 
 Route::middleware(['auth'])->group(function () {
-    Route::get('dashboard', function () {
-        return Inertia::render('dashboard');
-    })->name('dashboard');
+    Route::get('dashboard', [ReportController::class, 'dashboard'])->name('dashboard');
 
     Route::group(['prefix' => 'master'], function () {
         Route::group(['prefix' => 'customers'], function () {
@@ -175,6 +174,11 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/{id}', [ExpenseController::class, 'update'])->middleware('permission:update_expense')->name('expense.update');
         Route::delete('/{id}', [ExpenseController::class, 'destroy'])->middleware('permission:delete_expense')->name('expense.destroy');
         Route::patch('/{id}/lock', [ExpenseController::class, 'lockExpense'])->middleware('permission:update_expense')->name('expense.lock');
+    });
+
+    Route::group(['prefix' => 'reports'], function () {
+        Route::get('/profit-loss', [ReportController::class, 'getProfitLoss'])->name('reports.profit-loss');
+        Route::get('/stock-movements', [ReportController::class, 'getStockMovements'])->name('reports.stock-movements');
     });
 
     Route::fallback(function () {

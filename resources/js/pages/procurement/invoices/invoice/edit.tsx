@@ -46,7 +46,6 @@ type GoodsReceipt = {
     date: string;
     received_by: string;
     status: string;
-    miscellaneous_cost: string; // Added field
     tax_amount: string; // Added field
     total_amount: string; // Added field
     grand_total: string; // Added field
@@ -60,7 +59,6 @@ type GoodsReceiptDetail = {
     received_quantity: string | number;
     price_per_unit: string | number;
     total_price: string | number;
-    miscellaneous_cost: string | number; // Added field
     tax_amount: string | number; // Added field
     total_amount: string | number; // Added field
     cogs: string | number;
@@ -108,7 +106,6 @@ interface PurchaseInvoiceDetail {
     quantity: string | number;
     unit_price: string | number;
     total_price: string | number;
-    miscellaneous_cost: string | number; // Added field
     tax_amount: string | number; // Added field
     total_amount: string | number; // Added field
     goods_receipt_detail: GoodsReceiptDetail;
@@ -121,7 +118,6 @@ interface PurchaseInvoice {
     due_date: string;
     supplier_id: number;
     total_amount: string | number;
-    miscellaneous_cost: string | number; // Added field
     tax_rate_id: number | null;
     tax_amount: string | number;
     grand_total: string | number;
@@ -157,7 +153,6 @@ export default function Edit({ purchaseInvoice, suppliers = [], taxRates = [] }:
         due_date: new Date(purchaseInvoice.due_date),
         supplier_id: String(purchaseInvoice.supplier_id),
         total_amount: Number(purchaseInvoice.total_amount),
-        miscellaneous_cost: Number(purchaseInvoice.miscellaneous_cost || 0), // Added field
         tax_rate_id: purchaseInvoice.tax_rate_id ? String(purchaseInvoice.tax_rate_id) : '',
         tax_amount: Number(purchaseInvoice.tax_amount),
         grand_total: Number(purchaseInvoice.grand_total),
@@ -169,7 +164,6 @@ export default function Edit({ purchaseInvoice, suppliers = [], taxRates = [] }:
                 unit_price: number;
                 total_price: number;
                 total_amount?: number; // Added field
-                miscellaneous_cost?: number; // Added field
                 tax_amount?: number; // Added field
             }[];
         }[],
@@ -182,24 +176,31 @@ export default function Edit({ purchaseInvoice, suppliers = [], taxRates = [] }:
         const allDetails = [];
         const originalDetails = {};
 
+        // After we load the purchase invoice data, we should calculate the totals correctly
+        let totalAmount = 0;
+        let taxAmount = 0;
+
         purchaseInvoice.goods_receipts.forEach((receipt) => {
             const goodsReceiptId = receipt.id;
-
             const purchaseInvoiceDetails = [];
 
             receipt.goods_receipt_details.forEach((detail) => {
+                const detailTotalPrice = Number(detail.total_price);
+                const detailTaxAmount = Number(detail.tax_amount || 0);
+
+                totalAmount += detailTotalPrice;
+                taxAmount += detailTaxAmount;
+
                 purchaseInvoiceDetails.push({
                     goods_receipt_detail_id: detail.id,
                     quantity: Number(detail.received_quantity),
                     unit_price: Number(detail.price_per_unit),
-                    total_price: Number(detail.total_price),
-                    total_amount: Number(detail.total_amount || detail.total_price), // Added field
-                    miscellaneous_cost: Number(detail.miscellaneous_cost || 0), // Added field
-                    tax_amount: Number(detail.tax_amount || 0), // Added field
+                    total_price: detailTotalPrice,
+                    total_amount: detailTotalPrice + detailTaxAmount,
+                    tax_amount: detailTaxAmount,
                 });
 
                 originalDetails[detail.id] = true;
-
                 allDetails.push(detail);
             });
 
@@ -210,8 +211,17 @@ export default function Edit({ purchaseInvoice, suppliers = [], taxRates = [] }:
         });
 
         const purchaseInvoiceGoodsReceipts = Array.from(goodsReceiptMap.values());
+        const grandTotal = totalAmount + taxAmount;
 
-        setData('purchase_invoice_goods_receipts', purchaseInvoiceGoodsReceipts);
+        // Update all totals with our calculated values
+        setData((prevData) => ({
+            ...prevData,
+            purchase_invoice_goods_receipts: purchaseInvoiceGoodsReceipts,
+            total_amount: totalAmount,
+            tax_amount: taxAmount,
+            grand_total: grandTotal,
+        }));
+
         setOriginalInvoiceDetails(originalDetails);
         setGoodsReceiptDetails(allDetails);
 
@@ -443,15 +453,20 @@ export default function Edit({ purchaseInvoice, suppliers = [], taxRates = [] }:
 
         const newDetails = selectedReceiptDetails
             .filter((detail) => !isDetailInInvoice(detail.id))
-            .map((detail) => ({
-                goods_receipt_detail_id: detail.id,
-                quantity: Number(detail.received_quantity),
-                unit_price: Number(detail.price_per_unit),
-                total_price: Number(detail.total_price),
-                total_amount: Number(detail.total_amount || detail.total_price), // Added field
-                miscellaneous_cost: Number(detail.miscellaneous_cost || 0), // Added field
-                tax_amount: Number(detail.tax_amount || 0), // Added field
-            }));
+            .map((detail) => {
+                const totalPrice = Number(detail.total_price);
+                const taxAmount = Number(detail.tax_amount || 0);
+                const totalWithTax = totalPrice + taxAmount;
+
+                return {
+                    goods_receipt_detail_id: detail.id,
+                    quantity: Number(detail.received_quantity),
+                    unit_price: Number(detail.price_per_unit),
+                    total_price: totalPrice,
+                    total_amount: totalWithTax,
+                    tax_amount: taxAmount,
+                };
+            });
 
         updatedGoodsReceipts[receiptIndex].purchase_invoice_details = [...currentDetails, ...newDetails];
 
@@ -467,30 +482,26 @@ export default function Edit({ purchaseInvoice, suppliers = [], taxRates = [] }:
     const calculateTotals = (goodsReceipts) => {
         setCalculatingTotals(true);
         try {
+            // Calculate subtotal (just the total_price without tax)
             const subtotal = goodsReceipts.reduce(
                 (sum, receipt) => sum + receipt.purchase_invoice_details.reduce((detailSum, detail) => detailSum + detail.total_price, 0),
                 0,
             );
 
-            const miscCost = goodsReceipts.reduce(
-                (sum, receipt) =>
-                    sum + receipt.purchase_invoice_details.reduce((detailSum, detail) => detailSum + (detail.miscellaneous_cost || 0), 0),
-                0,
-            );
-
+            // Calculate tax amount separately
             const taxAmount = goodsReceipts.reduce(
                 (sum, receipt) => sum + receipt.purchase_invoice_details.reduce((detailSum, detail) => detailSum + (detail.tax_amount || 0), 0),
                 0,
             );
 
-            const grandTotal = subtotal + miscCost + taxAmount;
+            // Calculate grand total as subtotal + tax
+            const grandTotal = subtotal + taxAmount;
 
             setData((prevData) => ({
                 ...prevData,
-                total_amount: subtotal,
-                miscellaneous_cost: miscCost,
+                total_amount: subtotal, // This is the pure subtotal without tax
                 tax_amount: taxAmount,
-                grand_total: grandTotal,
+                grand_total: grandTotal, // Grand total is subtotal + tax
             }));
         } finally {
             setCalculatingTotals(false);
@@ -593,7 +604,6 @@ export default function Edit({ purchaseInvoice, suppliers = [], taxRates = [] }:
                         fullDetail && fullDetail.purchase_order_detail && fullDetail.purchase_order_detail.item.wholesale_unit_conversion
                             ? fullDetail.purchase_order_detail.item.wholesale_unit_conversion
                             : null,
-                    miscellaneous_cost: detail.miscellaneous_cost || (fullDetail ? fullDetail.miscellaneous_cost : 0),
                     tax_amount: detail.tax_amount || (fullDetail ? fullDetail.tax_amount : 0),
                     total_amount: detail.total_amount || (fullDetail ? fullDetail.total_amount : detail.total_price),
                     fullDetail, // Include the full detail for wholesale calculations
@@ -815,10 +825,6 @@ export default function Edit({ purchaseInvoice, suppliers = [], taxRates = [] }:
                                                 <span className="font-medium">{formatCurrency(data.total_amount)}</span>
                                             </div>
                                             <div className="flex justify-between">
-                                                <span className="text-sm text-gray-600">Misc. Cost:</span>
-                                                <span className="font-medium">{formatCurrency(data.miscellaneous_cost)}</span>
-                                            </div>
-                                            <div className="flex justify-between">
                                                 <span className="text-sm text-gray-600">Tax Amount:</span>
                                                 <span className="font-medium">{formatCurrency(data.tax_amount)}</span>
                                             </div>
@@ -900,7 +906,6 @@ export default function Edit({ purchaseInvoice, suppliers = [], taxRates = [] }:
                                                                             <th className="px-2 py-2 text-left">Item</th>
                                                                             <th className="px-2 py-2 text-center">Quantity</th>
                                                                             <th className="px-2 py-2 text-right">Unit Price</th>
-                                                                            <th className="px-2 py-2 text-right">Misc. Cost</th>
                                                                             <th className="px-2 py-2 text-right">Tax Amount</th>
                                                                             <th className="px-2 py-2 text-right">Total</th>
                                                                         </tr>
@@ -908,6 +913,8 @@ export default function Edit({ purchaseInvoice, suppliers = [], taxRates = [] }:
                                                                     <tbody>
                                                                         {getDetailsForSelectedReceipt().map((detail) => {
                                                                             const isInInvoice = isDetailInInvoice(detail.id);
+                                                                            const totalWithTax =
+                                                                                Number(detail.total_price) + Number(detail.tax_amount || 0);
                                                                             return (
                                                                                 <tr
                                                                                     key={detail.id}
@@ -924,13 +931,10 @@ export default function Edit({ purchaseInvoice, suppliers = [], taxRates = [] }:
                                                                                         {displayPriceWithWholesale(detail)}
                                                                                     </td>
                                                                                     <td className="px-2 py-2 text-right">
-                                                                                        {formatCurrency(detail.miscellaneous_cost || 0)}
-                                                                                    </td>
-                                                                                    <td className="px-2 py-2 text-right">
                                                                                         {formatCurrency(detail.tax_amount || 0)}
                                                                                     </td>
                                                                                     <td className="px-2 py-2 text-right">
-                                                                                        {formatCurrency(detail.total_amount || detail.total_price)}
+                                                                                        {formatCurrency(totalWithTax)}
                                                                                     </td>
                                                                                 </tr>
                                                                             );
@@ -975,38 +979,38 @@ export default function Edit({ purchaseInvoice, suppliers = [], taxRates = [] }:
                                                                     <th className="px-2 py-2 text-left">Item</th>
                                                                     <th className="px-2 py-2 text-center">Quantity</th>
                                                                     <th className="px-2 py-2 text-right">Unit Price</th>
-                                                                    <th className="px-2 py-2 text-right">Misc. Cost</th>
                                                                     <th className="px-2 py-2 text-right">Tax Amount</th>
                                                                     <th className="px-2 py-2 text-right">Total</th>
                                                                 </tr>
                                                             </thead>
                                                             <tbody>
-                                                                {group.items.map((item) => (
-                                                                    <tr key={item.goods_receipt_detail_id} className="border-b">
-                                                                        <td className="px-2 py-2">
-                                                                            {item.item_name} ({item.item_code})
-                                                                        </td>
-                                                                        <td className="px-2 py-2 text-center">{displayInvoiceItemQuantity(item)}</td>
-                                                                        <td className="px-2 py-2 text-right">{displayInvoiceItemPrice(item)}</td>
-                                                                        <td className="px-2 py-2 text-right">
-                                                                            {formatCurrency(item.miscellaneous_cost || 0)}
-                                                                        </td>
-                                                                        <td className="px-2 py-2 text-right">
-                                                                            {formatCurrency(item.tax_amount || 0)}
-                                                                        </td>
-                                                                        <td className="px-2 py-2 text-right">
-                                                                            {formatCurrency(item.total_amount || item.total_price)}
-                                                                        </td>
-                                                                    </tr>
-                                                                ))}
+                                                                {group.items.map((item) => {
+                                                                    const totalWithTax = Number(item.total_price) + Number(item.tax_amount || 0);
+                                                                    return (
+                                                                        <tr key={item.goods_receipt_detail_id} className="border-b">
+                                                                            <td className="px-2 py-2">
+                                                                                {item.item_name} ({item.item_code})
+                                                                            </td>
+                                                                            <td className="px-2 py-2 text-center">
+                                                                                {displayInvoiceItemQuantity(item)}
+                                                                            </td>
+                                                                            <td className="px-2 py-2 text-right">{displayInvoiceItemPrice(item)}</td>
+                                                                            <td className="px-2 py-2 text-right">
+                                                                                {formatCurrency(item.tax_amount || 0)}
+                                                                            </td>
+                                                                            <td className="px-2 py-2 text-right">{formatCurrency(totalWithTax)}</td>
+                                                                        </tr>
+                                                                    );
+                                                                })}
                                                                 <tr className="bg-gray-50 font-medium">
-                                                                    <td colSpan={5} className="px-2 py-2 text-right">
+                                                                    <td colSpan={4} className="px-2 py-2 text-right">
                                                                         Subtotal:
                                                                     </td>
                                                                     <td className="px-2 py-2 text-right">
                                                                         {formatCurrency(
                                                                             group.items.reduce(
-                                                                                (sum, item) => sum + (item.total_amount || item.total_price),
+                                                                                (sum, item) =>
+                                                                                    sum + Number(item.total_price) + Number(item.tax_amount || 0),
                                                                                 0,
                                                                             ),
                                                                         )}

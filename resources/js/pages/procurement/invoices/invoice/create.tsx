@@ -50,7 +50,6 @@ type GoodsReceiptDetail = {
     received_quantity: string | number;
     price_per_unit: string | number;
     total_price: string | number;
-    miscellaneous_cost: string | number;
     tax_amount: string | number;
     total_amount: string | number;
     cogs: string | number;
@@ -111,7 +110,6 @@ export default function Create({ suppliers = [] }: Props) {
         due_date: addDays(new Date(), 30),
         supplier_id: '',
         total_amount: 0,
-        miscellaneous_cost: 0,
         tax_amount: 0,
         grand_total: 0,
         purchase_invoice_goods_receipts: [] as {
@@ -122,7 +120,6 @@ export default function Create({ suppliers = [] }: Props) {
                 unit_price: number;
                 total_price: number;
                 total_amount?: number;
-                miscellaneous_cost?: number;
                 tax_amount?: number;
             }[];
         }[],
@@ -349,31 +346,32 @@ export default function Create({ suppliers = [] }: Props) {
     const calculateTotals = (goodsReceipts) => {
         setCalculatingTotals(true);
         try {
-            const subtotal = goodsReceipts.reduce(
+            // First calculate total with tax included (for grand total)
+            const totalWithTax = goodsReceipts.reduce(
                 (sum, receipt) =>
-                    sum + receipt.purchase_invoice_details.reduce((detailSum, detail) => detailSum + (detail.total_amount || detail.total_price), 0),
+                    sum +
+                    receipt.purchase_invoice_details.reduce((detailSum, detail) => {
+                        // Use total_price + tax_amount for the total
+                        const detailTotal = detail.total_price + (detail.tax_amount || 0);
+                        return detailSum + detailTotal;
+                    }, 0),
                 0,
             );
 
-            const miscCost = goodsReceipts.reduce(
-                (sum, receipt) =>
-                    sum + receipt.purchase_invoice_details.reduce((detailSum, detail) => detailSum + (detail.miscellaneous_cost || 0), 0),
-                0,
-            );
-
+            // Calculate tax amount separately
             const taxAmount = goodsReceipts.reduce(
                 (sum, receipt) => sum + receipt.purchase_invoice_details.reduce((detailSum, detail) => detailSum + (detail.tax_amount || 0), 0),
                 0,
             );
 
-            const grandTotal = subtotal;
+            // Calculate subtotal as total - tax (for display in the left sidebar)
+            const subtotalBeforeTax = totalWithTax - taxAmount;
 
             setData((prevData) => ({
                 ...prevData,
-                total_amount: subtotal,
-                miscellaneous_cost: miscCost,
+                total_amount: subtotalBeforeTax, // This will be used in the left sidebar as "Subtotal"
                 tax_amount: taxAmount,
-                grand_total: grandTotal,
+                grand_total: totalWithTax, // Grand total remains the same (includes tax)
             }));
         } finally {
             setCalculatingTotals(false);
@@ -410,15 +408,20 @@ export default function Create({ suppliers = [] }: Props) {
 
         const newDetails = selectedReceiptDetails
             .filter((detail) => !isDetailInInvoice(detail.id))
-            .map((detail) => ({
-                goods_receipt_detail_id: detail.id,
-                quantity: Number(detail.received_quantity),
-                unit_price: Number(detail.price_per_unit),
-                total_price: Number(detail.total_price),
-                total_amount: Number(detail.total_amount),
-                miscellaneous_cost: Number(detail.miscellaneous_cost),
-                tax_amount: Number(detail.tax_amount),
-            }));
+            .map((detail) => {
+                const totalPrice = Number(detail.total_price);
+                const taxAmount = Number(detail.tax_amount || 0);
+                const totalWithTax = totalPrice + taxAmount;
+
+                return {
+                    goods_receipt_detail_id: detail.id,
+                    quantity: Number(detail.received_quantity),
+                    unit_price: Number(detail.price_per_unit),
+                    total_price: totalPrice,
+                    total_amount: totalWithTax,
+                    tax_amount: taxAmount,
+                };
+            });
 
         updatedGoodsReceipts[receiptIndex].purchase_invoice_details = [...currentDetails, ...newDetails];
 
@@ -483,7 +486,6 @@ export default function Create({ suppliers = [] }: Props) {
                         fullDetail && fullDetail.purchase_order_detail.item.wholesale_unit_conversion
                             ? fullDetail.purchase_order_detail.item.wholesale_unit_conversion
                             : null,
-                    miscellaneous_cost: detail.miscellaneous_cost || (fullDetail ? fullDetail.miscellaneous_cost : 0),
                     tax_amount: detail.tax_amount || (fullDetail ? fullDetail.tax_amount : 0),
                     total_amount: detail.total_amount || (fullDetail ? fullDetail.total_amount : detail.total_price),
                     fullDetail, // Include the full detail for wholesale calculations
@@ -530,7 +532,6 @@ export default function Create({ suppliers = [] }: Props) {
         ) {
             const item_detail = item.fullDetail.purchase_order_detail.item;
             const unitPrice = parseFloat(item.unit_price);
-            const conversion = parseFloat(item_detail.wholesale_unit_conversion);
 
             return <>{formatCurrency(unitPrice)}</>;
         }
@@ -717,11 +718,7 @@ export default function Create({ suppliers = [] }: Props) {
                                         <div className="mt-4 space-y-3 border-t pt-4">
                                             <div className="flex justify-between">
                                                 <span className="text-sm text-gray-600">Subtotal:</span>
-                                                <span className="font-medium">{formatCurrency(data.total_amount - data.miscellaneous_cost)}</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-sm text-gray-600">Misc. Cost:</span>
-                                                <span className="font-medium">{formatCurrency(data.miscellaneous_cost)}</span>
+                                                <span className="font-medium">{formatCurrency(data.total_amount)}</span>
                                             </div>
                                             <div className="flex justify-between">
                                                 <span className="text-sm text-gray-600">Tax Amount:</span>
@@ -806,7 +803,6 @@ export default function Create({ suppliers = [] }: Props) {
                                                                             <th className="px-2 py-2 text-left">Item</th>
                                                                             <th className="px-2 py-2 text-center">Quantity</th>
                                                                             <th className="px-2 py-2 text-right">Unit Price</th>
-                                                                            <th className="px-2 py-2 text-right">Misc. Cost</th>
                                                                             <th className="px-2 py-2 text-right">Tax Amount</th>
                                                                             <th className="px-2 py-2 text-right">Total</th>
                                                                         </tr>
@@ -814,6 +810,8 @@ export default function Create({ suppliers = [] }: Props) {
                                                                     <tbody>
                                                                         {getDetailsForSelectedReceipt().map((detail) => {
                                                                             const isInInvoice = isDetailInInvoice(detail.id);
+                                                                            const totalWithTax =
+                                                                                Number(detail.total_price) + Number(detail.tax_amount || 0);
                                                                             return (
                                                                                 <tr
                                                                                     key={detail.id}
@@ -830,13 +828,10 @@ export default function Create({ suppliers = [] }: Props) {
                                                                                         {displayPriceWithWholesale(detail)}
                                                                                     </td>
                                                                                     <td className="px-2 py-2 text-right">
-                                                                                        {formatCurrency(detail.miscellaneous_cost || 0)}
-                                                                                    </td>
-                                                                                    <td className="px-2 py-2 text-right">
                                                                                         {formatCurrency(detail.tax_amount || 0)}
                                                                                     </td>
                                                                                     <td className="px-2 py-2 text-right">
-                                                                                        {formatCurrency(detail.total_amount)}
+                                                                                        {formatCurrency(totalWithTax)}
                                                                                     </td>
                                                                                 </tr>
                                                                             );
@@ -881,36 +876,38 @@ export default function Create({ suppliers = [] }: Props) {
                                                                     <th className="px-2 py-2 text-left">Item</th>
                                                                     <th className="px-2 py-2 text-center">Quantity</th>
                                                                     <th className="px-2 py-2 text-right">Unit Price</th>
-                                                                    <th className="px-2 py-2 text-right">Misc. Cost</th>
                                                                     <th className="px-2 py-2 text-right">Tax Amount</th>
                                                                     <th className="px-2 py-2 text-right">Total</th>
                                                                 </tr>
                                                             </thead>
                                                             <tbody>
-                                                                {group.items.map((item) => (
-                                                                    <tr key={item.goods_receipt_detail_id} className="border-b">
-                                                                        <td className="px-2 py-2">
-                                                                            {item.item_name} ({item.item_code})
-                                                                        </td>
-                                                                        <td className="px-2 py-2 text-center">{displayInvoiceItemQuantity(item)}</td>
-                                                                        <td className="px-2 py-2 text-right">{displayInvoiceItemPrice(item)}</td>
-                                                                        <td className="px-2 py-2 text-right">
-                                                                            {formatCurrency(item.miscellaneous_cost || 0)}
-                                                                        </td>
-                                                                        <td className="px-2 py-2 text-right">
-                                                                            {formatCurrency(item.tax_amount || 0)}
-                                                                        </td>
-                                                                        <td className="px-2 py-2 text-right">{formatCurrency(item.total_amount)}</td>
-                                                                    </tr>
-                                                                ))}
+                                                                {group.items.map((item) => {
+                                                                    const totalWithTax = Number(item.total_price) + Number(item.tax_amount || 0);
+                                                                    return (
+                                                                        <tr key={item.goods_receipt_detail_id} className="border-b">
+                                                                            <td className="px-2 py-2">
+                                                                                {item.item_name} ({item.item_code})
+                                                                            </td>
+                                                                            <td className="px-2 py-2 text-center">
+                                                                                {displayInvoiceItemQuantity(item)}
+                                                                            </td>
+                                                                            <td className="px-2 py-2 text-right">{displayInvoiceItemPrice(item)}</td>
+                                                                            <td className="px-2 py-2 text-right">
+                                                                                {formatCurrency(item.tax_amount || 0)}
+                                                                            </td>
+                                                                            <td className="px-2 py-2 text-right">{formatCurrency(totalWithTax)}</td>
+                                                                        </tr>
+                                                                    );
+                                                                })}
                                                                 <tr className="bg-gray-50 font-medium">
-                                                                    <td colSpan={5} className="px-2 py-2 text-right">
+                                                                    <td colSpan={4} className="px-2 py-2 text-right">
                                                                         Subtotal:
                                                                     </td>
                                                                     <td className="px-2 py-2 text-right">
                                                                         {formatCurrency(
                                                                             group.items.reduce(
-                                                                                (sum, item) => sum + (item.total_amount || item.total_price),
+                                                                                (sum, item) =>
+                                                                                    sum + Number(item.total_price) + Number(item.tax_amount || 0),
                                                                                 0,
                                                                             ),
                                                                         )}

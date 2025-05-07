@@ -15,13 +15,12 @@ return new class extends Migration
             $table->id();
             $table->string('code', 100)->unique();
             $table->date('date');
-            $table->unsignedSmallInteger('branch_id')->nullable();;
+            $table->unsignedBigInteger('source_able_id');
+            $table->string('source_able_type');
             $table->decimal('total_amount', 15, 2);
             $table->boolean('is_locked')->default(false);
             $table->foreignId('user_id')->constrained('users');
             $table->timestamps();
-
-            $table->foreign('branch_id')->references('id')->on('branches');
         });
     }
 

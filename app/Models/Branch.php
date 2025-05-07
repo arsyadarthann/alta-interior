@@ -76,9 +76,9 @@ class Branch extends Model
         return $this->hasMany(SalesInvoicePayment::class, 'branch_id', 'id');
     }
 
-    public function expenses(): HasMany
+    public function expenses(): MorphMany
     {
-        return $this->hasMany(Expense::class, 'branch_id', 'id');
+        return $this->morphMany(Expense::class, 'source_able');
     }
 
 }

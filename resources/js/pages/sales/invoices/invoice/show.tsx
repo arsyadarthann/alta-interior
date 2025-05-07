@@ -142,6 +142,8 @@ interface SalesInvoiceDetail {
 interface PaymentMethod {
     id: number;
     name: string;
+    account_number: string;
+    account_name: string;
 }
 
 interface SalesInvoicePayment {
@@ -179,12 +181,14 @@ interface SalesInvoice {
     paid_status: string;
     paid_amount: string;
     remaining_amount: string;
+    payment_method_id: number | null;
     created_at: string;
     updated_at: string;
     user: User;
     branch: Branch;
     customer: Customer;
     tax_rate: TaxRate;
+    payment_method: PaymentMethod | null;
     sales_invoice_details: SalesInvoiceDetail[];
     sales_invoice_payments: SalesInvoicePayment[];
 }
@@ -429,6 +433,19 @@ export default function Show({ salesInvoice }: SalesInvoiceProps) {
                                         <div className="flex-1">
                                             <h3 className="text-sm font-medium text-gray-500">Tax Rate</h3>
                                             <p className="mt-1 text-sm text-gray-900">{formatDecimal(salesInvoice.tax_rate?.rate) || '0'}%</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center">
+                                        <div className="flex-1">
+                                            <h3 className="text-sm font-medium text-gray-500">Payment Method</h3>
+                                            <p className="mt-1 text-sm text-gray-900">
+                                                {salesInvoice.payment_method
+                                                    ? salesInvoice.payment_method.name +
+                                                      (salesInvoice.payment_method.account_number
+                                                          ? ` (${salesInvoice.payment_method.account_number})`
+                                                          : '')
+                                                    : 'Not specified'}
+                                            </p>
                                         </div>
                                     </div>
 

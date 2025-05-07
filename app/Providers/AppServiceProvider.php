@@ -15,6 +15,7 @@ use App\Interface\PermissionInterface;
 use App\Interface\PurchaseInvoiceInterface;
 use App\Interface\PurchaseInvoicePaymentInterface;
 use App\Interface\PurchaseOrderInterface;
+use App\Interface\ReportInterface;
 use App\Interface\RoleInterface;
 use App\Interface\SalesInvoiceInterface;
 use App\Interface\SalesInvoicePaymentInterface;
@@ -41,6 +42,7 @@ use App\Repositories\PermissionRepository;
 use App\Repositories\PurchaseInvoicePaymentRepository;
 use App\Repositories\PurchaseInvoiceRepository;
 use App\Repositories\PurchaseOrderRepository;
+use App\Repositories\ReportRepository;
 use App\Repositories\RoleRepository;
 use App\Repositories\SalesInvoicePaymentRepository;
 use App\Repositories\SalesInvoiceRepository;
@@ -88,7 +90,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(WaybillInterface::class, WaybillRepository::class);
         $this->app->bind(SalesInvoiceInterface::class, SalesInvoiceRepository::class);
         $this->app->bind(SalesInvoicePaymentInterface::class, SalesInvoicePaymentRepository::class);
-        $this->app->bind(ExpenseInterface::class, ExpenseRepository::class);;
+        $this->app->bind(ExpenseInterface::class, ExpenseRepository::class);
+        $this->app->bind(ReportInterface::class, ReportRepository::class);
     }
 
     /**

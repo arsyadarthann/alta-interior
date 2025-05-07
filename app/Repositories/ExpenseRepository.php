@@ -11,14 +11,15 @@ class ExpenseRepository implements ExpenseInterface
 {
     public function __construct(private Expense $expense) {}
 
-    public function getAll($branchId = null)
+    public function getAll($sourceAbleId = null, $sourceAbleType = null)
     {
         return $this->expense
             ->with([
-                'branch:id,name', 'user:id,name'
+                'source_able:id,name', 'user:id,name'
             ])
-            ->when($branchId, function ($query) use ($branchId) {
-                return $query->where('branch_id', $branchId);
+            ->when($sourceAbleId, function ($query) use ($sourceAbleId, $sourceAbleType) {
+                return $query->where('source_able_id', $sourceAbleId)
+                    ->where('source_able_type', $sourceAbleType);
             })
             ->orderBy('id', 'desc')
             ->paginate(10);
@@ -27,7 +28,7 @@ class ExpenseRepository implements ExpenseInterface
     public function getById(int $id)
     {
         return $this->expense->with([
-            'branch:id,name', 'user:id,name', 'expenseDetails'
+            'source_able:id,name', 'user:id,name', 'expenseDetails'
         ])->find($id);
     }
 
@@ -37,7 +38,8 @@ class ExpenseRepository implements ExpenseInterface
             $expense = $this->expense->create([
                 'code' => $data['code'],
                 'date' => $data['date'],
-                'branch_id' => $data['branch_id'],
+                'source_able_id' => $data['source_able_id'],
+                'source_able_type' => $data['source_able_type'],
                 'total_amount' => $data['total_amount'],
                 'user_id' => request()->user()->id,
             ]);
@@ -50,6 +52,8 @@ class ExpenseRepository implements ExpenseInterface
             }
 
             TransactionCode::confirmTransactionCode('Expense', $data['code']);
+
+            return $expense;
         });
     }
 
@@ -60,7 +64,8 @@ class ExpenseRepository implements ExpenseInterface
             $expense->update([
                 'code' => $data['code'],
                 'date' => $data['date'],
-                'branch_id' => $data['branch_id'],
+                'source_able_id' => $data['source_able_id'],
+                'source_able_type' => $data['source_able_type'],
                 'total_amount' => $data['total_amount'],
                 'user_id' => request()->user()->id,
             ]);

@@ -19,7 +19,9 @@ class PaymentMethodRequest extends FormRequest
     {
         return [
             'name' => 'required|string|max:255|unique:payment_methods,name,NULL,id,deleted_at,NULL',
-            'charge_percentage' => 'required|numeric|min:0|max:100'
+            'charge_percentage' => 'required|numeric|min:0|max:100',
+            'account_number' => 'nullable|max:100',
+            'account_name' => 'nullable|max:100'
         ];
     }
 
@@ -27,7 +29,9 @@ class PaymentMethodRequest extends FormRequest
     {
         return [
             'name' => 'required|string|max:255|unique:payment_methods,name,' . $this->route('id') . ',id,deleted_at,NULL',
-            'charge_percentage' => 'required|numeric|min:0|max:100'
+            'charge_percentage' => 'required|numeric|min:0|max:100',
+            'account_number' => 'nullable|max:100',
+            'account_name' => 'nullable|max:100'
         ];
     }
 

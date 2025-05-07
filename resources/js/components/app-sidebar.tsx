@@ -25,11 +25,12 @@ import AppLogo from './app-logo';
 export function AppSidebar() {
     const { hasPermission } = usePermissions();
 
-    const mainNavItems: NavItem[] = [
+    const MainNavItems: NavItemWithChildren[] = [
         {
             title: 'Dashboard',
             url: '/dashboard',
             icon: LayoutGrid,
+            matchPatch: ['/dashboard', '/dashboard?*'],
         },
     ];
 
@@ -164,7 +165,6 @@ export function AppSidebar() {
                   },
               ]
             : []),
-
         ...(hasPermission('read_waybill')
             ? [
                   {
@@ -174,7 +174,6 @@ export function AppSidebar() {
                   },
               ]
             : []),
-
         ...(hasPermission('read_sales_invoice') || hasPermission('read_sales_invoice_payment')
             ? [
                   {
@@ -218,21 +217,18 @@ export function AppSidebar() {
         },
     ];
 
-    const reportItems: NavItem[] = [
+    const reportItems: NavItemWithChildren[] = [
         {
-            title: 'Sales',
-            url: '/reports/sales',
+            title: 'Profit & Loss',
+            url: '/reports/profit-loss',
             icon: TrendingUp,
+            matchPatch: ['/reports/profit-loss', '/reports/profit-loss?*'],
         },
         {
-            title: 'Transaction',
-            url: '/reports/transactions',
-            icon: Receipt,
-        },
-        {
-            title: 'inventory Movement',
-            url: '/reports/inventory-movement',
+            title: 'Stock Movement',
+            url: '/reports/stock-movements',
             icon: Box,
+            matchPatch: ['/reports/stock-movements', '/reports/stock-movements?*'],
         },
     ];
 
@@ -251,7 +247,7 @@ export function AppSidebar() {
             </SidebarHeader>
 
             <SidebarContent>
-                <NavMain items={mainNavItems} title="Dashboard" />
+                <NavMainWithSubmenu items={MainNavItems} title="Dashboard" />
                 {(hasPermission('read_customer') || hasPermission('read_supplier')) && (
                     <NavMain items={customersAndSuppliersItems} title="Customers & Suppliers" />
                 )}
@@ -265,9 +261,13 @@ export function AppSidebar() {
                     hasPermission('read_goods_receipt') ||
                     hasPermission('read_purchase_invoice') ||
                     hasPermission('read_purchase_invoice_payments')) && <NavMainWithSubmenu items={procurementItems} title="Procurement" />}
-                <NavMainWithSubmenu items={salesItems} title="Sales" />
-                <NavMain items={financeItems} title="Finance" />
-                <NavMain items={reportItems} title="Reports" />
+                {(hasPermission('read_sales_order') ||
+                    hasPermission('read_waybill') ||
+                    hasPermission('read_sales_invoice') ||
+                    hasPermission('read_sales_invoice_payment')) && <NavMainWithSubmenu items={salesItems} title="Sales" />}
+                {/*<NavMainWithSubmenu items={salesItems} title="Sales" />*/}
+                {hasPermission('read_expense') && <NavMain items={financeItems} title="Finance" />}
+                <NavMainWithSubmenu items={reportItems} title="Reports" />
             </SidebarContent>
 
             <SidebarFooter>

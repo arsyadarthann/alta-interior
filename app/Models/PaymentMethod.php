@@ -16,11 +16,18 @@ class PaymentMethod extends Model
     protected $fillable = [
         'name',
         'charge_percentage',
+        'account_number',
+        'account_name'
     ];
 
     public function purchaseInvoicePayments(): HasMany
     {
         return $this->hasMany(PurchaseInvoicePayment::class, 'payment_method_id', 'id');
+    }
+
+    public function salesInvoices(): HasMany
+    {
+        return $this->hasMany(SalesInvoice::class, 'payment_method_id', 'id');
     }
 
     public function salesInvoicePayments(): HasMany

@@ -15,6 +15,8 @@ return new class extends Migration
             $table->smallIncrements('id');
             $table->string('name', 100);
             $table->decimal('charge_percentage', 5, 2);
+            $table->string('account_number', 100)->nullable();
+            $table->string('account_name', 100)->nullable();
             $table->timestamps();
             $table->softDeletes();
         });
