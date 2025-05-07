@@ -164,7 +164,6 @@ export function AppSidebar() {
                   },
               ]
             : []),
-
         ...(hasPermission('read_waybill')
             ? [
                   {
@@ -174,7 +173,6 @@ export function AppSidebar() {
                   },
               ]
             : []),
-
         ...(hasPermission('read_sales_invoice') || hasPermission('read_sales_invoice_payment')
             ? [
                   {
@@ -220,14 +218,10 @@ export function AppSidebar() {
 
     const reportItems: NavItemWithChildren[] = [
         {
-            title: 'Sales',
-            url: '/reports/sales',
+            title: 'Profit & Loss',
+            url: '/reports/profit-loss',
             icon: TrendingUp,
-        },
-        {
-            title: 'Transaction',
-            url: '/reports/transactions',
-            icon: Receipt,
+            matchPatch: ['/reports/profit-loss', '/reports/profit-loss?*'],
         },
         {
             title: 'Stock Movement',
@@ -266,8 +260,12 @@ export function AppSidebar() {
                     hasPermission('read_goods_receipt') ||
                     hasPermission('read_purchase_invoice') ||
                     hasPermission('read_purchase_invoice_payments')) && <NavMainWithSubmenu items={procurementItems} title="Procurement" />}
-                <NavMainWithSubmenu items={salesItems} title="Sales" />
-                <NavMain items={financeItems} title="Finance" />
+                {(hasPermission('read_sales_order') ||
+                    hasPermission('read_waybill') ||
+                    hasPermission('read_sales_invoice') ||
+                    hasPermission('read_sales_invoice_payment')) && <NavMainWithSubmenu items={salesItems} title="Sales" />}
+                {/*<NavMainWithSubmenu items={salesItems} title="Sales" />*/}
+                {hasPermission('read_expense') && <NavMain items={financeItems} title="Finance" />}
                 <NavMainWithSubmenu items={reportItems} title="Reports" />
             </SidebarContent>
 

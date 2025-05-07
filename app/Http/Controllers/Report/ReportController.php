@@ -17,6 +17,15 @@ class ReportController extends Controller
     public function dashboard()
     {
         return Inertia::render('reports/dashboard', [
+            'salesData' => $this->report->getDashboard(),
+            'branches' => $this->branch->getAll(),
+        ]);
+    }
+
+    public function getProfitLoss()
+    {
+        return Inertia::render('reports/profit-loss', [
+            'salesReports' => $this->report->getProfitLoss(),
             'branches' => $this->branch->getAll(),
         ]);
     }

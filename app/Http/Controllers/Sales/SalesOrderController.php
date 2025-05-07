@@ -28,7 +28,9 @@ class SalesOrderController extends Controller
         }
 
         return Inertia::render('sales/order/index', [
-            'salesOrders' => $salesOrders,
+            'salesOrders' => $salesOrders->appends([
+                'branch_id' => $branchId,
+            ]),
             'branches' => $this->branch->getAll(),
             'selectedBranchId' => $branchId,
         ]);

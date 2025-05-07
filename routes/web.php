@@ -177,6 +177,7 @@ Route::middleware(['auth'])->group(function () {
     });
 
     Route::group(['prefix' => 'reports'], function () {
+        Route::get('/profit-loss', [ReportController::class, 'getProfitLoss'])->name('reports.profit-loss');
         Route::get('/stock-movements', [ReportController::class, 'getStockMovements'])->name('reports.stock-movements');
     });
 
