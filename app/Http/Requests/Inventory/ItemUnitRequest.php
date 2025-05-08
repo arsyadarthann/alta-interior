@@ -19,7 +19,7 @@ class ItemUnitRequest extends FormRequest
     {
         return [
             'name' => 'required|string|max:255|unique:item_units,name,NULL,id,deleted_at,NULL',
-            'abbreviation' => 'required|string|max:255|unique:item_units,abbreviation,NULL,id,deleted_at,NULL',
+            'abbreviation' => 'required|string|max:10|unique:item_units,abbreviation,NULL,id,deleted_at,NULL',
         ];
     }
 
@@ -27,7 +27,7 @@ class ItemUnitRequest extends FormRequest
     {
         return [
             'name' => 'required|string|max:255|unique:item_units,name,' . $this->route('id') . ',id,deleted_at,NULL',
-            'abbreviation' => 'required|string|max:255|unique:item_units,abbreviation,' . $this->route('id') . ',id,deleted_at,NULL',
+            'abbreviation' => 'required|string|max:10|unique:item_units,abbreviation,' . $this->route('id') . ',id,deleted_at,NULL',
         ];
     }
 
