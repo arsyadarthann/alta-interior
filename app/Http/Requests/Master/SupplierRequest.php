@@ -21,7 +21,7 @@ class SupplierRequest extends FormRequest
         return [
             'name' => 'required|string|max:255',
             'contact_name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:suppliers,email',
+            'email' => 'nullable|string|email|max:255|unique:suppliers,email',
             'phone' => 'required|string|max:255',
             'address' => 'required|string|max:255',
         ];
@@ -32,7 +32,7 @@ class SupplierRequest extends FormRequest
         return [
             'name' => 'required|string|max:255',
             'contact_name' => 'required|string|max:255',
-            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('suppliers', 'email')->ignore($this->id)],
+            'email' => ['nullable', 'string', 'email', 'max:255', Rule::unique('suppliers', 'email')->ignore($this->id)],
             'phone' => 'required|string|max:255',
             'address' => 'required|string|max:255',
         ];
@@ -43,7 +43,6 @@ class SupplierRequest extends FormRequest
         return [
             'name.required' => 'Supplier name is required.',
             'contact_name.required' => 'Supplier contact name is required.',
-            'email.required' => 'Supplier email is required.',
             'email.unique' => 'Supplier email is already taken.',
             'phone.required' => 'Supplier phone is required.',
             'address.required' => 'Supplier address is required.',

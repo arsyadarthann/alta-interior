@@ -1,13 +1,12 @@
-import React from 'react';
-import {Head, router, useForm} from "@inertiajs/react";
-import AppLayout from "@/layouts/app-layout";
-import { type BreadcrumbItem } from "@/types";
-import Heading from "@/components/heading";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
-import {useToastNotification} from "@/hooks/use-toast-notification";
+import Heading from '@/components/heading';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { useToastNotification } from '@/hooks/use-toast-notification';
+import AppLayout from '@/layouts/app-layout';
+import { type BreadcrumbItem } from '@/types';
+import { Head, router, useForm } from '@inertiajs/react';
 
 interface Props {
     supplier: {
@@ -17,11 +16,11 @@ interface Props {
         email: string;
         phone: string;
         address: string;
-    }
+    };
 }
 
 export default function Edit({ supplier }: Props) {
-    const { showErrorToast } = useToastNotification()
+    const { showErrorToast } = useToastNotification();
     const breadcrumbs: BreadcrumbItem[] = [
         {
             title: 'Suppliers',
@@ -29,8 +28,8 @@ export default function Edit({ supplier }: Props) {
         },
         {
             title: 'Edit',
-            href: route('suppliers.edit', supplier.id)
-        }
+            href: route('suppliers.edit', supplier.id),
+        },
     ];
 
     const { data, setData, put, processing, errors } = useForm({
@@ -41,19 +40,19 @@ export default function Edit({ supplier }: Props) {
         address: supplier.address,
     });
 
-    const handleSubmit = (e: { preventDefault: () => void; }) => {
+    const handleSubmit = (e: { preventDefault: () => void }) => {
         e.preventDefault();
 
         put(route('suppliers.update', supplier.id), {
             preserveScroll: true,
-            onError: showErrorToast
-        })
-    }
+            onError: showErrorToast,
+        });
+    };
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Edit Supplier" />
-            <div className="bg-white rounded-lg px-8 py-6">
+            <div className="rounded-lg bg-white px-8 py-6">
                 <Heading title="Edit Supplier" description="Update supplier information using the form below." />
                 <form onSubmit={handleSubmit}>
                     <div className="space-y-6">
@@ -70,9 +69,9 @@ export default function Edit({ supplier }: Props) {
                                 <Input
                                     id="name"
                                     value={data.name}
-                                    onChange={e => setData('name', e.target.value)}
+                                    onChange={(e) => setData('name', e.target.value)}
                                     placeholder="Enter company name"
-                                    className={`${errors.name ? "border-red-500 ring-red-100" : ""}`}
+                                    className={`${errors.name ? 'border-red-500 ring-red-100' : ''}`}
                                 />
                             </div>
 
@@ -83,9 +82,9 @@ export default function Edit({ supplier }: Props) {
                                 <Input
                                     id="contact_name"
                                     value={data.contact_name}
-                                    onChange={e => setData('contact_name', e.target.value)}
+                                    onChange={(e) => setData('contact_name', e.target.value)}
                                     placeholder="Enter contact person name"
-                                    className={`${errors.contact_name ? "border-red-500 ring-red-100" : ""}`}
+                                    className={`${errors.contact_name ? 'border-red-500 ring-red-100' : ''}`}
                                 />
                             </div>
                         </div>
@@ -95,18 +94,18 @@ export default function Edit({ supplier }: Props) {
                             <div className="h-px bg-gray-100" />
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                             <div className="relative">
                                 <Label htmlFor="email" className="mb-1.5 block">
-                                    Email Address <span className="text-red-500">*</span>
+                                    Email Address
                                 </Label>
                                 <Input
                                     id="email"
                                     type="email"
                                     value={data.email}
-                                    onChange={e => setData('email', e.target.value)}
+                                    onChange={(e) => setData('email', e.target.value)}
                                     placeholder="contact@company.com"
-                                    className={`${errors.email ? "border-red-500 ring-red-100" : ""}`}
+                                    className={`${errors.email ? 'border-red-500 ring-red-100' : ''}`}
                                 />
                             </div>
 
@@ -117,9 +116,9 @@ export default function Edit({ supplier }: Props) {
                                 <Input
                                     id="phone"
                                     value={data.phone}
-                                    onChange={e => setData('phone', e.target.value)}
+                                    onChange={(e) => setData('phone', e.target.value)}
                                     placeholder="+1 (555) 000-0000"
-                                    className={`${errors.phone ? "border-red-500 ring-red-100" : ""}`}
+                                    className={`${errors.phone ? 'border-red-500 ring-red-100' : ''}`}
                                 />
                             </div>
                         </div>
@@ -130,31 +129,25 @@ export default function Edit({ supplier }: Props) {
                         </div>
 
                         <div className="relative">
-                            <Label htmlFor="address" className="mb-1.5 block">Complete Address</Label>
+                            <Label htmlFor="address" className="mb-1.5 block">
+                                Complete Address
+                            </Label>
                             <Textarea
                                 id="address"
                                 value={data.address}
-                                onChange={e => setData('address', e.target.value)}
+                                onChange={(e) => setData('address', e.target.value)}
                                 placeholder="Enter complete address"
                                 rows={4}
-                                className={`${errors.address ? "border-red-500 ring-red-100" : ""}`}
+                                className={`${errors.address ? 'border-red-500 ring-red-100' : ''}`}
                             />
                         </div>
                     </div>
 
                     <div className="flex justify-end gap-3 py-4">
-                        <Button
-                            variant="outline"
-                            type="button"
-                            onClick={() => router.visit(route('suppliers.index'))}
-                        >
+                        <Button variant="outline" type="button" onClick={() => router.visit(route('suppliers.index'))}>
                             Cancel
                         </Button>
-                        <Button
-                            type="submit"
-                            disabled={processing}
-                            className="px-8"
-                        >
+                        <Button type="submit" disabled={processing} className="px-8">
                             {processing ? 'Saving...' : 'Save Changes'}
                         </Button>
                     </div>
