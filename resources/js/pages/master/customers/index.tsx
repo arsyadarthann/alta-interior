@@ -41,7 +41,7 @@ type Customer = {
 export default function Index({ customers }: Props) {
     useToastNotification();
     const { hasPermission } = usePermissions();
-    const [isLoading, setIsLoading] = useState(false);
+    const [, setIsLoading] = useState(false);
 
     const columns: ColumnDef<Customer>[] = [
         createNumberColumn<Customer>(),
@@ -66,7 +66,6 @@ export default function Index({ customers }: Props) {
             header: 'Address',
         },
         ActionColumn<Customer>({
-            hasPermission: hasPermission,
             actions: (customer) => [
                 {
                     label: 'View Details',

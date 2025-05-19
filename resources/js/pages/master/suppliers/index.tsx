@@ -41,7 +41,7 @@ type Supplier = {
 export default function Index({ suppliers }: Props) {
     useToastNotification();
     const { hasPermission } = usePermissions();
-    const [isLoading, setIsLoading] = useState(false);
+    const [, setIsLoading] = useState(false);
 
     const columns: ColumnDef<Supplier>[] = [
         createNumberColumn<Supplier>(),
