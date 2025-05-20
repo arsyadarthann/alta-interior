@@ -8,7 +8,7 @@ import { useToastNotification } from '@/hooks/use-toast-notification';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
-import { type ColumnDef } from '@tanstack/react-table';
+import { type ColumnDef, Row } from '@tanstack/react-table';
 import { Eye, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -56,6 +56,10 @@ export default function Index({ customers }: Props) {
         {
             accessorKey: 'email',
             header: 'Email',
+            cell: ({ row }: { row: Row<Customer> }) => {
+                const email = row.getValue('email') as string;
+                return email ? email : '-';
+            },
         },
         {
             accessorKey: 'phone',
@@ -66,6 +70,7 @@ export default function Index({ customers }: Props) {
             header: 'Address',
         },
         ActionColumn<Customer>({
+            hasPermission,
             actions: (customer) => [
                 {
                     label: 'View Details',
