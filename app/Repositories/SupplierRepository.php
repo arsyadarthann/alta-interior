@@ -15,9 +15,18 @@ class SupplierRepository implements SupplierInterface
         return $this->supplier->all();
     }
 
-    public function getAllPaginate()
+    public function getAllPaginate($filter)
     {
-        return $this->supplier->orderBy('id')->paginate(10);
+        $query = $this->supplier->orderBy('id');
+
+        if (!empty($filter['search'])) {
+            $searchTerm = strtolower($filter['search']);
+            $query->where(function ($query) use ($searchTerm) {
+                $query->whereRaw("LOWER(name) LIKE '%{$searchTerm}%'");
+            });
+        }
+
+        return $query->paginate(10)->withQueryString();
     }
 
     public function getById(int $id)

@@ -1,25 +1,25 @@
-import { type BreadcrumbItem } from '@/types';
-import { Head, router, useForm } from '@inertiajs/react';
-import React, { useState } from 'react';
+import { DataTable } from '@/components/data-table';
+import { ActionColumn } from '@/components/data-table/action-column';
+import { createNumberColumn } from '@/components/data-table/columns';
+import { FormDialog } from '@/components/form-dialog';
+import HeadingSmall from '@/components/heading-small';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { usePermissions } from '@/hooks/use-permissions';
+import { useToastNotification } from '@/hooks/use-toast-notification';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
-import HeadingSmall from '@/components/heading-small';
-import { useToastNotification } from "@/hooks/use-toast-notification";
-import { ColumnDef, Row } from "@tanstack/react-table";
-import { createNumberColumn } from "@/components/data-table/columns";
-import { ActionColumn } from "@/components/data-table/action-column";
-import { Plus, Pencil, Trash2 } from "lucide-react";
-import { DataTable } from "@/components/data-table";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { usePermissions } from "@/hooks/use-permissions";
-import { FormDialog } from "@/components/form-dialog";
+import { type BreadcrumbItem } from '@/types';
+import { Head, router, useForm } from '@inertiajs/react';
+import { ColumnDef, Row } from '@tanstack/react-table';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
+import React, { useState } from 'react';
 
 type Permission = {
     id: number;
     name: string;
-}
+};
 
 interface Props {
     permissions: Permission[];
@@ -48,7 +48,7 @@ export default function Permission({ permissions }: Props) {
             onSuccess: () => {
                 setIsCreateModalOpen(false);
                 createForm.reset('name');
-            }
+            },
         });
     };
 
@@ -62,23 +62,23 @@ export default function Permission({ permissions }: Props) {
             onSuccess: () => {
                 setIsEditModalOpen(false);
                 setSelectedPermission(undefined);
-            }
+            },
         });
     };
 
     const columns: ColumnDef<Permission>[] = [
         createNumberColumn<Permission>(),
         {
-            accessorKey: "name",
-            header: "Name",
-            cell: ({ row }: { row: Row<Permission> }) => row.original.name
+            accessorKey: 'name',
+            header: 'Name',
+            cell: ({ row }: { row: Row<Permission> }) => row.original.name,
         },
-        (hasPermission('update_permission') || hasPermission('delete_permission')) && (
+        (hasPermission('update_permission') || hasPermission('delete_permission')) &&
             ActionColumn<Permission>({
                 hasPermission: hasPermission,
                 actions: (permission) => [
                     {
-                        label: "Edit",
+                        label: 'Edit',
                         icon: <Pencil className="h-4 w-4" />,
                         onClick: (data) => {
                             setSelectedPermission(data);
@@ -88,12 +88,12 @@ export default function Permission({ permissions }: Props) {
                         permission: 'update_permission',
                     },
                     {
-                        label: "Delete",
+                        label: 'Delete',
                         icon: <Trash2 className="h-4 w-4" />,
-                        className: "text-red-600",
+                        className: 'text-red-600',
                         showConfirmDialog: true,
                         confirmDialogProps: {
-                            title: "Delete Permission",
+                            title: 'Delete Permission',
                             description: `This action cannot be undone. This will permanently delete ${permission.name}.`,
                         },
                         onClick: (data) => {
@@ -102,10 +102,9 @@ export default function Permission({ permissions }: Props) {
                             });
                         },
                         permission: 'delete_permission',
-                    }
+                    },
                 ],
-            })
-        )
+            }),
     ].filter(Boolean) as ColumnDef<Permission>[];
 
     return (
@@ -115,26 +114,17 @@ export default function Permission({ permissions }: Props) {
             <SettingsLayout>
                 <div className="space-y-6">
                     <div className="flex items-center justify-between">
-                        <HeadingSmall
-                            title="Permissions"
-                            description="Manage your permissions."
-                        />
+                        <HeadingSmall title="Permissions" description="Manage your permissions." />
 
                         {hasPermission('create_permission') && (
-                            <Button
-                                onClick={() => setIsCreateModalOpen(true)}
-                                className="flex items-center gap-2"
-                            >
+                            <Button onClick={() => setIsCreateModalOpen(true)} className="flex items-center gap-2">
                                 <Plus className="h-4 w-4" />
                                 Add Permission
                             </Button>
                         )}
                     </div>
 
-                    <DataTable
-                        columns={columns}
-                        data={permissions}
-                    />
+                    <DataTable columns={columns} data={permissions} searchable={false} />
 
                     <FormDialog
                         title="Add Permission"
@@ -146,15 +136,15 @@ export default function Permission({ permissions }: Props) {
                         submitLabel="Create"
                         processingLabel="Creating..."
                     >
-                        <div className="space-y-2 relative grid gap-2">
+                        <div className="relative grid gap-2 space-y-2">
                             <Label htmlFor="name">Permission Name</Label>
                             <Input
                                 id="name"
                                 type="text"
                                 value={createForm.data.name}
-                                onChange={e => createForm.setData('name', e.target.value)}
+                                onChange={(e) => createForm.setData('name', e.target.value)}
                                 placeholder="Enter permission name"
-                                className={createForm.errors.name ? "border-red-500 ring-red-100" : ""}
+                                className={createForm.errors.name ? 'border-red-500 ring-red-100' : ''}
                             />
                         </div>
                     </FormDialog>
@@ -169,15 +159,15 @@ export default function Permission({ permissions }: Props) {
                         submitLabel="Save Changes"
                         processingLabel="Saving..."
                     >
-                        <div className="space-y-2 relative grid gap-2">
+                        <div className="relative grid gap-2 space-y-2">
                             <Label htmlFor="edit_name">Permission Name</Label>
                             <Input
                                 id="edit_name"
                                 type="text"
                                 value={editForm.data.name}
-                                onChange={e => editForm.setData('name', e.target.value)}
+                                onChange={(e) => editForm.setData('name', e.target.value)}
                                 placeholder="Enter permission name"
-                                className={editForm.errors.name ? "border-red-500 ring-red-100" : ""}
+                                className={editForm.errors.name ? 'border-red-500 ring-red-100' : ''}
                             />
                         </div>
                     </FormDialog>
@@ -191,5 +181,5 @@ const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Permissions',
         href: route('permissions.index'),
-    }
+    },
 ];

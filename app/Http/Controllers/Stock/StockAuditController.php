@@ -17,21 +17,22 @@ class StockAuditController extends Controller
 
     public function index(Request $request)
     {
+        $filters = $request->only(['search']);
         $sourceAbleId = $request->query('source_able_id');
         $sourceAbleType = $request->query('source_able_type');
 
         if ($sourceAbleType === 'Branch') {
-            $stockAudits = $this->stockAudit->getAllByBranch($sourceAbleId)->appends([
+            $stockAudits = $this->stockAudit->getAllByBranch($filters, $sourceAbleId)->appends([
                 'source_able_id' => $sourceAbleId,
                 'source_able_type' => $sourceAbleType,
             ]);
         } elseif ($sourceAbleType === 'Warehouse') {
-            $stockAudits = $this->stockAudit->getAllByWarehouse($sourceAbleId)->appends([
+            $stockAudits = $this->stockAudit->getAllByWarehouse($filters, $sourceAbleId)->appends([
                 'source_able_id' => $sourceAbleId,
                 'source_able_type' => $sourceAbleType,
             ]);
         } else {
-            $stockAudits = $this->stockAudit->getAll();
+            $stockAudits = $this->stockAudit->getAll($filters);
         }
 
         return Inertia::render('stock/audit/index', [
@@ -40,6 +41,7 @@ class StockAuditController extends Controller
             'warehouses' => $this->warehouse->getAll(),
             'selectedSourceAbleId' => $sourceAbleId,
             'selectedSourceAbleType' => $sourceAbleType,
+            'filters' => $filters,
         ]);
 
     }

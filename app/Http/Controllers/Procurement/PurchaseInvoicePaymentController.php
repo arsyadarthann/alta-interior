@@ -16,10 +16,12 @@ class PurchaseInvoicePaymentController extends Controller
 {
     public function __construct(private PurchaseInvoicePaymentInterface $purchaseInvoicePayment, private PurchaseInvoiceInterface $purchaseInvoice, private SupplierInterface $supplier, private PaymentMethodInterface $paymentMethod) {}
 
-    public function index()
+    public function index(Request $request)
     {
+        $filters = $request->only(['search']);
         return Inertia::render('procurement/invoices/payment/index', [
-            'purchaseInvoicePayments' => $this->purchaseInvoicePayment->getAll(),
+            'purchaseInvoicePayments' => $this->purchaseInvoicePayment->getAll($filters),
+            'filters' => $filters,
         ]);
     }
 

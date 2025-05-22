@@ -9,7 +9,7 @@ import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
 import { type ColumnDef, Row } from '@tanstack/react-table';
 import { Plus } from 'lucide-react';
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -30,6 +30,9 @@ interface Props {
         per_page: number;
         total: number;
     };
+    filters?: {
+        search?: string;
+    };
 }
 
 type PurchaseInvoicePayment = {
@@ -44,12 +47,63 @@ type PurchaseInvoicePayment = {
     grand_total: number;
     status: string;
     remaining_amount: number;
+    amount: number;
+    user: {
+        name: string;
+    };
 };
 
-export default function Index({ purchaseInvoicePayments }: Props) {
+export default function Index({ purchaseInvoicePayments, filters }: Props) {
     useToastNotification();
     const { hasPermission } = usePermissions();
-    const [, setIsLoading] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    const [search, setSearch] = useState(filters?.search || '');
+
+    // Custom debounce hook
+    function useDebounce(callback: Function, delay: number) {
+        const timeoutRef = useRef<NodeJS.Timeout>();
+
+        return useCallback(
+            (...args: any[]) => {
+                if (timeoutRef.current) {
+                    clearTimeout(timeoutRef.current);
+                }
+
+                timeoutRef.current = setTimeout(() => {
+                    callback(...args);
+                }, delay);
+            },
+            [callback, delay],
+        );
+    }
+
+    // Debounced search handler to reduce excessive requests
+    const debouncedSearch = useDebounce((value: string) => {
+        router.get(
+            route('procurement.payment.index'),
+            { search: value, page: 1 }, // Reset page to 1 when search changes
+            {
+                preserveState: true,
+                preserveScroll: true,
+                only: ['purchaseInvoicePayments'],
+                onBefore: () => setIsLoading(true),
+                onFinish: () => setIsLoading(false),
+            },
+        );
+    }, 500);
+
+    // Set search state when component mounts
+    useEffect(() => {
+        if (filters?.search !== undefined) {
+            setSearch(filters.search);
+        }
+    }, []); // Run once on mount
+
+    // Handle search change
+    const handleSearchChange = (value: string) => {
+        setSearch(value);
+        debouncedSearch(value);
+    };
 
     const formatDate = (dateString: string): string => {
         const date = new Date(dateString);
@@ -104,20 +158,6 @@ export default function Index({ purchaseInvoicePayments }: Props) {
         },
     ].filter(Boolean) as ColumnDef<PurchaseInvoicePayment>[];
 
-    const handlePageChange = (page: number) => {
-        setIsLoading(true);
-        router.get(
-            route('procurement.payment.index'),
-            { page },
-            {
-                preserveState: true,
-                preserveScroll: true,
-                only: ['purchaseInvoices'],
-                onFinish: () => setIsLoading(false),
-            },
-        );
-    };
-
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Invoice Payment" />
@@ -139,11 +179,28 @@ export default function Index({ purchaseInvoicePayments }: Props) {
                 <DataTable
                     columns={columns}
                     data={purchaseInvoicePayments.data}
+                    searchable={true}
+                    searchPlaceholder="Search by code or created by..."
+                    searchValue={search}
+                    onSearchChange={handleSearchChange}
                     serverPagination={{
                         pageCount: purchaseInvoicePayments.last_page,
                         currentPage: purchaseInvoicePayments.current_page,
                         totalItems: purchaseInvoicePayments.total,
-                        onPageChange: handlePageChange,
+                        isLoading: isLoading,
+                        onPageChange: (page) => {
+                            router.get(
+                                route('procurement.payment.index'),
+                                { page, search },
+                                {
+                                    preserveState: true,
+                                    preserveScroll: true,
+                                    only: ['purchaseInvoicePayments'],
+                                    onBefore: () => setIsLoading(true),
+                                    onFinish: () => setIsLoading(false),
+                                },
+                            );
+                        },
                     }}
                 />
             </div>

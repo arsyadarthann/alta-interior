@@ -379,7 +379,7 @@ export default function Show({ waybill }: WaybillProps) {
                                 </div>
 
                                 {waybill.waybill_details.length > 0 ? (
-                                    <DataTable data={waybill.waybill_details} columns={columns} pageSize={10} />
+                                    <DataTable data={waybill.waybill_details} columns={columns} searchable={false} pageSize={10} />
                                 ) : (
                                     <div className="py-8 text-center text-gray-500">
                                         <p>No items found in this waybill</p>

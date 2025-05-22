@@ -19,13 +19,25 @@ class WaybillRepository implements WaybillInterface
 
     public function __construct(private Waybill $waybill, private WaybillDetail $waybillDetail, private SalesOrder $salesOrder, private SalesOrderDetail $salesOrderDetail) {}
 
-    public function getAll($branch_id = null)
+    public function getAll($filter, $branch_id = null)
     {
-        return $this->waybill->with(self::GENERAL_RELATIONSHIPS)
+        $query = $this->waybill->with(self::GENERAL_RELATIONSHIPS)
             ->when($branch_id, fn($query) => $query->where('branch_id', $branch_id))
             ->orderBy('id', 'desc')
-            ->orderBy('code', 'desc')
-            ->paginate(10);
+            ->orderBy('code', 'desc');
+
+        if (!empty($filter['search'])) {
+            $searchTerm = strtolower($filter['search']);
+            $query->whereRaw("LOWER(code) LIKE '%{$filter['search']}%'")
+                ->orWhereHas('user', function($q) use ($searchTerm) {
+                    $q->whereRaw("LOWER(name) LIKE '%{$searchTerm}%'");
+                })
+                ->orWhereHas('salesOrder', function($q) use ($searchTerm) {
+                    $q->whereRaw("LOWER(code) LIKE '%{$searchTerm}%'");
+                });
+        }
+
+        return $query->paginate(10)->withQueryString();
     }
 
     public function getById($id)

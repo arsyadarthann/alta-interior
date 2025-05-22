@@ -1,26 +1,26 @@
-import { type BreadcrumbItem } from '@/types';
-import { Head, router, useForm } from '@inertiajs/react';
-import React, { useState } from 'react';
+import { DataTable } from '@/components/data-table';
+import { ActionColumn } from '@/components/data-table/action-column';
+import { createNumberColumn } from '@/components/data-table/columns';
+import { FormDialog } from '@/components/form-dialog';
+import HeadingSmall from '@/components/heading-small';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { usePermissions } from '@/hooks/use-permissions';
+import { useToastNotification } from '@/hooks/use-toast-notification';
 import AppLayout from '@/layouts/app-layout';
 import InventoryLayout from '@/layouts/inventory/layout';
-import HeadingSmall from '@/components/heading-small';
-import { useToastNotification } from "@/hooks/use-toast-notification";
-import { ColumnDef, Row } from "@tanstack/react-table";
-import { createNumberColumn } from "@/components/data-table/columns";
-import { ActionColumn } from "@/components/data-table/action-column";
-import { Pencil, Plus, Trash2 } from "lucide-react";
-import { DataTable } from "@/components/data-table";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { usePermissions } from "@/hooks/use-permissions";
-import { FormDialog } from "@/components/form-dialog";
+import { type BreadcrumbItem } from '@/types';
+import { Head, router, useForm } from '@inertiajs/react';
+import { ColumnDef, Row } from '@tanstack/react-table';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
+import React, { useState } from 'react';
 
 type ItemUnit = {
     id: number;
     name: string;
     abbreviation: string;
-}
+};
 
 interface Props {
     itemUnits: ItemUnit[];
@@ -51,7 +51,7 @@ export default function ItemUnit({ itemUnits }: Props) {
             onSuccess: () => {
                 setIsCreateModalOpen(false);
                 createForm.reset('name');
-            }
+            },
         });
     };
 
@@ -65,32 +65,32 @@ export default function ItemUnit({ itemUnits }: Props) {
             onSuccess: () => {
                 setIsEditModalOpen(false);
                 setSelectedItemUnit(undefined);
-            }
+            },
         });
     };
 
     const columns: ColumnDef<ItemUnit>[] = [
         createNumberColumn<ItemUnit>(),
         {
-            accessorKey: "name",
-            header: "Unit Name",
+            accessorKey: 'name',
+            header: 'Unit Name',
             cell: ({ row }: { row: Row<ItemUnit> }) => {
                 return row.original.name;
-            }
+            },
         },
         {
-            accessorKey: "abbreviation",
-            header: "Abbreviation",
+            accessorKey: 'abbreviation',
+            header: 'Abbreviation',
             cell: ({ row }: { row: Row<ItemUnit> }) => {
                 return row.original.abbreviation;
-            }
+            },
         },
-        (hasPermission('update_item_unit') || hasPermission('delete_item_unit')) && (
+        (hasPermission('update_item_unit') || hasPermission('delete_item_unit')) &&
             ActionColumn<ItemUnit>({
                 hasPermission: hasPermission,
                 actions: (itemUnit) => [
                     {
-                        label: "Edit",
+                        label: 'Edit',
                         icon: <Pencil className="h-4 w-4" />,
                         onClick: (data) => {
                             setSelectedItemUnit(data);
@@ -103,12 +103,12 @@ export default function ItemUnit({ itemUnits }: Props) {
                         permission: 'update_item_unit',
                     },
                     {
-                        label: "Delete",
+                        label: 'Delete',
                         icon: <Trash2 className="h-4 w-4" />,
-                        className: "text-red-600",
+                        className: 'text-red-600',
                         showConfirmDialog: true,
                         confirmDialogProps: {
-                            title: "Delete Item Retail Unit",
+                            title: 'Delete Item Retail Unit',
                             description: `This action cannot be undone. This will permanently delete the "${itemUnit.name}" unit.`,
                         },
                         onClick: (data) => {
@@ -117,10 +117,9 @@ export default function ItemUnit({ itemUnits }: Props) {
                             });
                         },
                         permission: 'delete_item_unit',
-                    }
+                    },
                 ],
-            })
-        )
+            }),
     ].filter(Boolean) as ColumnDef<ItemUnit>[];
 
     return (
@@ -130,25 +129,16 @@ export default function ItemUnit({ itemUnits }: Props) {
             <InventoryLayout>
                 <div className="space-y-6">
                     <div className="flex items-center justify-between">
-                        <HeadingSmall
-                            title="Item Retail Unit"
-                            description="Manage your item retail units."
-                        />
+                        <HeadingSmall title="Item Retail Unit" description="Manage your item retail units." />
                         {hasPermission('create_item_unit') && (
-                            <Button
-                                onClick={() => setIsCreateModalOpen(true)}
-                                className="flex items-center gap-2"
-                            >
+                            <Button onClick={() => setIsCreateModalOpen(true)} className="flex items-center gap-2">
                                 <Plus className="h-4 w-4" />
                                 Add Item Retail Unit
                             </Button>
                         )}
                     </div>
 
-                    <DataTable
-                        columns={columns}
-                        data={itemUnits}
-                    />
+                    <DataTable columns={columns} data={itemUnits} searchable={false} />
 
                     <FormDialog
                         title="Add Item Retail Unit"
@@ -160,7 +150,7 @@ export default function ItemUnit({ itemUnits }: Props) {
                         submitLabel="Create"
                         processingLabel="Creating..."
                     >
-                        <div className="space-y-2 relative grid gap-2">
+                        <div className="relative grid gap-2 space-y-2">
                             <Label htmlFor="name">
                                 Retail Unit Name <span className="text-red-500">*</span>
                             </Label>
@@ -168,12 +158,12 @@ export default function ItemUnit({ itemUnits }: Props) {
                                 id="name"
                                 type="text"
                                 value={createForm.data.name}
-                                onChange={e => createForm.setData('name', e.target.value)}
+                                onChange={(e) => createForm.setData('name', e.target.value)}
                                 placeholder="Enter unit name"
-                                className={createForm.errors.name ? "border-red-500 ring-red-100" : ""}
+                                className={createForm.errors.name ? 'border-red-500 ring-red-100' : ''}
                             />
                         </div>
-                        <div className="space-y-2 relative grid gap-2">
+                        <div className="relative grid gap-2 space-y-2">
                             <Label htmlFor="abbreviation">
                                 Abbreviation <span className="text-red-500">*</span>
                             </Label>
@@ -181,9 +171,9 @@ export default function ItemUnit({ itemUnits }: Props) {
                                 id="abbreviation"
                                 type="text"
                                 value={createForm.data.abbreviation}
-                                onChange={e => createForm.setData('abbreviation', e.target.value)}
+                                onChange={(e) => createForm.setData('abbreviation', e.target.value)}
                                 placeholder="Enter abbreviation"
-                                className={createForm.errors.abbreviation ? "border-red-500 ring-red-100" : ""}
+                                className={createForm.errors.abbreviation ? 'border-red-500 ring-red-100' : ''}
                             />
                         </div>
                     </FormDialog>
@@ -198,26 +188,26 @@ export default function ItemUnit({ itemUnits }: Props) {
                         submitLabel="Save Changes"
                         processingLabel="Saving..."
                     >
-                        <div className="space-y-2 relative grid gap-2">
+                        <div className="relative grid gap-2 space-y-2">
                             <Label htmlFor="edit_name">Retail Unit Name</Label>
                             <Input
                                 id="edit_name"
                                 type="text"
                                 value={editForm.data.name}
-                                onChange={e => editForm.setData('name', e.target.value)}
+                                onChange={(e) => editForm.setData('name', e.target.value)}
                                 placeholder="Enter category name"
-                                className={editForm.errors.name ? "border-red-500 ring-red-100" : ""}
+                                className={editForm.errors.name ? 'border-red-500 ring-red-100' : ''}
                             />
                         </div>
-                        <div className="space-y-2 relative grid gap-2">
+                        <div className="relative grid gap-2 space-y-2">
                             <Label htmlFor="edit_abbreviation">Unit Name</Label>
                             <Input
                                 id="edit_abbreviation"
                                 type="text"
                                 value={editForm.data.abbreviation}
-                                onChange={e => editForm.setData('abbreviation', e.target.value)}
+                                onChange={(e) => editForm.setData('abbreviation', e.target.value)}
                                 placeholder="Enter abbreviation"
-                                className={editForm.errors.abbreviation ? "border-red-500 ring-red-100" : ""}
+                                className={editForm.errors.abbreviation ? 'border-red-500 ring-red-100' : ''}
                             />
                         </div>
                     </FormDialog>
@@ -231,5 +221,5 @@ const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Item Retail Unit',
         href: route('unit.index'),
-    }
+    },
 ];

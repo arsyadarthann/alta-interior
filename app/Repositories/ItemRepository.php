@@ -35,7 +35,7 @@ class ItemRepository implements ItemInterface
         return $query->orderBy('id')->get();
     }
 
-    public function getAllPaginate($sourceId = null, $sourceType = null)
+    public function getAllPaginate($filter, $sourceId = null, $sourceType = null)
     {
         $query = $this->item->with(['itemCategory:id,name', 'itemWholesaleUnit:id,name,abbreviation', 'itemUnit:id,name,abbreviation']);
 
@@ -47,7 +47,18 @@ class ItemRepository implements ItemInterface
                 ' AND item_batches.source_able_type = \'' . $sourceType . '\'' : '') .
             '), 0) as stock');
 
-        return $query->orderBy('id')->paginate(10);
+        if (!empty($filter['search'])) {
+            $searchTerm = strtolower($filter['search']);
+            $query->where(function ($query) use ($searchTerm) {
+                $query->whereRaw("LOWER(name) LIKE '%{$searchTerm}%'")
+                    ->orWhereRaw("LOWER(code) LIKE '%{$searchTerm}%'")
+                    ->orWhereHas('itemCategory', function ($query) use ($searchTerm) {
+                        $query->whereRaw("LOWER(name) LIKE '%{$searchTerm}%'");
+                    });
+            });
+        }
+
+        return $query->orderBy('id')->paginate(10)->withQueryString();
     }
 
     public function getAllByBranch($branchId = null)
@@ -55,9 +66,9 @@ class ItemRepository implements ItemInterface
         return $this->getAll($branchId, Branch::class);
     }
 
-    public function getAllPaginateByBranch($branchId = null)
+    public function getAllPaginateByBranch($filter, $branchId = null)
     {
-        return $this->getAllPaginate($branchId, Branch::class);
+        return $this->getAllPaginate($filter, $branchId, Branch::class);
     }
 
     public function getAllByWarehouse($warehouseId = null)
@@ -65,9 +76,9 @@ class ItemRepository implements ItemInterface
         return $this->getAll($warehouseId, Warehouse::class);
     }
 
-    public function getAllPaginateByWarehouse($warehouseId = null)
+    public function getAllPaginateByWarehouse($filter, $warehouseId = null)
     {
-        return $this->getAllPaginate($warehouseId, Warehouse::class);
+        return $this->getAllPaginate($filter, $warehouseId, Warehouse::class);
     }
 
     public function getById(int $id)

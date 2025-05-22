@@ -11,7 +11,7 @@ import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
 import { type ColumnDef, Row } from '@tanstack/react-table';
 import { Eye, Plus } from 'lucide-react';
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -32,6 +32,9 @@ interface Props {
         per_page: number;
         total: number;
     };
+    filters?: {
+        search?: string;
+    };
 }
 
 type GoodsReceipt = {
@@ -43,17 +46,65 @@ type GoodsReceipt = {
         name: string;
     };
     received_by: string;
+    status: string;
 };
 
-export default function Index({ goodsReceipts }: Props) {
+export default function Index({ goodsReceipts, filters }: Props) {
     useToastNotification();
     const { hasPermission } = usePermissions();
     const [isLoading, setIsLoading] = useState(false);
+    const [search, setSearch] = useState(filters?.search || '');
 
     const formatDate = (dateString: string): string => {
         const date = new Date(dateString);
         const [year, month, day] = date.toISOString().split('T')[0].split('-');
         return `${year}-${month}-${day}`;
+    };
+
+    // Custom debounce hook
+    function useDebounce(callback: Function, delay: number) {
+        const timeoutRef = useRef<NodeJS.Timeout>();
+
+        return useCallback(
+            (...args: any[]) => {
+                if (timeoutRef.current) {
+                    clearTimeout(timeoutRef.current);
+                }
+
+                timeoutRef.current = setTimeout(() => {
+                    callback(...args);
+                }, delay);
+            },
+            [callback, delay],
+        );
+    }
+
+    // Debounced search handler to reduce excessive requests
+    const debouncedSearch = useDebounce((value: string) => {
+        router.get(
+            route('procurement.receipt.index'),
+            { search: value, page: 1 }, // Reset page to 1 when search changes
+            {
+                preserveState: true,
+                preserveScroll: true,
+                only: ['goodsReceipts'],
+                onBefore: () => setIsLoading(true),
+                onFinish: () => setIsLoading(false),
+            },
+        );
+    }, 500);
+
+    // Set search state when component mounts
+    useEffect(() => {
+        if (filters?.search !== undefined) {
+            setSearch(filters.search);
+        }
+    }, []); // Run once on mount
+
+    // Handle search change
+    const handleSearchChange = (value: string) => {
+        setSearch(value);
+        debouncedSearch(value);
     };
 
     const getStatusBadge = (status: string) => {
@@ -126,20 +177,6 @@ export default function Index({ goodsReceipts }: Props) {
         }),
     ].filter(Boolean) as ColumnDef<GoodsReceipt>[];
 
-    const handlePageChange = (page: number) => {
-        setIsLoading(true);
-        router.get(
-            route('procurement.receipt.index'),
-            { page },
-            {
-                preserveState: true,
-                preserveScroll: true,
-                only: ['goodsReceipts'],
-                onFinish: () => setIsLoading(false),
-            },
-        );
-    };
-
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Goods Receipt" />
@@ -161,11 +198,28 @@ export default function Index({ goodsReceipts }: Props) {
                 <DataTable
                     columns={columns}
                     data={goodsReceipts.data}
+                    searchable={true}
+                    searchPlaceholder="Search by code, supplier, or received by..."
+                    searchValue={search}
+                    onSearchChange={handleSearchChange}
                     serverPagination={{
                         pageCount: goodsReceipts.last_page,
                         currentPage: goodsReceipts.current_page,
                         totalItems: goodsReceipts.total,
-                        onPageChange: handlePageChange,
+                        isLoading: isLoading,
+                        onPageChange: (page) => {
+                            router.get(
+                                route('procurement.receipt.index'),
+                                { page, search },
+                                {
+                                    preserveState: true,
+                                    preserveScroll: true,
+                                    only: ['goodsReceipts'],
+                                    onBefore: () => setIsLoading(true),
+                                    onFinish: () => setIsLoading(false),
+                                },
+                            );
+                        },
                     }}
                 />
             </div>

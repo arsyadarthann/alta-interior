@@ -13,7 +13,7 @@ import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { type ColumnDef, Row } from '@tanstack/react-table';
 import { Eye, Lock, Pencil, Plus, Trash2 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -38,6 +38,9 @@ interface Props {
     warehouses: Warehouse[];
     selectedSourceAbleId?: string;
     selectedSourceAbleType?: string;
+    filters?: {
+        search?: string;
+    };
 }
 
 type Branch = {
@@ -65,15 +68,16 @@ type StockAudit = {
     is_locked: boolean;
 };
 
-export default function Index({ stockAudits, branches, warehouses, selectedSourceAbleId = '', selectedSourceAbleType = '' }: Props) {
+export default function Index({ stockAudits, branches, warehouses, selectedSourceAbleId = '', selectedSourceAbleType = '', filters }: Props) {
     useToastNotification();
 
     const { hasPermission } = usePermissions();
     const { auth } = usePage().props as unknown as {
         auth: { user: { branch_id: number } };
     };
-    const [, setIsLoading] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
     const initialLoadComplete = useRef(false);
+    const [search, setSearch] = useState(filters?.search || '');
 
     const getDefaultSourceValue = () => {
         if (auth.user.branch_id) {
@@ -88,6 +92,47 @@ export default function Index({ stockAudits, branches, warehouses, selectedSourc
     };
 
     const [currentSource, setCurrentSource] = useState(getDefaultSourceValue());
+
+    // Custom debounce hook
+    function useDebounce(callback: Function, delay: number) {
+        const timeoutRef = useRef<NodeJS.Timeout>();
+
+        return useCallback(
+            (...args: any[]) => {
+                if (timeoutRef.current) {
+                    clearTimeout(timeoutRef.current);
+                }
+
+                timeoutRef.current = setTimeout(() => {
+                    callback(...args);
+                }, delay);
+            },
+            [callback, delay],
+        );
+    }
+
+    // Debounced search handler
+    const debouncedSearch = useDebounce((value: string) => {
+        setIsLoading(true);
+        let params: any = { search: value, page: 1 }; // Reset page ke 1 ketika search berubah
+
+        // Maintain source filtering when searching
+        if (currentSource !== 'all' && !auth.user.branch_id) {
+            const [type, id] = currentSource.split(':');
+            params.source_able_id = id;
+            params.source_able_type = type;
+        } else if (auth.user.branch_id) {
+            params.source_able_id = auth.user.branch_id;
+            params.source_able_type = 'Branch';
+        }
+
+        router.get(route('stock.audit.index'), params, {
+            preserveState: true,
+            preserveScroll: true,
+            only: ['stockAudits'],
+            onFinish: () => setIsLoading(false),
+        });
+    }, 500);
 
     useEffect(() => {
         if (!initialLoadComplete.current && auth?.user?.branch_id) {
@@ -122,6 +167,19 @@ export default function Index({ stockAudits, branches, warehouses, selectedSourc
         }
     }, []);
 
+    // Set search state ketika component mount
+    useEffect(() => {
+        if (filters?.search !== undefined) {
+            setSearch(filters.search);
+        }
+    }, [filters?.search]);
+
+    // Handle search change
+    const handleSearchChange = (value: string) => {
+        setSearch(value);
+        debouncedSearch(value);
+    };
+
     const handleSourceChange = (value: string) => {
         if (auth.user.branch_id) {
             // If user is branch-restricted, don't allow changing
@@ -131,13 +189,18 @@ export default function Index({ stockAudits, branches, warehouses, selectedSourc
         setCurrentSource(value);
         setIsLoading(true);
 
-        let params = {};
+        let params: any = {};
         if (value !== 'all') {
             const [type, id] = value.split(':');
             params = {
                 source_able_id: id,
                 source_able_type: type,
             };
+        }
+
+        // Maintain search when changing source
+        if (search) {
+            params.search = search;
         }
 
         router.get(route('stock.audit.index'), params, {
@@ -160,6 +223,11 @@ export default function Index({ stockAudits, branches, warehouses, selectedSourc
         } else if (auth.user.branch_id) {
             params.source_able_id = auth.user.branch_id;
             params.source_able_type = 'Branch';
+        }
+
+        // Maintain search when changing pages
+        if (search) {
+            params.search = search;
         }
 
         router.get(route('stock.audit.index'), params, {
@@ -319,10 +387,15 @@ export default function Index({ stockAudits, branches, warehouses, selectedSourc
                 <DataTable
                     columns={columns}
                     data={stockAudits.data}
+                    searchable={true}
+                    searchPlaceholder="Search by code or created by..."
+                    searchValue={search}
+                    onSearchChange={handleSearchChange}
                     serverPagination={{
                         pageCount: stockAudits.last_page,
                         currentPage: stockAudits.current_page,
                         totalItems: stockAudits.total,
+                        isLoading: isLoading,
                         onPageChange: handlePageChange,
                     }}
                 />

@@ -19,10 +19,23 @@ class GoodsReceiptRepository implements GoodsReceiptInterface
 {
     public function __construct(private GoodsReceipt $goodsReceipt, private GoodsReceiptDetail $goodsReceiptDetail, private GoodsReceiptPurchaseOrder $goodsReceiptPurchaseOrder, private PurchaseOrder $purchaseOrder, private PurchaseOrderDetail $purchaseOrderDetail) {}
 
-    public function getAll()
+    public function getAll($filter)
     {
-        return $this->goodsReceipt->with('supplier')
-            ->orderByDesc('id')->orderByDesc('date')->Paginate(10);
+        $query = $this->goodsReceipt->with('supplier')
+            ->orderByDesc('id')->orderByDesc('date');
+
+        if (!empty($filter['search'])) {
+            $searchTerm = strtolower($filter['search']);
+            $query->where(function ($query) use ($searchTerm) {
+                $query->whereRaw("LOWER(code) LIKE '%{$searchTerm}%'")
+                    ->orWhereRaw("LOWER(received_by) LIKE '%{$searchTerm}%'")
+                    ->orWhereHas('supplier', function($q) use ($searchTerm) {
+                        $q->whereRaw("LOWER(name) LIKE '%{$searchTerm}%'");
+                    });
+            });
+        }
+
+        return $query->paginate(10)->withQueryString();
     }
 
     public function getById(int $id)

@@ -292,6 +292,7 @@ export default function Index({ salesInvoicePayments, branches, selectedBranchId
                 <DataTable
                     columns={columns}
                     data={salesInvoicePayments.data}
+                    searchable={false}
                     serverPagination={{
                         pageCount: salesInvoicePayments.last_page,
                         currentPage: salesInvoicePayments.current_page,

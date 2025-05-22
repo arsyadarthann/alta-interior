@@ -21,14 +21,26 @@ class SalesOrderRepository implements SalesOrderInterface
 
     public function __construct(private SalesOrder $salesOrder) {}
 
-    public function getAll($branch_id = null)
+    public function getAll($filter, $branch_id = null)
     {
-        return $this->salesOrder
+        $query = $this->salesOrder
             ->with(self::GENERAL_RELATIONSHIPS)
             ->when($branch_id, fn ($query) => $query->where('branch_id', $branch_id))
             ->orderBy('id', 'desc')
-            ->orderBy('code', 'desc')
-            ->paginate(10);
+            ->orderBy('code', 'desc');
+
+        if (!empty($filter['search'])) {
+            $searchTerm = strtolower($filter['search']);
+            $query->whereRaw("LOWER(code) LIKE '%{$filter['search']}%'")
+                ->orWhereHas('user', function($q) use ($searchTerm) {
+                    $q->whereRaw("LOWER(name) LIKE '%{$searchTerm}%'");
+                })
+                ->orWhereHas('customer', function($q) use ($searchTerm) {
+                    $q->whereRaw("LOWER(name) LIKE '%{$searchTerm}%'");
+                });
+        }
+
+        return $query->paginate(10)->withQueryString();
     }
 
     public function getById($id)

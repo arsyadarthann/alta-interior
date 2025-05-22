@@ -14,10 +14,13 @@ class CustomerController extends Controller
 {
     public function __construct(private CustomerInterface $customer, private ItemInterface $item) {}
 
-    public function index()
+    public function index(Request $request)
     {
+        $filters = $request->only(['search']);
+
         return Inertia::render('master/customers/index', [
-            'customers' => $this->customer->getAll(),
+            'customers' => $this->customer->getAll($filters),
+            'filters' => $filters,
         ]);
     }
 

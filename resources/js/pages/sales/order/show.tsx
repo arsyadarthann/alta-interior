@@ -400,7 +400,7 @@ export default function Show({ salesOrder }: SalesOrderProps) {
                                 </div>
 
                                 {salesOrder.sales_order_details.length > 0 ? (
-                                    <DataTable data={salesOrder.sales_order_details} columns={columns} pageSize={10} />
+                                    <DataTable data={salesOrder.sales_order_details} columns={columns} searchable={false} pageSize={10} />
                                 ) : (
                                     <div className="py-8 text-center text-gray-500">
                                         <p>No items found in this order</p>

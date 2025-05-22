@@ -18,8 +18,11 @@ class PurchaseOrderController extends Controller
 
     public function index(Request $request)
     {
+        $filters = $request->only(['search']);
+
         return Inertia::render('procurement/order/index', [
-            'purchaseOrders' => $this->purchaseOrder->getAll(),
+            'purchaseOrders' => $this->purchaseOrder->getAll($filters),
+            'filters' => $filters,
         ]);
     }
 

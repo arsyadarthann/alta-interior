@@ -274,7 +274,7 @@ export default function Show({ stockAudit }: StockAuditProps) {
                                 </div>
 
                                 {stockAudit.stock_audit_details.length > 0 ? (
-                                    <DataTable data={stockAudit.stock_audit_details} columns={columns} pageSize={10} />
+                                    <DataTable data={stockAudit.stock_audit_details} columns={columns} searchable={false} pageSize={10} />
                                 ) : (
                                     <div className="py-8 text-center text-gray-500">
                                         <p>No audit items found</p>

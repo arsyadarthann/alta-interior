@@ -251,7 +251,7 @@ export default function Show({ stockTransfer }: StockTransferProps) {
                                 </div>
 
                                 {stockTransfer.stock_transfer_details.length > 0 ? (
-                                    <DataTable data={stockTransfer.stock_transfer_details} columns={columns} pageSize={10} />
+                                    <DataTable data={stockTransfer.stock_transfer_details} columns={columns} searchable={false} pageSize={10} />
                                 ) : (
                                     <div className="py-8 text-center text-gray-500">
                                         <p>No transfer items found</p>

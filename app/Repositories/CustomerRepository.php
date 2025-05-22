@@ -10,9 +10,18 @@ class CustomerRepository implements CustomerInterface
 {
     public function __construct(private Customer $customer) {}
 
-    public function getAll()
+    public function getAll($filter)
     {
-        return $this->customer->orderBy('id')->paginate(10);
+        $query = $this->customer->orderBy('id');
+
+        if (!empty($filter['search'])) {
+            $searchTerm = strtolower($filter['search']);
+            $query->where(function ($query) use ($searchTerm) {
+                $query->whereRaw("LOWER(name) LIKE '%{$searchTerm}%'");
+            });
+        }
+
+        return $query->paginate(10)->withQueryString();
     }
 
     public function getAllNoPaginate()

@@ -15,12 +15,23 @@ class PurchaseOrderRepository implements PurchaseOrderInterface
 
     public function __construct(private PurchaseOrder $purchaseOrder) {}
 
-    public function getAll()
+    public function getAll($filter)
     {
-        return $this->purchaseOrder
+        $query = $this->purchaseOrder
             ->with(self::GENERAL_RELATIONSHIPS)
-            ->orderBy('code', 'desc')
-            ->paginate(10);
+            ->orderBy('code', 'desc');
+
+        if (!empty($filter['search'])) {
+            $searchTerm = strtolower($filter['search']);
+            $query->where(function ($query) use ($searchTerm) {
+                $query->whereRaw("LOWER(code) LIKE '%{$searchTerm}%'")
+                    ->orWhereHas('supplier', function($q) use ($searchTerm) {
+                        $q->whereRaw("LOWER(name) LIKE '%{$searchTerm}%'");
+                    });
+            });
+        }
+
+        return $query->paginate(10)->withQueryString();
     }
 
     public function getById(int $id)

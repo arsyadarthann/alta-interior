@@ -18,9 +18,9 @@ class PurchaseInvoiceRepository implements PurchaseInvoiceInterface
 
     public function __construct(private PurchaseInvoice $purchaseInvoice, private PurchaseInvoiceGoodsReceipt $purchaseInvoiceGoodsReceipt, private PurchaseInvoiceDetail $purchaseInvoiceDetail, private GoodsReceipt $goodsReceipt) {}
 
-    public function getAll()
+    public function getAll($filter)
     {
-        return $this->purchaseInvoice->with(self::GENERAL_RELATIONSHIPS)
+        $query = $this->purchaseInvoice->with(self::GENERAL_RELATIONSHIPS)
             ->orderByRaw("
                 CASE
                     WHEN status = 'unpaid' THEN 1
@@ -29,8 +29,19 @@ class PurchaseInvoiceRepository implements PurchaseInvoiceInterface
                     ELSE 4
                 END
                 ,id DESC
-            ")
-            ->paginate(10);
+            ");
+
+        if (!empty($filter['search'])) {
+            $searchTerm = strtolower($filter['search']);
+            $query->where(function ($query) use ($searchTerm) {
+                $query->whereRaw("LOWER(code) LIKE '%{$searchTerm}%'")
+                    ->orWhereHas('supplier', function($q) use ($searchTerm) {
+                        $q->whereRaw("LOWER(name) LIKE '%{$searchTerm}%'");
+                    });
+            });
+        }
+
+        return $query->paginate(10)->withQueryString();
     }
 
     public function getById(int $id)

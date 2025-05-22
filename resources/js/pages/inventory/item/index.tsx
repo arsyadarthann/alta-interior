@@ -16,7 +16,7 @@ import { type BreadcrumbItem } from '@/types';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { ColumnDef, Row } from '@tanstack/react-table';
 import { Boxes, Pencil, Plus, Trash2 } from 'lucide-react';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 type ItemCategory = {
     id: number;
@@ -81,6 +81,9 @@ interface Props {
     branches: Branch[];
     selectedSourceAbleId?: string;
     selectedSourceAbleType?: string;
+    filters?: {
+        search?: string;
+    };
 }
 
 export default function Item({
@@ -92,6 +95,7 @@ export default function Item({
     branches,
     selectedSourceAbleId = '',
     selectedSourceAbleType = '',
+    filters,
 }: Props) {
     const { hasPermission } = usePermissions();
     const { showErrorToast } = useToastNotification();
@@ -100,17 +104,67 @@ export default function Item({
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedItem, setSelectedItem] = useState<Item | undefined>();
     const { auth } = usePage().props as unknown as { auth: { user: { branch_id: number | null } } };
-    const [, setIsLoading] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    const [search, setSearch] = useState(filters?.search || '');
 
     const getSourceFromSelectedValue = (value: string): { id: number; type: string } => {
-        const [type, id] = value.split(':');
+        const [type, idStr] = value.split(':');
         return {
-            id: parseInt(id),
+            id: parseInt(idStr, 10), // Pastikan parsing ke integer
             type: type,
         };
     };
 
-    // Combine branches and warehouses into a single source list
+    // Custom debounce hook
+    function useDebounce(callback: Function, delay: number) {
+        const timeoutRef = useRef<NodeJS.Timeout>();
+
+        return useCallback(
+            (...args: any[]) => {
+                if (timeoutRef.current) {
+                    clearTimeout(timeoutRef.current);
+                }
+
+                timeoutRef.current = setTimeout(() => {
+                    callback(...args);
+                }, delay);
+            },
+            [callback, delay],
+        );
+    }
+
+    // Debounced search handler
+    const debouncedSearch = useDebounce((value: string) => {
+        setIsLoading(true);
+        let params: any = { search: value, page: 1 };
+
+        if (selectedSource && selectedSource !== 'all') {
+            const sourceDetails = getSourceFromSelectedValue(selectedSource);
+            params.source_able_id = sourceDetails.id; // DIPERBAIKI: Menggunakan id (number)
+            params.source_able_type = sourceDetails.type;
+        }
+
+        router.get(route('item.index'), params, {
+            preserveState: true,
+            preserveScroll: true,
+            only: ['items'],
+            onFinish: () => setIsLoading(false),
+        });
+    }, 500);
+
+    // Set search state ketika component mount
+    useEffect(() => {
+        if (filters?.search !== undefined) {
+            setSearch(filters.search);
+        }
+    }, [filters?.search]);
+
+    // Handle search change
+    const handleSearchChange = (value: string) => {
+        setSearch(value);
+        debouncedSearch(value);
+    };
+
     const sources: SourceItem[] = useMemo(() => {
         const branchSources = branches.map((branch) => ({
             id: branch.id,
@@ -127,29 +181,19 @@ export default function Item({
         return [...warehouseSources, ...branchSources];
     }, [branches, warehouses]);
 
-    // Determine default selected source
     const defaultSource = useMemo(() => {
-        // If user has a branch_id, use that branch
         if (auth?.user?.branch_id) {
             return `Branch:${auth.user.branch_id}`;
         }
-
-        // If there's a selected source from props
         if (selectedSourceAbleId && selectedSourceAbleType) {
             return `${selectedSourceAbleType}:${selectedSourceAbleId}`;
         }
-
-        // Default to first warehouse if available
         if (warehouses.length > 0) {
             return `Warehouse:${warehouses[0].id}`;
         }
-
-        // If no warehouses, default to first branch if available
         if (branches.length > 0) {
             return `Branch:${branches[0].id}`;
         }
-
-        // Fallback to "all" option if no sources available
         return 'all';
     }, [auth?.user?.branch_id, selectedSourceAbleId, selectedSourceAbleType, warehouses, branches]);
 
@@ -157,35 +201,28 @@ export default function Item({
 
     // Fetch items based on selected source
     useEffect(() => {
-        if (selectedSource && selectedSource !== 'all') {
-            setIsLoading(true);
-            const [type, id] = selectedSource.split(':');
-            router.get(
-                route('item.index'),
-                {
-                    source_able_id: id,
-                    source_able_type: type,
-                },
-                {
-                    preserveState: true,
-                    preserveScroll: true,
-                    onFinish: () => setIsLoading(false),
-                },
-            );
-        } else {
-            // Fetch all items when "all" is selected
-            setIsLoading(true);
-            router.get(
-                route('item.index'),
-                {},
-                {
-                    preserveState: true,
-                    preserveScroll: true,
-                    onFinish: () => setIsLoading(false),
-                },
-            );
+        setIsLoading(true);
+        const paramsForRoute: Record<string, string | number | undefined> = {};
+
+        if (search) {
+            paramsForRoute.search = search;
         }
-    }, [selectedSource]);
+
+        if (selectedSource && selectedSource !== 'all') {
+            const { id, type } = getSourceFromSelectedValue(selectedSource);
+            paramsForRoute.source_able_id = id; // DIPERBAIKI: Menggunakan id (number)
+            paramsForRoute.source_able_type = type;
+        }
+        // Untuk memastikan halaman kembali ke 1 saat filter sumber berubah
+        // paramsForRoute.page = 1; // Anda bisa tambahkan ini jika diperlukan
+
+        router.get(route('item.index'), paramsForRoute, {
+            preserveState: true,
+            preserveScroll: true,
+            only: ['items'],
+            onFinish: () => setIsLoading(false),
+        });
+    }, [selectedSource, search]); // Menambahkan search sebagai dependensi agar konsisten
 
     const createForm = useForm({
         name: '',
@@ -214,21 +251,16 @@ export default function Item({
     const handleCreateSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
-        // Parse selected source for form submission if needed
-        let sourceAbleId;
-        let sourceAbleType;
+        let routeParams: { source_able_id?: number; source_able_type?: string } = {};
 
         if (selectedSource && selectedSource !== 'all') {
-            const [type, id] = selectedSource.split(':');
-            sourceAbleId = id;
-            sourceAbleType = type;
+            const sourceDetails = getSourceFromSelectedValue(selectedSource);
+            routeParams.source_able_id = sourceDetails.id; // DIPERBAIKI: Menggunakan id (number)
+            routeParams.source_able_type = sourceDetails.type;
         }
 
         createForm.post(
-            route('item.store', {
-                source_able_id: sourceAbleId || undefined,
-                source_able_type: sourceAbleType || undefined,
-            }),
+            route('item.store', routeParams), // Menggunakan routeParams yang sudah berisi id number
             {
                 preserveScroll: true,
                 onError: showErrorToast,
@@ -244,23 +276,18 @@ export default function Item({
         e.preventDefault();
         if (!selectedItem) return;
 
-        // Parse selected source for form submission
-        let sourceAbleId;
-        let sourceAbleType;
+        let routeUpdateParams: { source_able_id?: number; source_able_type?: string } = {};
 
         if (selectedSource && selectedSource !== 'all') {
-            const [type, id] = selectedSource.split(':');
-            sourceAbleId = id;
-            sourceAbleType = type;
+            const sourceDetails = getSourceFromSelectedValue(selectedSource);
+            routeUpdateParams.source_able_id = sourceDetails.id; // DIPERBAIKI: Menggunakan id (number)
+            routeUpdateParams.source_able_type = sourceDetails.type;
         }
 
         editForm.put(
             route('item.update', [
                 selectedItem.id,
-                {
-                    source_able_id: sourceAbleId || undefined,
-                    source_able_type: sourceAbleType || undefined,
-                },
+                routeUpdateParams, // Menggunakan routeUpdateParams yang sudah berisi id number
             ]),
             {
                 preserveScroll: true,
@@ -386,16 +413,18 @@ export default function Item({
         },
     ];
 
-    // Handle page change for server-side pagination
     const handlePageChange = (page: number) => {
         setIsLoading(true);
         let params: any = { page };
 
-        // Add source filter parameters if a source is selected
         if (selectedSource && selectedSource !== 'all') {
-            const [type, id] = selectedSource.split(':');
-            params.source_able_id = id;
-            params.source_able_type = type;
+            const sourceDetails = getSourceFromSelectedValue(selectedSource);
+            params.source_able_id = sourceDetails.id;
+            params.source_able_type = sourceDetails.type;
+        }
+
+        if (search) {
+            params.search = search;
         }
 
         router.get(route('item.index'), params, {
@@ -442,10 +471,15 @@ export default function Item({
                     <DataTable
                         columns={columns}
                         data={items.data}
+                        searchable={true}
+                        searchPlaceholder="Search by code, name, or category..."
+                        searchValue={search}
+                        onSearchChange={handleSearchChange}
                         serverPagination={{
                             pageCount: items.last_page,
                             currentPage: items.current_page,
                             totalItems: items.total,
+                            isLoading: isLoading,
                             onPageChange: handlePageChange,
                         }}
                     />
@@ -465,7 +499,7 @@ export default function Item({
                         {selectedItem && selectedSource && selectedSource !== 'all' && (
                             <BatchItemsTable
                                 itemId={selectedItem.id}
-                                sourceAbleId={getSourceFromSelectedValue(selectedSource).id}
+                                sourceAbleId={getSourceFromSelectedValue(selectedSource).id} // Pastikan id adalah number
                                 sourceAbleType={getSourceFromSelectedValue(selectedSource).type}
                             />
                         )}
@@ -494,7 +528,6 @@ export default function Item({
                                 className={createForm.errors.name ? 'border-red-500 ring-red-100' : ''}
                             />
                         </div>
-
                         <div className="relative grid gap-2 space-y-2">
                             <Label htmlFor="code">
                                 Code <span className="text-red-500">*</span>
@@ -547,9 +580,7 @@ export default function Item({
 
                         <div className="grid grid-cols-2 gap-4">
                             <div className="relative grid gap-2 space-y-2">
-                                <Label htmlFor="item_wholesale_unit_id">
-                                    Wholesale Unit
-                                </Label>
+                                <Label htmlFor="item_wholesale_unit_id">Wholesale Unit</Label>
                                 <Combobox
                                     value={createForm.data.item_wholesale_unit_id}
                                     onValueChange={(value) => {
@@ -563,7 +594,7 @@ export default function Item({
                                         ...itemWholesaleUnits.map((unit) => ({
                                             value: unit.id.toString(),
                                             label: `${unit.name} (${unit.abbreviation})`,
-                                        }))
+                                        })),
                                     ]}
                                     placeholder="Select a wholesale"
                                     searchPlaceholder="Search units..."
@@ -679,17 +710,13 @@ export default function Item({
                             </div>
                         </div>
 
-                        {/* New Wholesale Unit Fields */}
                         <div className="grid grid-cols-2 gap-4">
                             <div className="relative grid gap-2 space-y-2">
-                                <Label htmlFor="edit_item_wholesale_unit_id">
-                                    Wholesale Unit
-                                </Label>
+                                <Label htmlFor="edit_item_wholesale_unit_id">Wholesale Unit</Label>
                                 <Combobox
                                     value={editForm.data.item_wholesale_unit_id}
                                     onValueChange={(value) => {
                                         editForm.setData('item_wholesale_unit_id', value);
-                                        // Clear conversion if wholesale unit is cleared
                                         if (!value) {
                                             editForm.setData('wholesale_unit_conversion', '');
                                         }
@@ -699,7 +726,7 @@ export default function Item({
                                         ...itemWholesaleUnits.map((unit) => ({
                                             value: unit.id.toString(),
                                             label: `${unit.name} (${unit.abbreviation})`,
-                                        }))
+                                        })),
                                     ]}
                                     placeholder="Select a wholesale"
                                     searchPlaceholder="Search units..."

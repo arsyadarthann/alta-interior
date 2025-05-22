@@ -19,25 +19,37 @@ class StockAuditRepository implements StockAuditInterface
 
     public function __construct(private StockAudit $stockAudit) {}
 
-    public function getAll($sourceId = null, $sourceType = null)
+    public function getAll($filter, $sourceId = null, $sourceType = null)
     {
-        return $this->stockAudit
+        $query = $this->stockAudit
             ->with(self::GENERAL_RELATIONSHIPS)
             ->when($sourceId && $sourceType, function($query) use ($sourceId, $sourceType) {
                 return $query->where('source_able_id', $sourceId)
                     ->where('source_able_type', $sourceType);
             })
-            ->orderByDesc('id')->orderByDesc('date')->paginate(10);
+            ->orderByDesc('id')->orderByDesc('date');
+
+        if (!empty($filter['search'])) {
+            $searchTerm = strtolower($filter['search']);
+            $query->where(function ($query) use ($searchTerm) {
+                $query->whereRaw("LOWER(code) LIKE '%{$searchTerm}%'")
+                    ->orWhereHas('user', function($q) use ($searchTerm) {
+                        $q->whereRaw("LOWER(name) LIKE '%{$searchTerm}%'");
+                    });
+            });
+        }
+
+        return $query->paginate(10)->withQueryString();
     }
 
-    public function getAllByBranch($branchId)
+    public function getAllByBranch($filter, $branchId)
     {
-        return $this->getAll($branchId, Branch::class);
+        return $this->getAll($filter, $branchId, Branch::class);
     }
 
-    public function getAllByWarehouse($warehouseId)
+    public function getAllByWarehouse($filter, $warehouseId)
     {
-        return $this->getAll($warehouseId, Warehouse::class);
+        return $this->getAll($filter, $warehouseId, Warehouse::class);
     }
 
     public function getById(int $id)

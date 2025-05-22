@@ -4,7 +4,7 @@ namespace App\Interface;
 
 interface CustomerInterface
 {
-    public function getAll();
+    public function getAll($filter);
     public function getAllNoPaginate();
     public function getById(int $id);
     public function getCustomerPricesById(int $id);

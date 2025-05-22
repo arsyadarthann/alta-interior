@@ -11,9 +11,9 @@ class ExpenseRepository implements ExpenseInterface
 {
     public function __construct(private Expense $expense) {}
 
-    public function getAll($sourceAbleId = null, $sourceAbleType = null)
+    public function getAll($filter, $sourceAbleId = null, $sourceAbleType = null)
     {
-        return $this->expense
+        $query = $this->expense
             ->with([
                 'source_able:id,name', 'user:id,name'
             ])
@@ -21,8 +21,17 @@ class ExpenseRepository implements ExpenseInterface
                 return $query->where('source_able_id', $sourceAbleId)
                     ->where('source_able_type', $sourceAbleType);
             })
-            ->orderBy('id', 'desc')
-            ->paginate(10);
+            ->orderBy('id', 'desc');
+
+        if (!empty($filter['search'])) {
+            $searchTerm = strtolower($filter['search']);
+            $query->whereRaw("LOWER(code) LIKE '%{$searchTerm}%'")
+                ->orWhereHas('user', function ($q) use ($searchTerm) {
+                    $q->whereRaw("LOWER(name) LIKE '%{$searchTerm}%'");
+                });
+        }
+
+        return $query->paginate(10)->withQueryString();
     }
 
     public function getById(int $id)

@@ -21,18 +21,20 @@ class SalesInvoiceController extends Controller
 
     public function index(Request $request)
     {
+        $filters = $request->only(['search']);
         $branchId = $request->query('branch_id');
 
         if ($branchId) {
-            $salesInvoices = $this->salesInvoice->getAll($branchId);
+            $salesInvoices = $this->salesInvoice->getAll($filters, $branchId);
         } else {
-            $salesInvoices = $this->salesInvoice->getAll();
+            $salesInvoices = $this->salesInvoice->getAll($filters);
         }
 
         return Inertia::render('sales/invoices/invoice/index', [
             'salesInvoices' => $salesInvoices,
             'branches' => $this->branch->getAll(),
             'selectedBranchId' => $branchId,
+            'filters' => $filters,
         ]);
     }
 

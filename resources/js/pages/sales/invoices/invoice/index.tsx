@@ -13,7 +13,7 @@ import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { type ColumnDef, Row } from '@tanstack/react-table';
 import { Eye, Pencil, Plus, Printer, Trash2 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -36,6 +36,9 @@ interface Props {
     };
     branches: Branch[];
     selectedBranchId?: string;
+    filters?: {
+        search?: string;
+    };
 }
 
 type Branch = {
@@ -70,14 +73,15 @@ type SalesInvoice = {
     };
 };
 
-export default function Index({ salesInvoices, branches, selectedBranchId = '' }: Props) {
+export default function Index({ salesInvoices, branches, selectedBranchId = '', filters }: Props) {
     useToastNotification();
 
     const { hasPermission } = usePermissions();
     const { auth } = usePage().props as unknown as {
         auth: { user: { branch_id: number } };
     };
-    const [, setIsLoading] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    const [search, setSearch] = useState(filters?.search || '');
     const initialLoadComplete = useRef(false);
 
     const getDefaultBranchValue = () => {
@@ -93,6 +97,57 @@ export default function Index({ salesInvoices, branches, selectedBranchId = '' }
     };
 
     const [currentBranch, setCurrentBranch] = useState(getDefaultBranchValue());
+
+    // Custom debounce hook
+    function useDebounce(callback: Function, delay: number) {
+        const timeoutRef = useRef<NodeJS.Timeout>();
+
+        return useCallback(
+            (...args: any[]) => {
+                if (timeoutRef.current) {
+                    clearTimeout(timeoutRef.current);
+                }
+
+                timeoutRef.current = setTimeout(() => {
+                    callback(...args);
+                }, delay);
+            },
+            [callback, delay],
+        );
+    }
+
+    // Debounced search handler to reduce excessive requests
+    const debouncedSearch = useDebounce((value: string) => {
+        const params: any = { search: value, page: 1 }; // Reset page to 1 when search changes
+
+        // Maintain branch filtering when searching
+        if (currentBranch !== 'all' && !auth.user.branch_id) {
+            params.branch_id = currentBranch;
+        } else if (auth.user.branch_id) {
+            params.branch_id = auth.user.branch_id;
+        }
+
+        router.get(route('sales.invoices.index'), params, {
+            preserveState: true,
+            preserveScroll: true,
+            only: ['salesInvoices'],
+            onBefore: () => setIsLoading(true),
+            onFinish: () => setIsLoading(false),
+        });
+    }, 500);
+
+    // Set search state when component mounts
+    useEffect(() => {
+        if (filters?.search !== undefined) {
+            setSearch(filters.search);
+        }
+    }, []); // Run once on mount
+
+    // Handle search change
+    const handleSearchChange = (value: string) => {
+        setSearch(value);
+        debouncedSearch(value);
+    };
 
     useEffect(() => {
         if (!initialLoadComplete.current && auth?.user?.branch_id) {
@@ -132,11 +187,14 @@ export default function Index({ salesInvoices, branches, selectedBranchId = '' }
         setCurrentBranch(value);
         setIsLoading(true);
 
-        let params = {};
+        let params: any = {};
         if (value !== 'all') {
-            params = {
-                branch_id: value,
-            };
+            params.branch_id = value;
+        }
+
+        // Maintain search when changing branches
+        if (search) {
+            params.search = search;
         }
 
         router.get(route('sales.invoices.index'), params, {
@@ -158,10 +216,16 @@ export default function Index({ salesInvoices, branches, selectedBranchId = '' }
             params.branch_id = auth.user.branch_id;
         }
 
+        // Maintain search when changing pages
+        if (search) {
+            params.search = search;
+        }
+
         router.get(route('sales.invoices.index'), params, {
             preserveState: true,
             preserveScroll: true,
             only: ['salesInvoices'],
+            onBefore: () => setIsLoading(true),
             onFinish: () => setIsLoading(false),
         });
     };
@@ -352,10 +416,15 @@ export default function Index({ salesInvoices, branches, selectedBranchId = '' }
                 <DataTable
                     columns={columns}
                     data={salesInvoices.data}
+                    searchable={true}
+                    searchPlaceholder="Search by invoice number or customer..."
+                    searchValue={search}
+                    onSearchChange={handleSearchChange}
                     serverPagination={{
                         pageCount: salesInvoices.last_page,
                         currentPage: salesInvoices.current_page,
                         totalItems: salesInvoices.total,
+                        isLoading: isLoading,
                         onPageChange: handlePageChange,
                     }}
                 />

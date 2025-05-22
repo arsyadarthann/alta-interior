@@ -14,10 +14,12 @@ class GoodsReceiptController extends Controller
 {
     public function __construct(private GoodsReceiptInterface $goodsReceipt, private SupplierInterface $supplier, private taxRateInterface $taxRate) {}
 
-    public function index()
+    public function index(Request $request)
     {
+        $filters = $request->only(['search']);
         return Inertia::render('procurement/goods-receipt/index', [
-            'goodsReceipts' => $this->goodsReceipt->getAll(),
+            'goodsReceipts' => $this->goodsReceipt->getAll($filters),
+            'filters' => $filters,
         ]);
     }
 

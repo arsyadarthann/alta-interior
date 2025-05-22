@@ -18,18 +18,20 @@ class WaybillController extends Controller
 
     public function index(Request $request)
     {
+        $filters = $request->only(['search']);
         $branchId = $request->query('branch_id');
 
         if ($branchId) {
-            $waybills = $this->waybill->getAll($branchId);
+            $waybills = $this->waybill->getAll($filters, $branchId);
         } else {
-            $waybills = $this->waybill->getAll();
+            $waybills = $this->waybill->getAll($filters);
         }
 
         return Inertia::render('sales/waybill/index', [
             'waybills' => $waybills,
             'branches' => $this->branch->getAll(),
             'selectedBranchId' => $branchId,
+            'filters' => $filters,
         ]);
     }
 

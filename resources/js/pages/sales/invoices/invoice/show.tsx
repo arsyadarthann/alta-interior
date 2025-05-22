@@ -519,7 +519,7 @@ export default function Show({ salesInvoice }: SalesInvoiceProps) {
                                 </div>
 
                                 {salesInvoice.sales_invoice_details.length > 0 ? (
-                                    <DataTable data={salesInvoice.sales_invoice_details} columns={columns} pageSize={10} />
+                                    <DataTable data={salesInvoice.sales_invoice_details} columns={columns} searchable={false} pageSize={10} />
                                 ) : (
                                     <div className="py-8 text-center text-gray-500">
                                         <p>No waybills found in this invoice</p>

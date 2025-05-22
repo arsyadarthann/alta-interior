@@ -21,14 +21,15 @@ class ItemController extends Controller
 
     public function index(Request $request)
     {
+        $filters = $request->only(['search']);
         $sourceAbleId = $request->query('source_able_id');
         $sourceAbleType = $request->query('source_able_type');
         if ($sourceAbleType === 'Branch') {
-            $items = $this->item->getAllPaginateByBranch($sourceAbleId);
+            $items = $this->item->getAllPaginateByBranch($filters, $sourceAbleId);
         } elseif ($sourceAbleType === 'Warehouse') {
-            $items = $this->item->getAllPaginateByWarehouse($sourceAbleId);
+            $items = $this->item->getAllPaginateByWarehouse($filters, $sourceAbleId);
         } else {
-            $items = $this->item->getAllPaginate();
+            $items = $this->item->getAllPaginate($filters);
         }
 
         return Inertia::render('inventory/item/index', [
@@ -43,6 +44,7 @@ class ItemController extends Controller
             'branches' => $this->branch->getAll(),
             'selectedSourceAbleId' => $sourceAbleId,
             'selectedSourceAbleType' => $sourceAbleType,
+            'filters' => $filters,
         ]);
     }
 

@@ -16,12 +16,23 @@ class PurchaseInvoicePaymentRepository implements PurchaseInvoicePaymentInterfac
 
     public function __construct(private PurchaseInvoicePayment $purchaseInvoicePayment, private PurchaseInvoice $purchaseInvoice) {}
 
-    public function getAll()
+    public function getAll($filter)
     {
-        return $this->purchaseInvoicePayment
+        $query = $this->purchaseInvoicePayment
             ->with([...self::GENERAL_RELATIONSHIPS, 'purchaseInvoice:id,code'])
-            ->orderByDesc('date')
-            ->paginate(10);
+            ->orderByDesc('date');
+
+        if (!empty($filter['search'])) {
+            $searchTerm = strtolower($filter['search']);
+            $query->where(function ($query) use ($searchTerm) {
+                $query->whereRaw("LOWER(code) LIKE '%{$searchTerm}%'")
+                    ->orWhereHas('user', function($q) use ($searchTerm) {
+                        $q->whereRaw("LOWER(name) LIKE '%{$searchTerm}%'");
+                    });
+            });
+        }
+
+        return $query->paginate(10)->withQueryString();
     }
 
     public function getById(int $id)

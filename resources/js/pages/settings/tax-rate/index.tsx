@@ -1,25 +1,25 @@
-import { type BreadcrumbItem } from '@/types';
-import { Head, router, useForm } from '@inertiajs/react';
-import React, { useState } from 'react';
+import { DataTable } from '@/components/data-table';
+import { ActionColumn } from '@/components/data-table/action-column';
+import { createNumberColumn } from '@/components/data-table/columns';
+import { FormDialog } from '@/components/form-dialog';
+import HeadingSmall from '@/components/heading-small';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { usePermissions } from '@/hooks/use-permissions';
+import { useToastNotification } from '@/hooks/use-toast-notification';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
-import HeadingSmall from '@/components/heading-small';
-import { useToastNotification } from "@/hooks/use-toast-notification";
-import { ColumnDef, Row } from "@tanstack/react-table";
-import { createNumberColumn } from "@/components/data-table/columns";
-import { ActionColumn } from "@/components/data-table/action-column";
-import { Pencil, Plus, Trash2 } from "lucide-react";
-import { DataTable } from "@/components/data-table";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { usePermissions } from "@/hooks/use-permissions";
-import { FormDialog } from "@/components/form-dialog";
+import { type BreadcrumbItem } from '@/types';
+import { Head, router, useForm } from '@inertiajs/react';
+import { ColumnDef, Row } from '@tanstack/react-table';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
+import React, { useState } from 'react';
 
 type TaxRate = {
     id: number;
     rate: number;
-}
+};
 
 interface Props {
     taxRates: TaxRate[];
@@ -37,9 +37,7 @@ export default function TaxRate({ taxRates }: Props) {
     });
 
     const editForm = useForm({
-        rate: selectedTaxRate ? (selectedTaxRate.rate % 1 === 0 ?
-            Math.floor(selectedTaxRate.rate).toString() :
-            selectedTaxRate.rate.toString()) : '',
+        rate: selectedTaxRate ? (selectedTaxRate.rate % 1 === 0 ? Math.floor(selectedTaxRate.rate).toString() : selectedTaxRate.rate.toString()) : '',
     });
 
     const handleCreateSubmit = (e: React.FormEvent) => {
@@ -50,7 +48,7 @@ export default function TaxRate({ taxRates }: Props) {
             onSuccess: () => {
                 setIsCreateModalOpen(false);
                 createForm.reset('rate');
-            }
+            },
         });
     };
 
@@ -64,45 +62,42 @@ export default function TaxRate({ taxRates }: Props) {
             onSuccess: () => {
                 setIsEditModalOpen(false);
                 setSelectedTaxRate(undefined);
-            }
+            },
         });
     };
 
     const columns: ColumnDef<TaxRate>[] = [
         createNumberColumn<TaxRate>(),
         {
-            accessorKey: "rate",
-            header: "Rate (%)",
+            accessorKey: 'rate',
+            header: 'Rate (%)',
             cell: ({ row }: { row: Row<TaxRate> }) => {
                 const rate = row.original.rate;
                 const formattedRate = rate % 1 === 0 ? Math.floor(rate) : rate;
                 return `${formattedRate}%`;
-            }
+            },
         },
-        (hasPermission('update_tax_rate') || hasPermission('delete_tax_rate')) && (
+        (hasPermission('update_tax_rate') || hasPermission('delete_tax_rate')) &&
             ActionColumn<TaxRate>({
                 hasPermission: hasPermission,
                 actions: (taxRate) => [
                     {
-                        label: "Edit",
+                        label: 'Edit',
                         icon: <Pencil className="h-4 w-4" />,
                         onClick: (data) => {
                             setSelectedTaxRate(data);
-                            editForm.setData('rate', data.rate % 1 === 0 ?
-                                Math.floor(data.rate).toString() :
-                                data.rate.toString()
-                            );
+                            editForm.setData('rate', data.rate % 1 === 0 ? Math.floor(data.rate).toString() : data.rate.toString());
                             setIsEditModalOpen(true);
                         },
                         permission: 'update_tax_rate',
                     },
                     {
-                        label: "Delete",
+                        label: 'Delete',
                         icon: <Trash2 className="h-4 w-4" />,
-                        className: "text-red-600",
+                        className: 'text-red-600',
                         showConfirmDialog: true,
                         confirmDialogProps: {
-                            title: "Delete Tax Rate",
+                            title: 'Delete Tax Rate',
                             description: `This action cannot be undone. This will permanently delete ${taxRate.rate}% tax rate.`,
                         },
                         onClick: (data) => {
@@ -111,10 +106,9 @@ export default function TaxRate({ taxRates }: Props) {
                             });
                         },
                         permission: 'delete_tax_rate',
-                    }
+                    },
                 ],
-            })
-        )
+            }),
     ].filter(Boolean) as ColumnDef<TaxRate>[];
 
     return (
@@ -124,25 +118,16 @@ export default function TaxRate({ taxRates }: Props) {
             <SettingsLayout>
                 <div className="space-y-6">
                     <div className="flex items-center justify-between">
-                        <HeadingSmall
-                            title="Tax Rate"
-                            description="Manage your tax rate."
-                        />
+                        <HeadingSmall title="Tax Rate" description="Manage your tax rate." />
                         {hasPermission('create_tax_rate') && (
-                            <Button
-                                onClick={() => setIsCreateModalOpen(true)}
-                                className="flex items-center gap-2"
-                            >
+                            <Button onClick={() => setIsCreateModalOpen(true)} className="flex items-center gap-2">
                                 <Plus className="h-4 w-4" />
                                 Add Tax Rate
                             </Button>
                         )}
                     </div>
 
-                    <DataTable
-                        columns={columns}
-                        data={taxRates}
-                    />
+                    <DataTable columns={columns} data={taxRates} searchable={false} />
 
                     <FormDialog
                         title="Add Tax Rate"
@@ -154,7 +139,7 @@ export default function TaxRate({ taxRates }: Props) {
                         submitLabel="Create"
                         processingLabel="Creating..."
                     >
-                        <div className="space-y-2 relative grid gap-2">
+                        <div className="relative grid gap-2 space-y-2">
                             <Label htmlFor="rate">
                                 Tax Rate (%) <span className="text-red-500">*</span>
                             </Label>
@@ -163,9 +148,9 @@ export default function TaxRate({ taxRates }: Props) {
                                 type="number"
                                 step="0.01"
                                 value={createForm.data.rate}
-                                onChange={e => createForm.setData('rate', e.target.value)}
+                                onChange={(e) => createForm.setData('rate', e.target.value)}
                                 placeholder="Enter tax rate percentage"
-                                className={createForm.errors.rate ? "border-red-500 ring-red-100" : ""}
+                                className={createForm.errors.rate ? 'border-red-500 ring-red-100' : ''}
                             />
                         </div>
                     </FormDialog>
@@ -180,16 +165,16 @@ export default function TaxRate({ taxRates }: Props) {
                         submitLabel="Save Changes"
                         processingLabel="Saving..."
                     >
-                        <div className="space-y-2 relative grid gap-2">
+                        <div className="relative grid gap-2 space-y-2">
                             <Label htmlFor="edit_rate">Tax Rate (%)</Label>
                             <Input
                                 id="edit_rate"
                                 type="number"
                                 step="0.01"
                                 value={editForm.data.rate}
-                                onChange={e => editForm.setData('rate', e.target.value)}
+                                onChange={(e) => editForm.setData('rate', e.target.value)}
                                 placeholder="Enter tax rate percentage"
-                                className={editForm.errors.rate ? "border-red-500 ring-red-100" : ""}
+                                className={editForm.errors.rate ? 'border-red-500 ring-red-100' : ''}
                             />
                         </div>
                     </FormDialog>
@@ -203,5 +188,5 @@ const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Tax Rate',
         href: route('tax-rates.index'),
-    }
+    },
 ];

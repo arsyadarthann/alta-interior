@@ -10,7 +10,7 @@ import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
 import { type ColumnDef, Row } from '@tanstack/react-table';
 import { Eye, Pencil, Plus, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -27,6 +27,9 @@ interface Props {
         per_page: number;
         total: number;
     };
+    filters?: {
+        search?: string;
+    };
 }
 
 type Customer = {
@@ -38,10 +41,57 @@ type Customer = {
     address: string;
 };
 
-export default function Index({ customers }: Props) {
+export default function Index({ customers, filters }: Props) {
     useToastNotification();
     const { hasPermission } = usePermissions();
-    const [, setIsLoading] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    const [search, setSearch] = useState(filters?.search || '');
+
+    // Custom debounce hook
+    function useDebounce(callback: Function, delay: number) {
+        const timeoutRef = useRef<NodeJS.Timeout>();
+
+        return useCallback(
+            (...args: any[]) => {
+                if (timeoutRef.current) {
+                    clearTimeout(timeoutRef.current);
+                }
+
+                timeoutRef.current = setTimeout(() => {
+                    callback(...args);
+                }, delay);
+            },
+            [callback, delay],
+        );
+    }
+
+    // Debounced search handler untuk mengurangi request berlebihan
+    const debouncedSearch = useDebounce((value: string) => {
+        router.get(
+            route('customers.index'),
+            { search: value, page: 1 }, // Reset page ke 1 ketika search berubah
+            {
+                preserveState: true,
+                preserveScroll: true,
+                only: ['customers'],
+                onBefore: () => setIsLoading(true),
+                onFinish: () => setIsLoading(false),
+            },
+        );
+    }, 500);
+
+    // Set search state ketika component mount
+    useEffect(() => {
+        if (filters?.search !== undefined) {
+            setSearch(filters.search);
+        }
+    }, []); // Run once on mount
+
+    // Handle search change
+    const handleSearchChange = (value: string) => {
+        setSearch(value);
+        debouncedSearch(value);
+    };
 
     const columns: ColumnDef<Customer>[] = [
         createNumberColumn<Customer>(),
@@ -124,18 +174,24 @@ export default function Index({ customers }: Props) {
                 <DataTable
                     columns={columns}
                     data={customers.data}
+                    searchable={true}
+                    searchPlaceholder="Search by company name..."
+                    searchValue={search}
+                    onSearchChange={handleSearchChange}
                     serverPagination={{
                         pageCount: customers.last_page,
                         currentPage: customers.current_page,
                         totalItems: customers.total,
+                        isLoading: isLoading,
                         onPageChange: (page) => {
                             router.get(
                                 route('customers.index'),
-                                { page },
+                                { page, search },
                                 {
                                     preserveState: true,
                                     preserveScroll: true,
                                     only: ['customers'],
+                                    onBefore: () => setIsLoading(true),
                                     onFinish: () => setIsLoading(false),
                                 },
                             );

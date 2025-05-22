@@ -4,7 +4,7 @@ namespace App\Interface;
 
 interface PurchaseInvoiceInterface
 {
-    public function getAll();
+    public function getAll($filter);
     public function getById(int $id);
     public function getNotPaid(int $supplierId);
     public function getNotInvoicedGoodsReceipts(int $supplierId);

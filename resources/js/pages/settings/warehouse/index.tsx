@@ -144,7 +144,7 @@ export default function Warehouse({ warehouses }: Props) {
                         )}
                     </div>
 
-                    <DataTable columns={columns} data={warehouses} />
+                    <DataTable columns={columns} data={warehouses} searchable={false} />
 
                     <FormDialog
                         title="Add Warehouse"

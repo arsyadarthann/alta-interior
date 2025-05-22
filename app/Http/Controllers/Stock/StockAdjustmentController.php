@@ -17,21 +17,22 @@ class StockAdjustmentController extends Controller
 
     public function index(Request $request)
     {
+        $filters = $request->only(['search']);
         $sourceAbleId = $request->query('source_able_id');
         $sourceAbleType = $request->query('source_able_type');
 
         if ($sourceAbleType === 'Branch') {
-            $stockAdjustments = $this->stockAdjustment->getAllByBranch($sourceAbleId)->appends([
+            $stockAdjustments = $this->stockAdjustment->getAllByBranch($filters, $sourceAbleId)->appends([
                 'source_able_id' => $sourceAbleId,
                 'source_able_type' => $sourceAbleType,
             ]);
         } elseif ($sourceAbleType === 'Warehouse') {
-            $stockAdjustments = $this->stockAdjustment->getAllByWarehouse($sourceAbleId)->appends([
+            $stockAdjustments = $this->stockAdjustment->getAllByWarehouse($filters, $sourceAbleId)->appends([
                 'source_able_id' => $sourceAbleId,
                 'source_able_type' => $sourceAbleType,
             ]);
         } else {
-            $stockAdjustments = $this->stockAdjustment->getAll();
+            $stockAdjustments = $this->stockAdjustment->getAll($filters);
         }
 
         return Inertia::render('stock/adjustment/index', [
@@ -40,6 +41,7 @@ class StockAdjustmentController extends Controller
             'warehouses' => $this->warehouse->getAll(),
             'selectedSourceAbleId' => $sourceAbleId,
             'selectedSourceAbleType' => $sourceAbleType,
+            'filters' => $filters,
         ]);
     }
 

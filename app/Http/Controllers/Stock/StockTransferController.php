@@ -15,10 +15,13 @@ class StockTransferController extends Controller
 {
     public function __construct(private StockTransferInterface $stockTransfer, private WarehouseInterface $warehouse, private BranchInterface $branch) {}
 
-    public function index()
+    public function index(Request $request)
     {
+        $filters = $request->only(['search']);
+
         return Inertia::render('stock/transfer/index', [
-            'stockTransfers' => $this->stockTransfer->getAll(),
+            'stockTransfers' => $this->stockTransfer->getAll($filters),
+            'filters' => $filters,
         ]);
     }
 

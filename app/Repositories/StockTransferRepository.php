@@ -19,11 +19,23 @@ class StockTransferRepository implements StockTransferInterface
 
     public function __construct(private StockTransfer $stockTransfer) {}
 
-    public function getAll()
+    public function getAll($filter)
     {
-        return $this->stockTransfer
+        $query = $this->stockTransfer
             ->with(self::GENERAL_RELATIONSHIPS)
-            ->orderByDesc('code')->paginate(10);
+            ->orderByDesc('code');
+
+        if (!empty($filter['search'])) {
+            $searchTerm = strtolower($filter['search']);
+            $query->where(function ($query) use ($searchTerm) {
+                $query->whereRaw("LOWER(code) LIKE '%{$searchTerm}%'")
+                    ->orWhereHas('user', function($q) use ($searchTerm) {
+                        $q->whereRaw("LOWER(name) LIKE '%{$searchTerm}%'");
+                    });
+            });
+        }
+
+        return $query->paginate(10)->withQueryString();
     }
 
     public function getById(int $id)

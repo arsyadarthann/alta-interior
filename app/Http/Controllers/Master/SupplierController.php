@@ -5,16 +5,20 @@ namespace App\Http\Controllers\Master;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Master\SupplierRequest;
 use App\Interface\SupplierInterface;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class SupplierController extends Controller
 {
     public function __construct(private SupplierInterface $supplier) {}
 
-    public function index()
+    public function index(Request $request)
     {
+        $filters = $request->only(['search']);
+
         return Inertia::render('master/suppliers/index', [
-            'suppliers' => $this->supplier->getAllPaginate()
+            'suppliers' => $this->supplier->getAllPaginate($filters),
+            'filters' => $filters,
         ]);
     }
 

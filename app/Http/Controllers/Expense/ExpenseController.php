@@ -17,16 +17,17 @@ class ExpenseController extends Controller
 
     public function index(Request $request)
     {
+        $filters = $request->only(['search']);
         $sourceAbleId = $request->query('source_able_id');
         $sourceAbleType = $request->query('source_able_type');
 
         if ($sourceAbleId) {
-            $expenses = $this->expense->getAll($sourceAbleId, $sourceAbleType)->appends([
+            $expenses = $this->expense->getAll($filters, $sourceAbleId, $sourceAbleType)->appends([
                 'source_able_id' => $sourceAbleId,
                 'source_able_type' => $sourceAbleType,
             ]);
         } else {
-            $expenses = $this->expense->getAll();
+            $expenses = $this->expense->getAll($filters);
         }
 
         return Inertia::render('expense/index', [
@@ -35,6 +36,7 @@ class ExpenseController extends Controller
             'warehouses' => $this->warehouse->getAll(),
             'selectedSourceAbleId' => $sourceAbleId,
             'selectedSourceAbleType' => $sourceAbleType,
+            'filters' => $filters
         ]);
     }
 

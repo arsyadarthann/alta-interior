@@ -19,12 +19,13 @@ class SalesOrderController extends Controller
 
     public function index(Request $request)
     {
+        $filters = $request->only(['search']);
         $branchId = $request->query('branch_id');
 
         if ($branchId) {
-            $salesOrders = $this->salesOrder->getAll($branchId);
+            $salesOrders = $this->salesOrder->getAll($filters, $branchId);
         } else {
-            $salesOrders = $this->salesOrder->getAll();
+            $salesOrders = $this->salesOrder->getAll($filters);
         }
 
         return Inertia::render('sales/order/index', [
@@ -33,6 +34,7 @@ class SalesOrderController extends Controller
             ]),
             'branches' => $this->branch->getAll(),
             'selectedBranchId' => $branchId,
+            'filters' => $filters,
         ]);
     }
 

@@ -17,13 +17,27 @@ class SalesInvoiceRepository implements SalesInvoiceInterface
 
     public function __construct(private SalesInvoice $salesInvoice, private Waybill $waybill) {}
 
-    public function getAll($branchId = null)
+    public function getAll($filter, $branchId = null)
     {
-        return $this->salesInvoice->with(self::GENERAL_RELATIONSHIPS)
+        $query = $this->salesInvoice->with(self::GENERAL_RELATIONSHIPS)
             ->when($branchId, fn($query) => $query->where('branch_id', $branchId))
             ->orderBy('id', 'desc')
-            ->orderBy('code', 'desc')
-            ->paginate(10);
+            ->orderBy('code', 'desc');
+
+        if (!empty($filter['search'])) {
+            {
+                $searchTerm = strtolower($filter['search']);
+            }
+            $query->whereRaw("LOWER(code) LIKE '%{$searchTerm}%'")
+                ->orWhereHas('user', function($q) use ($searchTerm) {
+                    $q->whereRaw("LOWER(name) LIKE '%{$searchTerm}%'");
+                })
+                ->orWhereHas('customer', function($q) use ($searchTerm) {
+                    $q->whereRaw("LOWER(name) LIKE '%{$searchTerm}%'");
+                });
+        }
+
+        return $query->paginate(10)->withQueryString();
     }
 
     public function getById(int $id)

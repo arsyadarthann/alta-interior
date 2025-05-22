@@ -11,7 +11,7 @@ import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
 import { type ColumnDef, Row } from '@tanstack/react-table';
 import { Eye, Pencil, Plus, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -32,6 +32,9 @@ interface Props {
         per_page: number;
         total: number;
     };
+    filters?: {
+        search?: string;
+    };
 }
 
 type PurchaseInvoice = {
@@ -48,10 +51,57 @@ type PurchaseInvoice = {
     remaining_amount: number;
 };
 
-export default function Index({ purchaseInvoices }: Props) {
+export default function Index({ purchaseInvoices, filters }: Props) {
     useToastNotification();
     const { hasPermission } = usePermissions();
     const [isLoading, setIsLoading] = useState(false);
+    const [search, setSearch] = useState(filters?.search || '');
+
+    // Custom debounce hook
+    function useDebounce(callback: Function, delay: number) {
+        const timeoutRef = useRef<NodeJS.Timeout>();
+
+        return useCallback(
+            (...args: any[]) => {
+                if (timeoutRef.current) {
+                    clearTimeout(timeoutRef.current);
+                }
+
+                timeoutRef.current = setTimeout(() => {
+                    callback(...args);
+                }, delay);
+            },
+            [callback, delay],
+        );
+    }
+
+    // Debounced search handler to reduce excessive requests
+    const debouncedSearch = useDebounce((value: string) => {
+        router.get(
+            route('procurement.invoices.index'),
+            { search: value, page: 1 }, // Reset page to 1 when search changes
+            {
+                preserveState: true,
+                preserveScroll: true,
+                only: ['purchaseInvoices'],
+                onBefore: () => setIsLoading(true),
+                onFinish: () => setIsLoading(false),
+            },
+        );
+    }, 500);
+
+    // Set search state when component mounts
+    useEffect(() => {
+        if (filters?.search !== undefined) {
+            setSearch(filters.search);
+        }
+    }, []); // Run once on mount
+
+    // Handle search change
+    const handleSearchChange = (value: string) => {
+        setSearch(value);
+        debouncedSearch(value);
+    };
 
     const formatDate = (dateString: string): string => {
         const date = new Date(dateString);
@@ -185,20 +235,6 @@ export default function Index({ purchaseInvoices }: Props) {
         }),
     ].filter(Boolean) as ColumnDef<PurchaseInvoice>[];
 
-    const handlePageChange = (page: number) => {
-        setIsLoading(true);
-        router.get(
-            route('procurement.invoices.index'),
-            { page },
-            {
-                preserveState: true,
-                preserveScroll: true,
-                only: ['purchaseInvoices'],
-                onFinish: () => setIsLoading(false),
-            },
-        );
-    };
-
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Supplier Invoice" />
@@ -220,11 +256,28 @@ export default function Index({ purchaseInvoices }: Props) {
                 <DataTable
                     columns={columns}
                     data={purchaseInvoices.data}
+                    searchable={true}
+                    searchPlaceholder="Search by code or supplier..."
+                    searchValue={search}
+                    onSearchChange={handleSearchChange}
                     serverPagination={{
                         pageCount: purchaseInvoices.last_page,
                         currentPage: purchaseInvoices.current_page,
                         totalItems: purchaseInvoices.total,
-                        onPageChange: handlePageChange,
+                        isLoading: isLoading,
+                        onPageChange: (page) => {
+                            router.get(
+                                route('procurement.invoices.index'),
+                                { page, search },
+                                {
+                                    preserveState: true,
+                                    preserveScroll: true,
+                                    only: ['purchaseInvoices'],
+                                    onBefore: () => setIsLoading(true),
+                                    onFinish: () => setIsLoading(false),
+                                },
+                            );
+                        },
                     }}
                 />
             </div>

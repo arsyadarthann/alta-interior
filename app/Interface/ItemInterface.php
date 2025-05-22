@@ -6,11 +6,11 @@ interface ItemInterface
 {
     public function getAllOnlyItem();
     public function getAll($sourceId = null, $sourceType = null);
-    public function getAllPaginate($sourceId = null, $sourceType = null);
+    public function getAllPaginate($filter, $sourceId = null, $sourceType = null);
     public function getAllByBranch($branchId = null);
-    public function getAllPaginateByBranch($branchId = null);
+    public function getAllPaginateByBranch($filter, $branchId = null);
     public function getAllByWarehouse($warehouseId = null);
-    public function getAllPaginateByWarehouse($warehouseId = null);
+    public function getAllPaginateByWarehouse($filter, $warehouseId = null);
     public function getById(int $id);
     public function store(array $data);
     public function update(int $id, array $data);

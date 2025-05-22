@@ -11,7 +11,7 @@ import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
 import { type ColumnDef, Row } from '@tanstack/react-table';
 import { Eye, Plus } from 'lucide-react';
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -31,6 +31,9 @@ interface Props {
         last_page: number;
         per_page: number;
         total: number;
+    };
+    filters?: {
+        search?: string;
     };
 }
 
@@ -52,23 +55,74 @@ type StockTransfer = {
     };
 };
 
-export default function Index({ stockTransfers }: Props) {
+export default function Index({ stockTransfers, filters }: Props) {
     useToastNotification();
     const { hasPermission } = usePermissions();
-    const [, setIsLoading] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    const [search, setSearch] = useState(filters?.search || '');
 
-    const handlePageChange = (page: number) => {
+    // Custom debounce hook
+    function useDebounce(callback: Function, delay: number) {
+        const timeoutRef = useRef<NodeJS.Timeout>();
+
+        return useCallback(
+            (...args: any[]) => {
+                if (timeoutRef.current) {
+                    clearTimeout(timeoutRef.current);
+                }
+
+                timeoutRef.current = setTimeout(() => {
+                    callback(...args);
+                }, delay);
+            },
+            [callback, delay],
+        );
+    }
+
+    // Debounced search handler
+    const debouncedSearch = useDebounce((value: string) => {
         setIsLoading(true);
         router.get(
             route('stock.transfer.index'),
-            { page },
+            { search: value, page: 1 }, // Reset page ke 1 ketika search berubah
             {
                 preserveState: true,
                 preserveScroll: true,
                 only: ['stockTransfers'],
+                onBefore: () => setIsLoading(true),
                 onFinish: () => setIsLoading(false),
             },
         );
+    }, 500);
+
+    // Set search state ketika component mount
+    useEffect(() => {
+        if (filters?.search !== undefined) {
+            setSearch(filters.search);
+        }
+    }, [filters?.search]);
+
+    // Handle search change
+    const handleSearchChange = (value: string) => {
+        setSearch(value);
+        debouncedSearch(value);
+    };
+
+    const handlePageChange = (page: number) => {
+        setIsLoading(true);
+        let params: any = { page };
+
+        // Maintain search when changing pages
+        if (search) {
+            params.search = search;
+        }
+
+        router.get(route('stock.transfer.index'), params, {
+            preserveState: true,
+            preserveScroll: true,
+            only: ['stockTransfers'],
+            onFinish: () => setIsLoading(false),
+        });
     };
 
     const columns: ColumnDef<StockTransfer>[] = [
@@ -131,10 +185,15 @@ export default function Index({ stockTransfers }: Props) {
                 <DataTable
                     columns={columns}
                     data={stockTransfers.data}
+                    searchable={true}
+                    searchPlaceholder="Search by code or created by..."
+                    searchValue={search}
+                    onSearchChange={handleSearchChange}
                     serverPagination={{
                         pageCount: stockTransfers.last_page,
                         currentPage: stockTransfers.current_page,
                         totalItems: stockTransfers.total,
+                        isLoading: isLoading,
                         onPageChange: handlePageChange,
                     }}
                 />

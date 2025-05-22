@@ -166,7 +166,7 @@ export default function PaymentMethod({ paymentMethods }: Props) {
                         )}
                     </div>
 
-                    <DataTable columns={columns} data={paymentMethods} />
+                    <DataTable columns={columns} data={paymentMethods} searchable={false} />
 
                     <FormDialog
                         title="Add Payment Method"

@@ -4,9 +4,9 @@ namespace App\Interface;
 
 interface StockAuditInterface
 {
-    public function getAll($sourceId = null, $sourceType = null);
-    public function getAllByBranch($branchId);
-    public function getAllByWarehouse($warehouseId);
+    public function getAll($filter, $sourceId = null, $sourceType = null);
+    public function getAllByBranch($filter, $branchId);
+    public function getAllByWarehouse($filter, $warehouseId);
     public function getById(int $id);
     public function store(array $data);
     public function update(int $id, array $data);

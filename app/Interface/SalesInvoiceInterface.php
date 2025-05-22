@@ -4,7 +4,7 @@ namespace App\Interface;
 
 interface SalesInvoiceInterface
 {
-    public function getAll($branchId = null);
+    public function getAll($filter, $branchId = null);
     public function getById(int $id);
     public function store(array $data);
     public function getNotPaidSalesInvoiceDetails($branchId);

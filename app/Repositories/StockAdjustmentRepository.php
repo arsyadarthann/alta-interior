@@ -19,23 +19,35 @@ class StockAdjustmentRepository implements StockAdjustmentInterface
 
     public function __construct(private StockAdjustment $stockAdjustment) {}
 
-    public function getAll($sourceId = null, $sourceType = null)
+    public function getAll($filter, $sourceId = null, $sourceType = null)
     {
-        return $this->stockAdjustment
+        $query = $this->stockAdjustment
             ->with(self::GENERAL_RELATIONSHIPS)
             ->when($sourceId && $sourceType, function($query) use ($sourceId, $sourceType) {
                 return $query->where('source_able_id', $sourceId)
                     ->where('source_able_type', $sourceType);
             })
-            ->orderByDesc('code')->paginate(10);
+            ->orderByDesc('code');
+
+        if (!empty($filter['search'])) {
+            $searchTerm = strtolower($filter['search']);
+            $query->where(function ($query) use ($searchTerm) {
+                $query->whereRaw("LOWER(code) LIKE '%{$searchTerm}%'")
+                    ->orWhereHas('user', function($q) use ($searchTerm) {
+                        $q->whereRaw("LOWER(name) LIKE '%{$searchTerm}%'");
+                    });
+            });
+        }
+
+        return $query->paginate(10)->withQueryString();
     }
 
-    public function getAllByBranch($branchId)
+    public function getAllByBranch($filter, $branchId)
     {
         return $this->getAll($branchId, Branch::class);
     }
 
-    public function getAllByWarehouse($warehouseId)
+    public function getAllByWarehouse($filter, $warehouseId)
     {
         return $this->getAll($warehouseId, Warehouse::class);
     }
