@@ -12,7 +12,7 @@ import { cn, formatDate, formatDateToYmd, formatDecimal } from '@/lib/utils';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { ArrowLeft, CalendarIcon, CheckCircle, Edit, PlusCircle, Trash2 } from 'lucide-react';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -68,7 +68,7 @@ type StockAudit = {
     date: string;
     source_able_type: string;
     source_able_id: string;
-    branch_id?: number; // For backward compatibility
+    branch_id?: number;
     stock_audit_details: {
         id: number;
         stock_audit_id: number;
@@ -107,6 +107,7 @@ export default function EditStockAudit({
     const [deletedDetails, setDeletedDetails] = useState<number[]>([]);
     const { auth } = usePage().props as unknown as { auth: { user: { branch_id: number } } };
     const [initialized, setInitialized] = useState(false);
+    const [shouldFetchItems, setShouldFetchItems] = useState(false);
 
     const isFetchingItems = useRef(false);
 
@@ -144,26 +145,31 @@ export default function EditStockAudit({
         },
     });
 
+    // Initialize form data
     useEffect(() => {
         if (!initialized) {
             if (auth?.user?.branch_id && !data.source_able_id) {
                 const userBranchId = auth.user.branch_id.toString();
-                setData('source_able_type', 'branch');
-                setData('source_able_id', userBranchId);
+                setData((prev) => ({
+                    ...prev,
+                    source_able_type: 'branch',
+                    source_able_id: userBranchId,
+                }));
             }
             setInitialized(true);
+            setShouldFetchItems(true);
         }
     }, [initialized, auth?.user?.branch_id, setData, data.source_able_id]);
 
-    const fetchItems = useCallback(
-        (sourceType: string, sourceId: string) => {
-            // Guard against multiple concurrent fetches
+    // Fetch items when source changes
+    useEffect(() => {
+        if (shouldFetchItems && initialized && data.source_able_type && data.source_able_id) {
             if (isFetchingItems.current) return;
 
             isFetchingItems.current = true;
-            const routeName = sourceType === 'branch' ? 'item.getItemByBranch' : 'item.getItemByWarehouse';
+            const routeName = data.source_able_type === 'branch' ? 'item.getItemByBranch' : 'item.getItemByWarehouse';
 
-            fetch(route(routeName, sourceId), {
+            fetch(route(routeName, data.source_able_id), {
                 method: 'GET',
                 headers: {
                     Accept: 'application/json',
@@ -177,59 +183,58 @@ export default function EditStockAudit({
                     return response.json();
                 })
                 .then((responseData) => {
-                    let itemsData = [];
-
+                    let itemsData: Item[] = [];
                     if (Array.isArray(responseData)) {
                         itemsData = responseData;
                     } else if (responseData && responseData.items && Array.isArray(responseData.items)) {
                         itemsData = responseData.items;
                     } else if (responseData && responseData.data && Array.isArray(responseData.data)) {
                         itemsData = responseData.data;
-                    } else {
-                        itemsData = [];
                     }
-
                     setItems(itemsData);
-
-                    // Initialize the selectedItemNames and selectedItemUnits for existing audit details
-                    const initialItemNames: Record<number, string> = {};
-                    const initialItemUnits: Record<number, string> = {};
-                    data.stock_audit_details.forEach((detail, index) => {
-                        const item = itemsData.find((itm) => itm.id === detail.item_id);
-                        if (item) {
-                            initialItemNames[index] = `${item.name} (${item.code})`;
-                            initialItemUnits[index] = item.item_unit?.abbreviation || '';
-                        }
-                    });
-                    setSelectedItemNames(initialItemNames);
-                    setSelectedItemUnits(initialItemUnits);
+                    setShouldFetchItems(false);
                 })
                 .catch((error) => {
                     showErrorToast([error.message]);
+                    setShouldFetchItems(false);
                 })
                 .finally(() => {
                     isFetchingItems.current = false;
                 });
-        },
-        [data.stock_audit_details, setItems, setSelectedItemNames, setSelectedItemUnits, showErrorToast],
-    );
-
-    // Modified useEffect to prevent infinite loops
-    useEffect(() => {
-        if (initialized && data.source_able_type && data.source_able_id) {
-            fetchItems(data.source_able_type, data.source_able_id);
         }
-        // Important: only run this effect when either initialized changes OR source changes
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [initialized, data.source_able_type + data.source_able_id]);
+    }, [data.source_able_type, data.source_able_id, initialized, shouldFetchItems, showErrorToast]);
+
+    // Update item names and units when items or details change
+    useEffect(() => {
+        if (items.length > 0 && data.stock_audit_details.length > 0) {
+            const newInitialItemNames: Record<number, string> = {};
+            const newInitialItemUnits: Record<number, string> = {};
+
+            data.stock_audit_details.forEach((detail, index) => {
+                const item = items.find((itm) => itm.id === detail.item_id);
+                if (item) {
+                    newInitialItemNames[index] = `${item.name} (${item.code})`;
+                    newInitialItemUnits[index] = item.item_unit?.abbreviation || '';
+                } else {
+                    newInitialItemNames[index] = 'Unknown Item';
+                    newInitialItemUnits[index] = '';
+                }
+            });
+
+            setSelectedItemNames(newInitialItemNames);
+            setSelectedItemUnits(newInitialItemUnits);
+        } else if (data.stock_audit_details.length === 0) {
+            setSelectedItemNames({});
+            setSelectedItemUnits({});
+        }
+    }, [items, data.stock_audit_details]);
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
-        // Format the date properly
         const formattedData = {
             ...data,
-            date: formatDateToYmd(data.date),
+            date: formatDateToYmd(new Date(data.date)),
             deleted_details: deletedDetails,
             stock_audit_details: data.stock_audit_details.map((detail) => ({
                 id: detail.id,
@@ -242,10 +247,10 @@ export default function EditStockAudit({
         };
 
         put(route('stock.audit.update', stockAudit.id), {
-            ...formattedData,
+            data: formattedData,
             preserveScroll: true,
             onError: showErrorToast,
-        });
+        } as any);
     };
 
     const addAuditItem = () => {
@@ -261,17 +266,31 @@ export default function EditStockAudit({
 
     const saveAuditItem = () => {
         if (editingIndex !== null) {
+            const editedDetail = data.stock_audit_details[editingIndex];
+            if (editedDetail) {
+                const selectedItem = items.find((itm) => itm.id === editedDetail.item_id);
+                if (selectedItem) {
+                    setSelectedItemNames((prev) => ({ ...prev, [editingIndex!]: `${selectedItem.name} (${selectedItem.code})` }));
+                    setSelectedItemUnits((prev) => ({ ...prev, [editingIndex!]: selectedItem.item_unit?.abbreviation || '' }));
+                }
+            }
             setEditingIndex(null);
         } else {
-            setAddingItem(false);
             if (data.new_item.item_id !== 0) {
-                setData('stock_audit_details', [
-                    ...data.stock_audit_details,
-                    {
-                        id: null,
-                        ...data.new_item,
-                    },
-                ]);
+                setAddingItem(false);
+                const newIndex = data.stock_audit_details.length;
+                const newItemDetail: StockAuditDetail = {
+                    id: null,
+                    ...data.new_item,
+                };
+                setData('stock_audit_details', [...data.stock_audit_details, newItemDetail]);
+
+                const selectedNewItem = items.find((itm) => itm.id === data.new_item.item_id);
+                if (selectedNewItem) {
+                    setSelectedItemNames((prev) => ({ ...prev, [newIndex]: `${selectedNewItem.name} (${selectedNewItem.code})` }));
+                    setSelectedItemUnits((prev) => ({ ...prev, [newIndex]: selectedNewItem.item_unit?.abbreviation || '' }));
+                }
+
                 setData('new_item', {
                     item_id: 0,
                     system_quantity: 0,
@@ -286,38 +305,38 @@ export default function EditStockAudit({
     };
 
     const removeAuditItem = (index: number) => {
-        const updatedItems = [...data.stock_audit_details];
-        const removedItem = updatedItems[index];
-
-        // If the item has an ID, add it to deletedDetails array
-        if (removedItem.id) {
-            setDeletedDetails([...deletedDetails, removedItem.id]);
+        const itemToRemove = data.stock_audit_details[index];
+        if (itemToRemove.id) {
+            setDeletedDetails((prev) => [...prev, itemToRemove.id!]);
         }
 
-        const newSelectedItemNames = { ...selectedItemNames };
-        const newSelectedItemUnits = { ...selectedItemUnits };
-        delete newSelectedItemNames[index];
-        delete newSelectedItemUnits[index];
+        const updatedAuditDetails = data.stock_audit_details.filter((_, i) => i !== index);
+        setData('stock_audit_details', updatedAuditDetails);
 
-        updatedItems.splice(index, 1);
-        setData('stock_audit_details', updatedItems);
+        const newNames = { ...selectedItemNames };
+        const newUnits = { ...selectedItemUnits };
+        delete newNames[index];
+        delete newUnits[index];
 
-        const updatedSelectedItemNames: Record<number, string> = {};
-        const updatedSelectedItemUnits: Record<number, string> = {};
+        const reIndexedNames: Record<number, string> = {};
+        const reIndexedUnits: Record<number, string> = {};
 
-        Object.keys(newSelectedItemNames).forEach((key) => {
-            const keyNum = parseInt(key, 10);
-            if (keyNum > index) {
-                updatedSelectedItemNames[keyNum - 1] = newSelectedItemNames[keyNum];
-                updatedSelectedItemUnits[keyNum - 1] = newSelectedItemUnits[keyNum];
-            } else {
-                updatedSelectedItemNames[keyNum] = newSelectedItemNames[keyNum];
-                updatedSelectedItemUnits[keyNum] = newSelectedItemUnits[keyNum];
+        let currentNewIndex = 0;
+        for (let i = 0; i < data.stock_audit_details.length + 1; i++) {
+            if (i !== index) {
+                if (newNames[i] !== undefined) reIndexedNames[currentNewIndex] = newNames[i];
+                if (newUnits[i] !== undefined) reIndexedUnits[currentNewIndex] = newUnits[i];
+                currentNewIndex++;
             }
-        });
+        }
+        setSelectedItemNames(reIndexedNames);
+        setSelectedItemUnits(reIndexedUnits);
 
-        setSelectedItemNames(updatedSelectedItemNames);
-        setSelectedItemUnits(updatedSelectedItemUnits);
+        if (editingIndex === index) {
+            setEditingIndex(null);
+        } else if (editingIndex !== null && editingIndex > index) {
+            setEditingIndex(editingIndex - 1);
+        }
     };
 
     const updateAuditItem = (
@@ -325,73 +344,52 @@ export default function EditStockAudit({
         field: 'item_id' | 'system_quantity' | 'physical_quantity' | 'discrepancy_quantity' | 'reason',
         value: string | number,
     ) => {
-        const updatedItems = [...data.stock_audit_details];
+        setData(
+            'stock_audit_details',
+            data.stock_audit_details.map((detail, i) => {
+                if (i === index) {
+                    const updatedDetail = { ...detail };
+                    if (field === 'item_id') {
+                        const itemId = Number(value);
+                        const selectedItem = items.find((itm) => itm.id === itemId);
+                        if (selectedItem) {
+                            const itemStock = selectedItem.stock ?? 0;
+                            updatedDetail.item_id = itemId;
+                            updatedDetail.system_quantity = itemStock;
+                            updatedDetail.physical_quantity = 0; // Reset physical quantity on item change
+                            updatedDetail.discrepancy_quantity = 0 - itemStock;
 
-        if (field === 'item_id') {
-            const itemId = Number(value);
-            const selectedItem = items.find((itm) => itm.id === itemId);
-
-            if (selectedItem) {
-                const newSelectedItemNames = { ...selectedItemNames };
-                newSelectedItemNames[index] = `${selectedItem.name} (${selectedItem.code})`;
-                setSelectedItemNames(newSelectedItemNames);
-
-                const newSelectedItemUnits = { ...selectedItemUnits };
-                newSelectedItemUnits[index] = selectedItem.item_unit?.abbreviation || '';
-                setSelectedItemUnits(newSelectedItemUnits);
-
-                const itemStock = selectedItem.stock ?? 0;
-                updatedItems[index] = {
-                    ...updatedItems[index],
-                    item_id: itemId,
-                    system_quantity: itemStock,
-                    physical_quantity: 0,
-                    discrepancy_quantity: 0 - itemStock,
-                };
-            }
-        } else if (field === 'physical_quantity') {
-            let physicalQty = Number(value);
-            if (physicalQty < 0) {
-                physicalQty = 0;
-            }
-
-            const systemQty = updatedItems[index].system_quantity;
-            updatedItems[index] = {
-                ...updatedItems[index],
-                physical_quantity: physicalQty,
-                discrepancy_quantity: physicalQty - systemQty,
-            };
-        } else if (field === 'system_quantity') {
-            let systemQty = Number(value);
-            if (systemQty < 0) {
-                systemQty = 0;
-            }
-
-            const physicalQty = updatedItems[index].physical_quantity;
-            updatedItems[index] = {
-                ...updatedItems[index],
-                system_quantity: systemQty,
-                discrepancy_quantity: physicalQty - systemQty,
-            };
-        } else {
-            updatedItems[index] = {
-                ...updatedItems[index],
-                [field]: field === 'reason' ? String(value) : Number(value),
-            };
-        }
-
-        setData('stock_audit_details', updatedItems);
+                            setSelectedItemNames((prev) => ({ ...prev, [index]: `${selectedItem.name} (${selectedItem.code})` }));
+                            setSelectedItemUnits((prev) => ({ ...prev, [index]: selectedItem.item_unit?.abbreviation || '' }));
+                        }
+                    } else if (field === 'physical_quantity') {
+                        let physicalQty = Number(value);
+                        if (physicalQty < 0) physicalQty = 0;
+                        updatedDetail.physical_quantity = physicalQty;
+                        updatedDetail.discrepancy_quantity = physicalQty - updatedDetail.system_quantity;
+                    } else if (field === 'reason') {
+                        updatedDetail.reason = String(value);
+                    }
+                    return updatedDetail;
+                }
+                return detail;
+            }),
+        );
     };
 
     const getAvailableItems = (currentIndex: number) => {
         return items.filter((item) => {
+            if (editingIndex === currentIndex && data.stock_audit_details[currentIndex]?.item_id === item.id) {
+                return true;
+            }
             return !data.stock_audit_details.some((auditItem, i) => i !== currentIndex && auditItem.item_id === item.id);
         });
     };
 
     const renderAuditItemForm = (auditItem: StockAuditDetail | null = null, index: number = -1, isAddingNew: boolean = false) => {
-        const item = auditItem || data.new_item;
-        const selectedItemId = isAddingNew ? data.new_item.item_id : item.item_id;
+        const currentItemData = auditItem || data.new_item;
+        const selectedItemId = currentItemData.item_id;
+        const itemIdentifier = isAddingNew ? `new_item` : `stock_audit_details.${index}`;
 
         return (
             <div className="mb-4 flex flex-wrap items-end gap-3 rounded-md border bg-gray-50 p-4">
@@ -402,29 +400,23 @@ export default function EditStockAudit({
                     <Combobox
                         value={selectedItemId ? String(selectedItemId) : ''}
                         onValueChange={(value) => {
+                            const itemId = Number(value);
+                            const selectedItem = items.find((itm) => itm.id === itemId);
+                            if (!selectedItem) return;
+
+                            const itemStock = selectedItem.stock ?? 0;
+
                             if (isAddingNew) {
-                                const itemId = Number(value);
-                                const selectedItem = items.find((itm) => itm.id === itemId);
-
-                                if (selectedItem) {
-                                    const tempItem = {
-                                        item_id: itemId,
-                                        system_quantity: selectedItem.stock ?? 0,
-                                        physical_quantity: 0,
-                                        discrepancy_quantity: -(selectedItem.stock ?? 0),
-                                        reason: '',
-                                    };
-
-                                    const newSelectedItemNames = { ...selectedItemNames };
-                                    newSelectedItemNames[data.stock_audit_details.length] = `${selectedItem.name} (${selectedItem.code})`;
-                                    setSelectedItemNames(newSelectedItemNames);
-
-                                    const newSelectedItemUnits = { ...selectedItemUnits };
-                                    newSelectedItemUnits[data.stock_audit_details.length] = selectedItem.item_unit?.abbreviation || '';
-                                    setSelectedItemUnits(newSelectedItemUnits);
-
-                                    setData('new_item', tempItem);
-                                }
+                                setData('new_item', {
+                                    item_id: itemId,
+                                    system_quantity: itemStock,
+                                    physical_quantity: 0,
+                                    discrepancy_quantity: 0 - itemStock,
+                                    reason: '',
+                                });
+                                const newIndexForStates = data.stock_audit_details.length;
+                                setSelectedItemNames((prev) => ({ ...prev, [newIndexForStates]: `${selectedItem.name} (${selectedItem.code})` }));
+                                setSelectedItemUnits((prev) => ({ ...prev, [newIndexForStates]: selectedItem.item_unit?.abbreviation || '' }));
                             } else {
                                 updateAuditItem(index, 'item_id', value);
                             }
@@ -436,13 +428,10 @@ export default function EditStockAudit({
                         placeholder="Select an item"
                         searchPlaceholder="Search items..."
                         initialDisplayCount={5}
-                        className={
-                            isAddingNew && errors[`new_item.item_id` as keyof typeof errors]
-                                ? 'border-red-500 ring-red-100'
-                                : !isAddingNew && errors[`stock_audit_details.${index}.item_id` as keyof typeof errors]
-                                  ? 'border-red-500 ring-red-100'
-                                  : ''
-                        }
+                        className={cn(
+                            'w-full max-w-xs truncate',
+                            errors[`${itemIdentifier}.item_id` as keyof typeof errors] ? 'border-red-500 ring-red-100' : '',
+                        )}
                     />
                 </div>
                 <div className="relative grid min-w-[140px] flex-1 gap-2">
@@ -452,17 +441,17 @@ export default function EditStockAudit({
                             id={`system_quantity_${index}`}
                             type="number"
                             value={
-                                item.system_quantity === 0
+                                currentItemData.system_quantity === 0
                                     ? 0
-                                    : item.system_quantity % 1 === 0
-                                      ? Math.abs(Number(item.system_quantity))
-                                      : Number(item.system_quantity.toFixed(2))
+                                    : currentItemData.system_quantity % 1 === 0
+                                      ? Math.abs(Number(currentItemData.system_quantity))
+                                      : Number(currentItemData.system_quantity.toFixed(2))
                             }
                             readOnly
-                            className="bg-gray-50 pr-10"
+                            className="bg-gray-100 pr-10"
                         />
                         <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-sm text-gray-500">
-                            {isAddingNew ? selectedItemUnits[data.stock_audit_details.length] || '' : selectedItemUnits[index] || ''}
+                            {selectedItemUnits[isAddingNew ? data.stock_audit_details.length : index] || ''}
                         </div>
                     </div>
                 </div>
@@ -475,35 +464,32 @@ export default function EditStockAudit({
                             id={`physical_quantity_${index}`}
                             type="number"
                             min="0"
-                            value={item.physical_quantity === 0 ? '' : item.physical_quantity}
+                            value={currentItemData.physical_quantity === 0 ? '' : formatDecimal(currentItemData.physical_quantity)}
                             onChange={(e) => {
+                                const physicalQty = Math.max(0, Number(e.target.value));
+                                const systemQty = currentItemData.system_quantity || 0;
                                 if (isAddingNew) {
-                                    const physicalQty = Number(e.target.value);
-                                    const systemQty = data.new_item?.system_quantity || 0;
                                     setData('new_item', {
                                         ...data.new_item,
                                         physical_quantity: physicalQty,
                                         discrepancy_quantity: physicalQty - systemQty,
                                     });
                                 } else {
-                                    updateAuditItem(index, 'physical_quantity', e.target.value);
+                                    updateAuditItem(index, 'physical_quantity', physicalQty);
                                 }
                             }}
                             placeholder="Count result"
-                            className={`[appearance:textfield] pr-10 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${
-                                isAddingNew && errors[`new_item.physical_quantity` as keyof typeof errors]
-                                    ? 'border-red-500 ring-red-100'
-                                    : !isAddingNew && errors[`stock_audit_details.${index}.physical_quantity` as keyof typeof errors]
-                                      ? 'border-red-500 ring-red-100'
-                                      : ''
-                            }`}
+                            className={cn(
+                                '[appearance:textfield] pr-10 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none',
+                                errors[`${itemIdentifier}.physical_quantity` as keyof typeof errors] ? 'border-red-500 ring-red-100' : '',
+                            )}
                         />
                         <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-sm text-gray-500">
-                            {isAddingNew ? selectedItemUnits[data.stock_audit_details.length] || '' : selectedItemUnits[index] || ''}
+                            {selectedItemUnits[isAddingNew ? data.stock_audit_details.length : index] || ''}
                         </div>
                     </div>
-                    {!isAddingNew && errors[`stock_audit_details.${index}.physical_quantity` as keyof typeof errors] && (
-                        <p className="mt-1 text-xs text-red-500">{errors[`stock_audit_details.${index}.physical_quantity` as keyof typeof errors]}</p>
+                    {errors[`${itemIdentifier}.physical_quantity` as keyof typeof errors] && (
+                        <p className="mt-1 text-xs text-red-500">{errors[`${itemIdentifier}.physical_quantity` as keyof typeof errors]}</p>
                     )}
                 </div>
                 <div className="relative grid min-w-[140px] flex-1 gap-2">
@@ -513,19 +499,24 @@ export default function EditStockAudit({
                             id={`discrepancy_quantity_${index}`}
                             type="number"
                             value={
-                                item.discrepancy_quantity === 0
+                                currentItemData.discrepancy_quantity === 0
                                     ? 0
-                                    : item.discrepancy_quantity < 0
-                                      ? Math.abs(Number(item.discrepancy_quantity.toFixed(2)))
-                                      : Number(item.discrepancy_quantity.toFixed(2))
+                                    : currentItemData.discrepancy_quantity % 1 === 0
+                                      ? Number(currentItemData.discrepancy_quantity)
+                                      : Number(currentItemData.discrepancy_quantity.toFixed(2))
                             }
                             readOnly
-                            className={`bg-gray-50 pr-10 ${
-                                item.discrepancy_quantity < 0 ? 'text-red-600' : item.discrepancy_quantity > 0 ? 'text-green-600' : ''
-                            }`}
+                            className={cn(
+                                'bg-gray-100 pr-10',
+                                currentItemData.discrepancy_quantity < 0
+                                    ? 'text-red-600'
+                                    : currentItemData.discrepancy_quantity > 0
+                                      ? 'text-green-600'
+                                      : '',
+                            )}
                         />
                         <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-sm text-gray-500">
-                            {isAddingNew ? selectedItemUnits[data.stock_audit_details.length] || '' : selectedItemUnits[index] || ''}
+                            {selectedItemUnits[isAddingNew ? data.stock_audit_details.length : index] || ''}
                         </div>
                     </div>
                 </div>
@@ -534,7 +525,7 @@ export default function EditStockAudit({
                     <Input
                         id={`reason_${index}`}
                         type="text"
-                        value={item.reason}
+                        value={currentItemData.reason}
                         onChange={(e) => {
                             if (isAddingNew) {
                                 setData('new_item', {
@@ -546,13 +537,7 @@ export default function EditStockAudit({
                             }
                         }}
                         placeholder="Explain discrepancy"
-                        className={`${
-                            isAddingNew && errors['new_item.reason' as keyof typeof errors]
-                                ? 'border-red-500 ring-red-100'
-                                : !isAddingNew && errors[`stock_audit_details.${index}.reason` as keyof typeof errors]
-                                  ? 'border-red-500 ring-red-100'
-                                  : ''
-                        }`}
+                        className={cn(errors[`${itemIdentifier}.reason` as keyof typeof errors] ? 'border-red-500 ring-red-100' : '')}
                     />
                 </div>
                 <div className="flex items-end gap-2 pb-[2px]">
@@ -565,14 +550,16 @@ export default function EditStockAudit({
     };
 
     const renderAuditItemList = (auditItem: StockAuditDetail, index: number) => {
-        const selectedItem = items.find((itm) => itm.id === auditItem.item_id);
-        const itemName = selectedItemNames[index] || (selectedItem ? `${selectedItem.name} (${selectedItem.code})` : 'Unknown Item');
-        const itemUnit = selectedItemUnits[index] || selectedItem?.item_unit?.abbreviation || '';
+        const itemName = selectedItemNames[index] || 'Loading...';
+        const itemUnit = selectedItemUnits[index] || '';
 
         return (
-            <div key={index} className="flex items-center justify-between border-b border-gray-100 py-3">
+            <div
+                key={auditItem.id || `item-${index}-${auditItem.item_id}`}
+                className="flex items-center justify-between border-b border-gray-100 py-3"
+            >
                 <div className="flex-1">
-                    <div className="mt-1 flex gap-4 text-sm text-gray-500">
+                    <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-500">
                         <p className="font-medium text-gray-900">{itemName}</p>
                         <span>
                             System: {formatDecimal(auditItem.system_quantity)} {itemUnit}
@@ -585,14 +572,12 @@ export default function EditStockAudit({
                                 auditItem.discrepancy_quantity < 0 ? 'text-red-600' : auditItem.discrepancy_quantity > 0 ? 'text-green-600' : ''
                             }`}
                         >
-                            Discrepancy: {auditItem.discrepancy_quantity < 0 ? '-' : '+'}
-                            {formatDecimal(auditItem.discrepancy_quantity)}
-                            {itemUnit}
+                            Discrepancy: {formatDecimal(auditItem.discrepancy_quantity)} {itemUnit}
                         </span>
                         {auditItem.reason && <span>Reason: {auditItem.reason}</span>}
                     </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="ml-4 flex flex-shrink-0 items-center gap-2">
                     <Button type="button" variant="ghost" size="icon" onClick={() => setEditingIndex(index)} className="h-9 w-9">
                         <Edit className="h-4 w-4 text-gray-500" />
                     </Button>
@@ -636,7 +621,7 @@ export default function EditStockAudit({
                                             {errors.code && <p className="mt-1 text-xs text-red-500">{errors.code}</p>}
                                         </div>
 
-                                        <div className="relativ grid gap-2 space-y-2">
+                                        <div className="relative grid gap-2 space-y-2">
                                             <Label htmlFor="source">
                                                 Audit Source <span className="text-red-500">*</span>
                                             </Label>
@@ -656,23 +641,26 @@ export default function EditStockAudit({
                                                     }));
                                                     setSelectedItemNames({});
                                                     setSelectedItemUnits({});
+                                                    setItems([]);
+                                                    setShouldFetchItems(true);
                                                 }}
                                                 options={
                                                     !auth?.user?.branch_id
                                                         ? [
-                                                              // Opsi warehouse jika tersedia
                                                               ...warehouses.map((warehouse) => ({
                                                                   value: `warehouse-${warehouse.id}`,
                                                                   label: warehouse.name,
                                                               })),
-                                                              // Opsi branch jika tersedia
                                                               ...branches.map((branch) => ({
                                                                   value: `branch-${branch.id}`,
                                                                   label: branch.name,
                                                               })),
                                                           ]
                                                         : branches
-                                                              .filter((branch) => branch.id === auth.user.branch_id)
+                                                              .filter(
+                                                                  (branch) =>
+                                                                      branch.id === auth.user.branch_id || branch.id === Number(initialSourceId),
+                                                              )
                                                               .map((branch) => ({
                                                                   value: `branch-${branch.id}`,
                                                                   label: branch.name,
@@ -737,9 +725,8 @@ export default function EditStockAudit({
                                     <div className="space-y-4">
                                         <div className="max-h-[calc(70vh-260px)] overflow-y-auto pr-2 pl-1">
                                             {addingItem && renderAuditItemForm(null, -1, true)}
-
                                             {data.stock_audit_details.map((auditItem, index) => (
-                                                <div key={index}>
+                                                <div key={auditItem.id || `item-${index}-${auditItem.item_id}`}>
                                                     {editingIndex === index
                                                         ? renderAuditItemForm(auditItem, index)
                                                         : renderAuditItemList(auditItem, index)}
@@ -772,11 +759,11 @@ export default function EditStockAudit({
                         </div>
                     </div>
 
-                    <div className="mt-6 flex justify-end gap-3 py-4">
+                    <div className="mt-6 flex justify-end gap-3 border-t pt-4 pb-2">
                         <Button variant="outline" type="button" onClick={() => router.visit(route('stock.audit.index'))}>
                             Cancel
                         </Button>
-                        <Button type="submit" disabled={processing || data.stock_audit_details.length === 0} className="px-8">
+                        <Button type="submit" disabled={processing || data.stock_audit_details.length === 0 || !data.date} className="px-8">
                             {processing ? 'Saving...' : 'Save Changes'}
                         </Button>
                     </div>

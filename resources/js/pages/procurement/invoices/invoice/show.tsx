@@ -201,7 +201,10 @@ export default function Show({ purchaseInvoice }: PurchaseInvoiceProps) {
             cell: ({ row }) => {
                 const qty = parseFloat(row.getValue('received_quantity'));
                 const formattedQty = formatDecimal(qty);
-                const unit = row.original.purchase_order_detail?.item?.item_unit?.abbreviation || '';
+                const unit =
+                    row.original.purchase_order_detail?.item?.item_wholesale_unit?.abbreviation ||
+                    row.original.purchase_order_detail?.item?.item_unit?.abbreviation ||
+                    '';
                 return `${formattedQty} ${unit}`;
             },
             meta: {

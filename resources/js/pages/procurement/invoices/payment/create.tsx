@@ -320,10 +320,7 @@ export default function Create({ code = '', suppliers = [], paymentMethods = [] 
         if (!selectedInvoice || !selectedInvoice.goods_receipts) return [];
 
         return selectedInvoice.goods_receipts.map((receipt) => {
-            const totalReceiptAmount = receipt.goods_receipt_details.reduce(
-                (sum, detail) => sum + parseFloat((detail.total_amount || detail.total_price).toString()),
-                0,
-            );
+            const totalReceiptAmount = receipt.goods_receipt_details.reduce((sum, detail) => sum + parseFloat(detail.total_price.toString()), 0);
 
             return {
                 receipt,
@@ -733,7 +730,7 @@ export default function Create({ code = '', suppliers = [], paymentMethods = [] 
                                                                                     {formatCurrency(detail.tax_amount || 0)}
                                                                                 </td>
                                                                                 <td className="px-3 py-2 text-right font-medium">
-                                                                                    {formatCurrency(detail.total_amount || detail.total_price)}
+                                                                                    {formatCurrency(detail.total_price)}
                                                                                 </td>
                                                                             </tr>
                                                                         ))}

@@ -12,7 +12,7 @@ import { cn, formatDate, formatDateToYmd } from '@/lib/utils';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { ArrowLeft, CalendarIcon, CheckCircle, Edit, PlusCircle, Trash2 } from 'lucide-react';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -71,10 +71,12 @@ export default function Create({ branches = [], warehouses = [] }: { branches?: 
     const [addingItem, setAddingItem] = useState<boolean>(false);
     const { auth } = usePage().props as unknown as { auth: { user: { branch_id: number } } };
     const [initialized, setInitialized] = useState(false);
+    const [shouldFetchItems, setShouldFetchItems] = useState(false);
+    const [shouldFetchCode, setShouldFetchCode] = useState(false);
 
-    // Add refs to track if a fetch is in progress
     const isFetchingItems = useRef(false);
     const isFetchingCode = useRef(false);
+    const currentItemsSourceRef = useRef<string | null>(null);
 
     const { data, setData, post, processing, errors } = useForm({
         code: '',
@@ -101,110 +103,111 @@ export default function Create({ branches = [], warehouses = [] }: { branches?: 
         if (!initialized) {
             if (auth?.user?.branch_id) {
                 const userBranchId = auth.user.branch_id.toString();
-                setData('source_able_type', 'branch');
-                setData('source_able_id', userBranchId);
+                setData((prev) => ({
+                    ...prev,
+                    source_able_type: 'branch',
+                    source_able_id: userBranchId,
+                }));
+                setShouldFetchItems(true);
+                setShouldFetchCode(true);
             }
             setInitialized(true);
         }
     }, [initialized, auth?.user?.branch_id, setData]);
 
-    const fetchItems = useCallback(
-        (sourceType: string, sourceId: string) => {
-            // Guard against multiple concurrent fetches
-            if (isFetchingItems.current) return;
+    // Effect for fetching items when source changes
+    useEffect(() => {
+        if (!shouldFetchItems || !initialized || !data.source_able_type || !data.source_able_id || isFetchingItems.current) {
+            return;
+        }
 
-            isFetchingItems.current = true;
-            const routeName = sourceType === 'branch' ? 'item.getItemByBranch' : 'item.getItemByWarehouse';
+        isFetchingItems.current = true;
+        const routeName = data.source_able_type === 'branch' ? 'item.getItemByBranch' : 'item.getItemByWarehouse';
+        const newSourceKey = `${data.source_able_type}-${data.source_able_id}`;
 
-            fetch(route(routeName, sourceId), {
+        fetch(route(routeName, data.source_able_id), {
+            method: 'GET',
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        })
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then((responseData) => {
+                let itemsData = [];
+
+                if (Array.isArray(responseData)) {
+                    itemsData = responseData;
+                } else if (responseData && responseData.items && Array.isArray(responseData.items)) {
+                    itemsData = responseData.items;
+                } else if (responseData && responseData.data && Array.isArray(responseData.data)) {
+                    itemsData = responseData.data;
+                } else {
+                    itemsData = [];
+                }
+
+                setItems(itemsData);
+
+                if (currentItemsSourceRef.current !== newSourceKey) {
+                    setData((prev) => ({ ...prev, stock_audit_details: [] }));
+                    setSelectedItemNames({});
+                    setSelectedItemUnits({});
+                }
+                currentItemsSourceRef.current = newSourceKey;
+            })
+            .catch((error) => {
+                showErrorToast([error.message]);
+            })
+            .finally(() => {
+                isFetchingItems.current = false;
+                setShouldFetchItems(false);
+            });
+    }, [data.source_able_type, data.source_able_id, initialized, shouldFetchItems, setData, showErrorToast]);
+
+    // Effect for fetching audit code
+    useEffect(() => {
+        if (!shouldFetchCode || !initialized || !data.source_able_type || !data.source_able_id || isFetchingCode.current) {
+            return;
+        }
+
+        isFetchingCode.current = true;
+        fetch(
+            route('stock.audit.getCode', {
+                source_able_type: data.source_able_type,
+                source_able_id: data.source_able_id,
+            }),
+            {
                 method: 'GET',
                 headers: {
                     Accept: 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
                 },
+            },
+        )
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
             })
-                .then((response) => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok');
-                    }
-                    return response.json();
-                })
-                .then((responseData) => {
-                    let itemsData = [];
-
-                    if (Array.isArray(responseData)) {
-                        itemsData = responseData;
-                    } else if (responseData && responseData.items && Array.isArray(responseData.items)) {
-                        itemsData = responseData.items;
-                    } else if (responseData && responseData.data && Array.isArray(responseData.data)) {
-                        itemsData = responseData.data;
-                    } else {
-                        itemsData = [];
-                    }
-
-                    setItems(itemsData);
-                    setData('stock_audit_details', []);
-                    setSelectedItemNames({});
-                    setSelectedItemUnits({});
-                })
-                .catch((error) => {
-                    showErrorToast([error.message]);
-                })
-                .finally(() => {
-                    isFetchingItems.current = false;
-                });
-        },
-        [setItems, setData, setSelectedItemNames, setSelectedItemUnits, showErrorToast],
-    );
-
-    const fetchAuditCode = useCallback(
-        (sourceType: string, sourceId: string) => {
-            if (isFetchingCode.current) return;
-
-            isFetchingCode.current = true;
-            fetch(
-                route('stock.audit.getCode', {
-                    source_able_type: sourceType,
-                    source_able_id: sourceId,
-                }),
-                {
-                    method: 'GET',
-                    headers: {
-                        Accept: 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest',
-                    },
-                },
-            )
-                .then((response) => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok');
-                    }
-                    return response.json();
-                })
-                .then((responseData) => {
-                    if (responseData && responseData.code) {
-                        setData('code', responseData.code);
-                    }
-                })
-                .catch(() => {
-                    showErrorToast(['Failed to get audit code']);
-                })
-                .finally(() => {
-                    isFetchingCode.current = false;
-                });
-        },
-        [setData, showErrorToast],
-    );
-
-    // Modified useEffect to prevent infinite loops
-    useEffect(() => {
-        if (initialized && data.source_able_type && data.source_able_id) {
-            fetchItems(data.source_able_type, data.source_able_id);
-            fetchAuditCode(data.source_able_type, data.source_able_id);
-        }
-        // Important: only run this effect when either initialized changes OR source changes
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [initialized, data.source_able_type + data.source_able_id]);
+            .then((responseData) => {
+                if (responseData && responseData.code) {
+                    setData('code', responseData.code);
+                }
+            })
+            .catch(() => {
+                showErrorToast(['Failed to get audit code']);
+            })
+            .finally(() => {
+                isFetchingCode.current = false;
+                setShouldFetchCode(false);
+            });
+    }, [data.source_able_type, data.source_able_id, initialized, shouldFetchCode, setData, showErrorToast]);
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -230,8 +233,8 @@ export default function Create({ branches = [], warehouses = [] }: { branches?: 
         if (editingIndex !== null) {
             setEditingIndex(null);
         } else {
-            setAddingItem(false);
             if (data.new_item.item_id !== 0) {
+                setAddingItem(false);
                 setData('stock_audit_details', [...data.stock_audit_details, data.new_item]);
                 setData('new_item', {
                     item_id: 0,
@@ -247,32 +250,38 @@ export default function Create({ branches = [], warehouses = [] }: { branches?: 
     };
 
     const removeAuditItem = (index: number) => {
-        const updatedItems = [...data.stock_audit_details];
+        const updatedAuditDetails = data.stock_audit_details.filter((_, i) => i !== index);
+        setData('stock_audit_details', updatedAuditDetails);
 
-        const newSelectedItemNames = { ...selectedItemNames };
-        const newSelectedItemUnits = { ...selectedItemUnits };
-        delete newSelectedItemNames[index];
-        delete newSelectedItemUnits[index];
+        const newSelectedItemNames: Record<number, string> = {};
+        const newSelectedItemUnits: Record<number, string> = {};
 
-        updatedItems.splice(index, 1);
-        setData('stock_audit_details', updatedItems);
+        updatedAuditDetails.forEach((item, i) => {
+            const originalIndexCorrelated = Object.keys(selectedItemNames).find((keyStr) => {
+                const keyNum = parseInt(keyStr);
+                const originalItemAtIndex = data.stock_audit_details[keyNum];
+                return originalItemAtIndex && originalItemAtIndex.item_id === item.item_id;
+            });
 
-        const updatedSelectedItemNames: Record<number, string> = {};
-        const updatedSelectedItemUnits: Record<number, string> = {};
-
-        Object.keys(newSelectedItemNames).forEach((key) => {
-            const keyNum = parseInt(key, 10);
-            if (keyNum > index) {
-                updatedSelectedItemNames[keyNum - 1] = newSelectedItemNames[keyNum];
-                updatedSelectedItemUnits[keyNum - 1] = newSelectedItemUnits[keyNum];
-            } else {
-                updatedSelectedItemNames[keyNum] = newSelectedItemNames[keyNum];
-                updatedSelectedItemUnits[keyNum] = newSelectedItemUnits[keyNum];
+            if (originalIndexCorrelated !== undefined) {
+                const originalIdx = parseInt(originalIndexCorrelated);
+                if (selectedItemNames[originalIdx] !== undefined) {
+                    newSelectedItemNames[i] = selectedItemNames[originalIdx];
+                }
+                if (selectedItemUnits[originalIdx] !== undefined) {
+                    newSelectedItemUnits[i] = selectedItemUnits[originalIdx];
+                }
             }
         });
 
-        setSelectedItemNames(updatedSelectedItemNames);
-        setSelectedItemUnits(updatedSelectedItemUnits);
+        setSelectedItemNames(newSelectedItemNames);
+        setSelectedItemUnits(newSelectedItemUnits);
+
+        if (editingIndex === index) {
+            setEditingIndex(null);
+        } else if (editingIndex !== null && editingIndex > index) {
+            setEditingIndex(editingIndex - 1);
+        }
     };
 
     const updateAuditItem = (
@@ -300,8 +309,8 @@ export default function Create({ branches = [], warehouses = [] }: { branches?: 
                     ...updatedItems[index],
                     item_id: itemId,
                     system_quantity: itemStock,
-                    physical_quantity: 0,
-                    discrepancy_quantity: 0 - itemStock,
+                    physical_quantity: updatedItems[index].physical_quantity,
+                    discrepancy_quantity: updatedItems[index].physical_quantity - itemStock,
                 };
             }
         } else if (field === 'physical_quantity') {
@@ -355,8 +364,10 @@ export default function Create({ branches = [], warehouses = [] }: { branches?: 
         index: number = -1,
         isAddingNew: boolean = false,
     ) => {
-        const item = auditItem || data.new_item;
-        const selectedItemId = isAddingNew ? data.new_item.item_id : item.item_id;
+        const currentItemData = auditItem || data.new_item;
+        const selectedItemId = currentItemData.item_id;
+
+        const itemIdentifier = isAddingNew ? `new_item` : `stock_audit_details.${index}`;
 
         return (
             <div className="mb-4 flex flex-wrap items-end gap-3 rounded-md border bg-gray-50 p-4">
@@ -367,29 +378,27 @@ export default function Create({ branches = [], warehouses = [] }: { branches?: 
                     <Combobox
                         value={selectedItemId ? String(selectedItemId) : ''}
                         onValueChange={(value) => {
+                            const itemId = Number(value);
+                            const selectedItem = items.find((itm) => itm.id === itemId);
+                            if (!selectedItem) return;
+
+                            const newItemData = {
+                                item_id: itemId,
+                                system_quantity: selectedItem.stock ?? 0,
+                                physical_quantity: isAddingNew ? 0 : currentItemData.physical_quantity,
+                                discrepancy_quantity: (isAddingNew ? 0 : currentItemData.physical_quantity) - (selectedItem.stock ?? 0),
+                                reason: currentItemData.reason,
+                            };
+
                             if (isAddingNew) {
-                                const itemId = Number(value);
-                                const selectedItem = items.find((itm) => itm.id === itemId);
+                                const tempSelectedItemNames = { ...selectedItemNames };
+                                tempSelectedItemNames[data.stock_audit_details.length] = `${selectedItem.name} (${selectedItem.code})`;
+                                setSelectedItemNames(tempSelectedItemNames);
 
-                                if (selectedItem) {
-                                    const tempItem = {
-                                        item_id: itemId,
-                                        system_quantity: selectedItem.stock ?? 0,
-                                        physical_quantity: 0,
-                                        discrepancy_quantity: -(selectedItem.stock ?? 0),
-                                        reason: '',
-                                    };
-
-                                    const newSelectedItemNames = { ...selectedItemNames };
-                                    newSelectedItemNames[data.stock_audit_details.length] = `${selectedItem.name} (${selectedItem.code})`;
-                                    setSelectedItemNames(newSelectedItemNames);
-
-                                    const newSelectedItemUnits = { ...selectedItemUnits };
-                                    newSelectedItemUnits[data.stock_audit_details.length] = selectedItem.item_unit?.abbreviation || '';
-                                    setSelectedItemUnits(newSelectedItemUnits);
-
-                                    setData('new_item', tempItem);
-                                }
+                                const tempSelectedItemUnits = { ...selectedItemUnits };
+                                tempSelectedItemUnits[data.stock_audit_details.length] = selectedItem.item_unit?.abbreviation || '';
+                                setSelectedItemUnits(tempSelectedItemUnits);
+                                setData('new_item', newItemData);
                             } else {
                                 updateAuditItem(index, 'item_id', value);
                             }
@@ -401,13 +410,10 @@ export default function Create({ branches = [], warehouses = [] }: { branches?: 
                         placeholder="Select an item"
                         searchPlaceholder="Search items..."
                         initialDisplayCount={5}
-                        className={
-                            isAddingNew && errors[`new_item.item_id` as keyof typeof errors]
-                                ? 'border-red-500 ring-red-100'
-                                : !isAddingNew && errors[`stock_audit_details.${index}.item_id` as keyof typeof errors]
-                                  ? 'border-red-500 ring-red-100'
-                                  : ''
-                        }
+                        className={cn(
+                            'w-full max-w-xs truncate',
+                            errors[`${itemIdentifier}.item_id` as keyof typeof errors] ? 'border-red-500 ring-red-100' : '',
+                        )}
                     />
                 </div>
                 <div className="relative grid min-w-[140px] flex-1 gap-2">
@@ -417,17 +423,17 @@ export default function Create({ branches = [], warehouses = [] }: { branches?: 
                             id={`system_quantity_${index}`}
                             type="number"
                             value={
-                                item.system_quantity === 0
+                                currentItemData.system_quantity === 0
                                     ? 0
-                                    : item.system_quantity % 1 === 0
-                                      ? Math.abs(Number(item.system_quantity))
-                                      : Number(item.system_quantity.toFixed(2))
+                                    : currentItemData.system_quantity % 1 === 0
+                                      ? Math.abs(Number(currentItemData.system_quantity))
+                                      : Number(currentItemData.system_quantity.toFixed(2))
                             }
                             readOnly
-                            className="bg-gray-50 pr-10"
+                            className="bg-gray-100 pr-10"
                         />
                         <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-sm text-gray-500">
-                            {isAddingNew ? selectedItemUnits[data.stock_audit_details.length] || '' : selectedItemUnits[index] || ''}
+                            {selectedItemUnits[isAddingNew ? data.stock_audit_details.length : index] || ''}
                         </div>
                     </div>
                 </div>
@@ -440,35 +446,32 @@ export default function Create({ branches = [], warehouses = [] }: { branches?: 
                             id={`physical_quantity_${index}`}
                             type="number"
                             min="0"
-                            value={item.physical_quantity === 0 ? '' : item.physical_quantity}
+                            value={currentItemData.physical_quantity === 0 ? '' : currentItemData.physical_quantity}
                             onChange={(e) => {
+                                const physicalQty = Math.max(0, Number(e.target.value));
+                                const systemQty = currentItemData.system_quantity || 0;
                                 if (isAddingNew) {
-                                    const physicalQty = Number(e.target.value);
-                                    const systemQty = data.new_item?.system_quantity || 0;
                                     setData('new_item', {
                                         ...data.new_item,
                                         physical_quantity: physicalQty,
                                         discrepancy_quantity: physicalQty - systemQty,
                                     });
                                 } else {
-                                    updateAuditItem(index, 'physical_quantity', e.target.value);
+                                    updateAuditItem(index, 'physical_quantity', physicalQty);
                                 }
                             }}
                             placeholder="Count result"
-                            className={`[appearance:textfield] pr-10 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${
-                                isAddingNew && errors[`new_item.physical_quantity` as keyof typeof errors]
-                                    ? 'border-red-500 ring-red-100'
-                                    : !isAddingNew && errors[`stock_audit_details.${index}.physical_quantity` as keyof typeof errors]
-                                      ? 'border-red-500 ring-red-100'
-                                      : ''
-                            }`}
+                            className={cn(
+                                '[appearance:textfield] pr-10 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none',
+                                errors[`${itemIdentifier}.physical_quantity` as keyof typeof errors] ? 'border-red-500 ring-red-100' : '',
+                            )}
                         />
                         <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-sm text-gray-500">
-                            {isAddingNew ? selectedItemUnits[data.stock_audit_details.length] || '' : selectedItemUnits[index] || ''}
+                            {selectedItemUnits[isAddingNew ? data.stock_audit_details.length : index] || ''}
                         </div>
                     </div>
-                    {!isAddingNew && errors[`stock_audit_details.${index}.physical_quantity` as keyof typeof errors] && (
-                        <p className="mt-1 text-xs text-red-500">{errors[`stock_audit_details.${index}.physical_quantity` as keyof typeof errors]}</p>
+                    {errors[`${itemIdentifier}.physical_quantity` as keyof typeof errors] && (
+                        <p className="mt-1 text-xs text-red-500">{errors[`${itemIdentifier}.physical_quantity` as keyof typeof errors]}</p>
                     )}
                 </div>
                 <div className="relative grid min-w-[140px] flex-1 gap-2">
@@ -478,19 +481,24 @@ export default function Create({ branches = [], warehouses = [] }: { branches?: 
                             id={`discrepancy_quantity_${index}`}
                             type="number"
                             value={
-                                item.discrepancy_quantity === 0
+                                currentItemData.discrepancy_quantity === 0
                                     ? 0
-                                    : item.discrepancy_quantity < 0
-                                      ? Math.abs(Number(item.discrepancy_quantity.toFixed(2)))
-                                      : Number(item.discrepancy_quantity.toFixed(2))
+                                    : currentItemData.discrepancy_quantity % 1 === 0
+                                      ? Number(currentItemData.discrepancy_quantity)
+                                      : Number(currentItemData.discrepancy_quantity.toFixed(2))
                             }
                             readOnly
-                            className={`bg-gray-50 pr-10 ${
-                                item.discrepancy_quantity < 0 ? 'text-red-600' : item.discrepancy_quantity > 0 ? 'text-green-600' : ''
-                            }`}
+                            className={cn(
+                                'bg-gray-100 pr-10',
+                                currentItemData.discrepancy_quantity < 0
+                                    ? 'text-red-600'
+                                    : currentItemData.discrepancy_quantity > 0
+                                      ? 'text-green-600'
+                                      : '',
+                            )}
                         />
                         <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-sm text-gray-500">
-                            {isAddingNew ? selectedItemUnits[data.stock_audit_details.length] || '' : selectedItemUnits[index] || ''}
+                            {selectedItemUnits[isAddingNew ? data.stock_audit_details.length : index] || ''}
                         </div>
                     </div>
                 </div>
@@ -499,7 +507,7 @@ export default function Create({ branches = [], warehouses = [] }: { branches?: 
                     <Input
                         id={`reason_${index}`}
                         type="text"
-                        value={item.reason}
+                        value={currentItemData.reason}
                         onChange={(e) => {
                             if (isAddingNew) {
                                 setData('new_item', {
@@ -511,13 +519,7 @@ export default function Create({ branches = [], warehouses = [] }: { branches?: 
                             }
                         }}
                         placeholder="Explain discrepancy"
-                        className={`${
-                            isAddingNew && errors['new_item.reason' as keyof typeof errors]
-                                ? 'border-red-500 ring-red-100'
-                                : !isAddingNew && errors[`stock_audit_details.${index}.reason` as keyof typeof errors]
-                                  ? 'border-red-500 ring-red-100'
-                                  : ''
-                        }`}
+                        className={cn(errors[`${itemIdentifier}.reason` as keyof typeof errors] ? 'border-red-500 ring-red-100' : '')}
                     />
                 </div>
                 <div className="flex items-end gap-2 pb-[2px]">
@@ -539,22 +541,17 @@ export default function Create({ branches = [], warehouses = [] }: { branches?: 
         },
         index: number,
     ) => {
-        const selectedItem = items.find((itm) => itm.id === auditItem.item_id);
-        const itemName = selectedItemNames[index] || (selectedItem ? `${selectedItem.name} (${selectedItem.code})` : 'Unknown Item');
-        const itemUnit = selectedItemUnits[index] || selectedItem?.item_unit?.abbreviation || '';
+        const itemName = selectedItemNames[index] || 'Unknown Item';
+        const itemUnit = selectedItemUnits[index] || '';
 
         return (
             <div key={index} className="flex items-center justify-between border-b border-gray-100 py-3">
                 <div className="flex-1">
-                    <div className="mt-1 flex gap-4 text-sm text-gray-500">
+                    <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-500">
                         <p className="font-medium text-gray-900">{itemName}</p>
                         <span>
                             System:{' '}
-                            {auditItem.system_quantity === 0
-                                ? 0
-                                : auditItem.system_quantity % 1 === 0
-                                  ? Math.abs(Number(auditItem.system_quantity))
-                                  : Number(auditItem.system_quantity.toFixed(2))}{' '}
+                            {auditItem.system_quantity % 1 === 0 ? Number(auditItem.system_quantity) : Number(auditItem.system_quantity.toFixed(2))}{' '}
                             {itemUnit}
                         </span>
                         <span>
@@ -565,18 +562,16 @@ export default function Create({ branches = [], warehouses = [] }: { branches?: 
                                 auditItem.discrepancy_quantity < 0 ? 'text-red-600' : auditItem.discrepancy_quantity > 0 ? 'text-green-600' : ''
                             }`}
                         >
-                            Discrepancy: {auditItem.discrepancy_quantity < 0 ? '-' : '+'}
-                            {auditItem.discrepancy_quantity === 0
-                                ? 0
-                                : auditItem.discrepancy_quantity % 1 === 0
-                                  ? Math.abs(Number(auditItem.discrepancy_quantity))
-                                  : Number(auditItem.discrepancy_quantity.toFixed(2))}{' '}
+                            Discrepancy:{' '}
+                            {auditItem.discrepancy_quantity % 1 === 0
+                                ? Number(auditItem.discrepancy_quantity)
+                                : Number(auditItem.discrepancy_quantity.toFixed(2))}{' '}
                             {itemUnit}
                         </span>
                         {auditItem.reason && <span>Reason: {auditItem.reason}</span>}
                     </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="ml-4 flex flex-shrink-0 items-center gap-2">
                     <Button type="button" variant="ghost" size="icon" onClick={() => setEditingIndex(index)} className="h-9 w-9">
                         <Edit className="h-4 w-4 text-gray-500" />
                     </Button>
@@ -649,7 +644,14 @@ export default function Create({ branches = [], warehouses = [] }: { branches?: 
                                                         source_able_type: type,
                                                         source_able_id: id,
                                                         stock_audit_details: [],
+                                                        code: '',
                                                     }));
+                                                    setSelectedItemNames({});
+                                                    setSelectedItemUnits({});
+                                                    setItems([]);
+                                                    currentItemsSourceRef.current = null;
+                                                    setShouldFetchItems(true);
+                                                    setShouldFetchCode(true);
                                                 }}
                                                 options={
                                                     !auth?.user?.branch_id
@@ -672,7 +674,7 @@ export default function Create({ branches = [], warehouses = [] }: { branches?: 
                                                 }
                                                 placeholder="Select audit source"
                                                 searchPlaceholder="Search sources..."
-                                                initialDisplayCount={5} // Menampilkan 5 item pertama
+                                                initialDisplayCount={5}
                                                 disabled={!!auth?.user?.branch_id}
                                                 className={errors.source_able_id || errors.source_able_type ? 'border-red-500' : ''}
                                             />
@@ -732,10 +734,7 @@ export default function Create({ branches = [], warehouses = [] }: { branches?: 
 
                                     <div className="space-y-4">
                                         <div className="max-h-[calc(70vh-260px)] overflow-y-auto pr-2 pl-1">
-                                            {/* Render form when adding new item */}
                                             {addingItem && renderAuditItemForm(null, -1, true)}
-
-                                            {/* Render list or edit form for each item */}
                                             {data.stock_audit_details.map((auditItem, index) => (
                                                 <div key={index}>
                                                     {editingIndex === index
@@ -758,7 +757,7 @@ export default function Create({ branches = [], warehouses = [] }: { branches?: 
                                                 size="sm"
                                                 onClick={addAuditItem}
                                                 className="mt-2"
-                                                disabled={!data.source_able_id || !items.length}
+                                                disabled={!data.source_able_id || !data.source_able_type || !items.length}
                                             >
                                                 <PlusCircle className="mr-2 h-4 w-4" />
                                                 Add Item
@@ -770,11 +769,15 @@ export default function Create({ branches = [], warehouses = [] }: { branches?: 
                         </div>
                     </div>
 
-                    <div className="mt-6 flex justify-end gap-3 py-4">
+                    <div className="mt-6 flex justify-end gap-3 border-t pt-4 pb-2">
                         <Button variant="outline" type="button" onClick={() => router.visit(route('stock.audit.index'))}>
                             Cancel
                         </Button>
-                        <Button type="submit" disabled={processing || data.stock_audit_details.length === 0} className="px-8">
+                        <Button
+                            type="submit"
+                            disabled={processing || data.stock_audit_details.length === 0 || !data.date || !data.code}
+                            className="px-8"
+                        >
                             {processing ? 'Creating...' : 'Create Audit'}
                         </Button>
                     </div>

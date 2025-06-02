@@ -127,7 +127,15 @@ export default function Show({ stockAudit }: StockAuditProps) {
                 const qty = parseFloat(row.getValue('discrepancy_quantity'));
                 const formattedQty = qty % 1 === 0 ? qty.toString() : qty.toFixed(2).replace(/\.?0+$/, '');
                 return (
-                    <span className={qty < 0 ? 'text-red-500' : qty > 0 ? 'text-green-500' : 'text-gray-500'}>
+                    <span
+                        className={
+                            row.original.physical_quantity < row.original.system_quantity
+                                ? 'text-red-500'
+                                : row.original.physical_quantity > row.original.system_quantity
+                                  ? 'text-green-500'
+                                  : 'text-gray-500'
+                        }
+                    >
                         {formattedQty} {row.original.item.item_unit.abbreviation}
                     </span>
                 );

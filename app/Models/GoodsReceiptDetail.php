@@ -17,7 +17,6 @@ class GoodsReceiptDetail extends Model
         'goods_receipt_purchase_order_id',
         'purchase_order_detail_id',
         'received_quantity',
-        'shipping_cost',
         'price_per_unit',
         'total_price',
         'miscellaneous_cost',

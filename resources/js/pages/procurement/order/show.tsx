@@ -136,9 +136,7 @@ export default function Show({ purchaseOrder }: PurchaseOrderProps) {
     };
 
     const hasWholesaleUnit = (item: OrderDetail['item']): boolean => {
-        return !!(item.item_wholesale_unit_id !== null &&
-            item.item_wholesale_unit !== null &&
-            item.wholesale_unit_conversion !== null);
+        return !!(item.item_wholesale_unit_id !== null && item.item_wholesale_unit !== null && item.wholesale_unit_conversion !== null);
     };
 
     const columns: ColumnDef<OrderDetail>[] = [
@@ -163,7 +161,9 @@ export default function Show({ purchaseOrder }: PurchaseOrderProps) {
 
                     return (
                         <div>
-                            <span>{formattedQty} {item.item_wholesale_unit.abbreviation}</span>
+                            <span>
+                                {formattedQty} {item.item_wholesale_unit.abbreviation}
+                            </span>
                             <span className="ml-2">
                                 ({formatNumber(equivalentAmount)} {item.item_unit.abbreviation})
                             </span>

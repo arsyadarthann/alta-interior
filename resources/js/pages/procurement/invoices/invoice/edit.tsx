@@ -46,9 +46,9 @@ type GoodsReceipt = {
     date: string;
     received_by: string;
     status: string;
-    tax_amount: string; // Added field
-    total_amount: string; // Added field
-    grand_total: string; // Added field
+    tax_amount: string;
+    total_amount: string;
+    grand_total: string;
     goods_receipt_details?: GoodsReceiptDetail[];
 };
 
@@ -59,8 +59,8 @@ type GoodsReceiptDetail = {
     received_quantity: string | number;
     price_per_unit: string | number;
     total_price: string | number;
-    tax_amount: string | number; // Added field
-    total_amount: string | number; // Added field
+    tax_amount: string | number;
+    total_amount: string | number;
     cogs: string | number;
     purchase_order_detail: {
         id: number;
@@ -79,12 +79,11 @@ type GoodsReceiptDetail = {
                 abbreviation: string;
             };
             item_wholesale_unit?: {
-                // Added field
                 id: number;
                 name: string;
                 abbreviation: string;
             };
-            wholesale_unit_conversion?: string | number; // Added field
+            wholesale_unit_conversion?: string | number;
         };
     };
     goods_receipt_purchase_order: {
@@ -106,8 +105,8 @@ interface PurchaseInvoiceDetail {
     quantity: string | number;
     unit_price: string | number;
     total_price: string | number;
-    tax_amount: string | number; // Added field
-    total_amount: string | number; // Added field
+    tax_amount: string | number;
+    total_amount: string | number;
     goods_receipt_detail: GoodsReceiptDetail;
 }
 
@@ -146,6 +145,7 @@ export default function Edit({ purchaseInvoice, suppliers = [], taxRates = [] }:
 
     const latestGoodsReceiptsRef = useRef<GoodsReceipt[]>([]);
     const initialLoadCompletedRef = useRef(false);
+    const fetchedSupplierIdRef = useRef<string | null>(null);
 
     const { data, setData, put, processing, errors } = useForm({
         code: purchaseInvoice.code,
@@ -163,8 +163,8 @@ export default function Edit({ purchaseInvoice, suppliers = [], taxRates = [] }:
                 quantity: number;
                 unit_price: number;
                 total_price: number;
-                total_amount?: number; // Added field
-                tax_amount?: number; // Added field
+                total_amount?: number;
+                tax_amount?: number;
             }[];
         }[],
     });
@@ -176,7 +176,6 @@ export default function Edit({ purchaseInvoice, suppliers = [], taxRates = [] }:
         const allDetails = [];
         const originalDetails = {};
 
-        // After we load the purchase invoice data, we should calculate the totals correctly
         let totalAmount = 0;
         let taxAmount = 0;
 
@@ -213,7 +212,6 @@ export default function Edit({ purchaseInvoice, suppliers = [], taxRates = [] }:
         const purchaseInvoiceGoodsReceipts = Array.from(goodsReceiptMap.values());
         const grandTotal = totalAmount + taxAmount;
 
-        // Update all totals with our calculated values
         setData((prevData) => ({
             ...prevData,
             purchase_invoice_goods_receipts: purchaseInvoiceGoodsReceipts,
@@ -228,7 +226,6 @@ export default function Edit({ purchaseInvoice, suppliers = [], taxRates = [] }:
         initialLoadCompletedRef.current = true;
     }, []);
 
-    // Add function for displaying quantity with wholesale calculation
     const displayQuantityWithWholesale = (detail: GoodsReceiptDetail) => {
         const item = detail.purchase_order_detail.item;
 
@@ -259,7 +256,6 @@ export default function Edit({ purchaseInvoice, suppliers = [], taxRates = [] }:
         );
     };
 
-    // Add function for displaying price with wholesale calculation
     const displayPriceWithWholesale = (detail: GoodsReceiptDetail) => {
         const item = detail.purchase_order_detail.item;
 
@@ -325,22 +321,24 @@ export default function Edit({ purchaseInvoice, suppliers = [], taxRates = [] }:
 
                 const responseData = await response.json();
 
-                let data = responseData;
+                let apiData = responseData;
 
                 if (responseData && responseData.data && Array.isArray(responseData.data)) {
-                    data = responseData.data;
+                    apiData = responseData.data;
                 }
 
-                if (Array.isArray(data)) {
-                    latestGoodsReceiptsRef.current = data;
-                    setNotInvoicedGoodsReceipts(data);
+                if (Array.isArray(apiData)) {
+                    latestGoodsReceiptsRef.current = apiData;
+                    setNotInvoicedGoodsReceipts(apiData);
                 } else {
-                    console.error('Unexpected response format:', data);
+                    console.error('Unexpected response format:', apiData);
                     showErrorToast(['Invalid response format']);
+                    setNotInvoicedGoodsReceipts([]);
                 }
             } catch (error) {
                 console.error('Error fetching non-invoiced goods receipts:', error);
                 showErrorToast([(error as Error).message]);
+                setNotInvoicedGoodsReceipts([]);
             } finally {
                 setLoading(false);
             }
@@ -394,10 +392,16 @@ export default function Edit({ purchaseInvoice, suppliers = [], taxRates = [] }:
     );
 
     useEffect(() => {
-        if (data.supplier_id && !notInvoicedGoodsReceipts.length) {
-            fetchNotInvoicedGoodsReceipts(data.supplier_id);
+        if (data.supplier_id && data.supplier_id !== fetchedSupplierIdRef.current) {
+            fetchNotInvoicedGoodsReceipts(data.supplier_id)
+                .then(() => {
+                    fetchedSupplierIdRef.current = data.supplier_id;
+                })
+                .catch(() => {
+                    fetchedSupplierIdRef.current = data.supplier_id;
+                });
         }
-    }, [data.supplier_id, notInvoicedGoodsReceipts.length, fetchNotInvoicedGoodsReceipts]);
+    }, [data.supplier_id, fetchNotInvoicedGoodsReceipts]);
 
     const getDetailsForSelectedReceipt = useCallback(() => {
         if (!selectedGoodsReceipt) return [];
@@ -482,33 +486,29 @@ export default function Edit({ purchaseInvoice, suppliers = [], taxRates = [] }:
     const calculateTotals = (goodsReceipts) => {
         setCalculatingTotals(true);
         try {
-            // Calculate subtotal (just the total_price without tax)
             const subtotal = goodsReceipts.reduce(
                 (sum, receipt) => sum + receipt.purchase_invoice_details.reduce((detailSum, detail) => detailSum + detail.total_price, 0),
                 0,
             );
 
-            // Calculate tax amount separately
             const taxAmount = goodsReceipts.reduce(
                 (sum, receipt) => sum + receipt.purchase_invoice_details.reduce((detailSum, detail) => detailSum + (detail.tax_amount || 0), 0),
                 0,
             );
 
-            // Calculate grand total as subtotal + tax
             const grandTotal = subtotal + taxAmount;
 
             setData((prevData) => ({
                 ...prevData,
-                total_amount: subtotal, // This is the pure subtotal without tax
+                total_amount: subtotal,
                 tax_amount: taxAmount,
-                grand_total: grandTotal, // Grand total is subtotal + tax
+                grand_total: grandTotal,
             }));
         } finally {
             setCalculatingTotals(false);
         }
     };
 
-    // Function to display item quantity in the invoice items table
     const displayInvoiceItemQuantity = (item) => {
         if (
             item.fullDetail &&
@@ -520,7 +520,6 @@ export default function Edit({ purchaseInvoice, suppliers = [], taxRates = [] }:
             const conversion = parseFloat(item_detail.wholesale_unit_conversion);
             const standardEquivalent = quantity * conversion;
 
-            // Format standard equivalent
             const formattedStandardEquivalent =
                 Math.floor(standardEquivalent) === standardEquivalent ? standardEquivalent.toString() : standardEquivalent.toFixed(2);
 
@@ -537,16 +536,13 @@ export default function Edit({ purchaseInvoice, suppliers = [], taxRates = [] }:
         return `${formatDecimal(item.quantity)} ${item.item_unit}`;
     };
 
-    // Function to display item price in the invoice items table
     const displayInvoiceItemPrice = (item) => {
         if (
             item.fullDetail &&
             item.fullDetail.purchase_order_detail.item.item_wholesale_unit &&
             item.fullDetail.purchase_order_detail.item.wholesale_unit_conversion
         ) {
-            const item_detail = item.fullDetail.purchase_order_detail.item;
             const unitPrice = parseFloat(item.unit_price);
-
             return <>{formatCurrency(unitPrice)}</>;
         }
 
@@ -554,9 +550,6 @@ export default function Edit({ purchaseInvoice, suppliers = [], taxRates = [] }:
     };
 
     const getInvoiceItems = useCallback(() => {
-        // Removed the recursive fetchAllGoodsReceiptDetails function
-        // This was causing an infinite loop
-
         const goodsReceiptDetailsMap = {};
 
         purchaseInvoice.goods_receipts.forEach((receipt) => {
@@ -604,19 +597,13 @@ export default function Edit({ purchaseInvoice, suppliers = [], taxRates = [] }:
                         fullDetail && fullDetail.purchase_order_detail && fullDetail.purchase_order_detail.item.wholesale_unit_conversion
                             ? fullDetail.purchase_order_detail.item.wholesale_unit_conversion
                             : null,
-                    tax_amount: detail.tax_amount || (fullDetail ? fullDetail.tax_amount : 0),
-                    total_amount: detail.total_amount || (fullDetail ? fullDetail.total_amount : detail.total_price),
-                    fullDetail, // Include the full detail for wholesale calculations
+                    tax_amount: detail.tax_amount || (fullDetail ? Number(fullDetail.tax_amount || 0) : 0),
+                    total_amount: detail.total_amount || (fullDetail ? Number(fullDetail.total_amount || 0) : detail.total_price),
+                    fullDetail,
                 };
             }),
         );
-    }, [
-        data.purchase_invoice_goods_receipts,
-        goodsReceiptDetails,
-        notInvoicedGoodsReceipts,
-        purchaseInvoice.goods_receipts,
-        fetchGoodsReceiptDetails,
-    ]);
+    }, [data.purchase_invoice_goods_receipts, goodsReceiptDetails, notInvoicedGoodsReceipts, purchaseInvoice.goods_receipts]);
 
     const removeReceiptFromInvoice = (receiptIndex: number) => {
         const updatedGoodsReceipts = [...data.purchase_invoice_goods_receipts];
@@ -641,7 +628,6 @@ export default function Edit({ purchaseInvoice, suppliers = [], taxRates = [] }:
 
     const getGroupedInvoiceItems = useCallback(() => {
         const items = getInvoiceItems();
-
         const groupedItems = {};
 
         items.forEach((item) => {
@@ -657,7 +643,6 @@ export default function Edit({ purchaseInvoice, suppliers = [], taxRates = [] }:
                     items: [],
                 };
             }
-
             groupedItems[receiptId].items.push(item);
         });
 
@@ -686,7 +671,7 @@ export default function Edit({ purchaseInvoice, suppliers = [], taxRates = [] }:
         const allAvailableReceipts = [...receiptsToDisplay];
 
         purchaseInvoice.goods_receipts.forEach((receipt) => {
-            if (!receiptsToDisplay.some((r) => r.id === receipt.id)) {
+            if (!allAvailableReceipts.some((r) => r.id === receipt.id)) {
                 if (!isReceiptInInvoice(receipt.id)) {
                     allAvailableReceipts.push(receipt);
                 }
@@ -743,7 +728,7 @@ export default function Edit({ purchaseInvoice, suppliers = [], taxRates = [] }:
                                             </Label>
                                             <Combobox
                                                 value={data.supplier_id ? data.supplier_id.toString() : ''}
-                                                onValueChange={() => {}} // Empty function since it's disabled
+                                                onValueChange={() => {}}
                                                 options={suppliers.map((supplier) => ({
                                                     value: supplier.id.toString(),
                                                     label: supplier.name,
@@ -846,7 +831,6 @@ export default function Edit({ purchaseInvoice, suppliers = [], taxRates = [] }:
                                         <p className="text-sm text-gray-500">Manage items included in this invoice</p>
                                     </div>
 
-                                    {/* Item Selection Section */}
                                     {data.supplier_id && (
                                         <div className="mb-6 space-y-4">
                                             {loading ? (
@@ -854,7 +838,10 @@ export default function Edit({ purchaseInvoice, suppliers = [], taxRates = [] }:
                                                     <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
                                                     <span className="ml-2 text-gray-500">Loading...</span>
                                                 </div>
-                                            ) : receiptsToDisplay.length === 0 ? (
+                                            ) : receiptsToDisplay.length === 0 &&
+                                              !getAvailableGoodsReceipts().some((gr) =>
+                                                  purchaseInvoice.goods_receipts.find((pigr) => pigr.id === gr.id),
+                                              ) ? (
                                                 <div className="rounded-md border border-gray-200 bg-gray-50 p-4 text-center text-gray-500">
                                                     No additional goods receipts found for this supplier.
                                                 </div>
@@ -875,7 +862,8 @@ export default function Edit({ purchaseInvoice, suppliers = [], taxRates = [] }:
                                                         />
                                                         {getAvailableGoodsReceipts().length === 0 &&
                                                             data.supplier_id &&
-                                                            receiptsToDisplay.length > 0 && (
+                                                            (receiptsToDisplay.length > 0 ||
+                                                                purchaseInvoice.goods_receipts.some((gr) => !isReceiptInInvoice(gr.id))) && (
                                                                 <p className="mt-2 text-sm text-amber-600">
                                                                     All available goods receipts have been added to this invoice.
                                                                 </p>
@@ -949,7 +937,6 @@ export default function Edit({ purchaseInvoice, suppliers = [], taxRates = [] }:
                                         </div>
                                     )}
 
-                                    {/* Items to be Invoiced Summary */}
                                     <div>
                                         <h3 className="mb-3 text-sm font-semibold text-gray-700">Invoice Items</h3>
 
