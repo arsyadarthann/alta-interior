@@ -41,10 +41,10 @@ export default function SettingsLayout({ children, fullWidth = false }: Settings
             title: 'User Account',
             url: '/settings/users',
         },
-        hasPermission('read_warehouse') && {
-            title: 'Warehouse',
-            url: '/settings/warehouses',
-        },
+        // hasPermission('read_warehouse') && {
+        //     title: 'Warehouse',
+        //     url: '/settings/warehouses',
+        // },
         hasPermission('read_branch') && {
             title: 'Branch',
             url: '/settings/branches',

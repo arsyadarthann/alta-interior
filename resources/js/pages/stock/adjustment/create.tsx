@@ -422,13 +422,14 @@ export default function Create({ branches = [], warehouses = [] }: { branches?: 
                         placeholder="Select an item"
                         searchPlaceholder="Search items..."
                         initialDisplayCount={5}
-                        className={
+                        className={cn(
+                            'w-full max-w-xs truncate',
                             isAddingNew && errors[`new_item.item_id` as keyof typeof errors]
                                 ? 'border-red-500 ring-red-100'
                                 : !isAddingNew && errors[`stock_adjustment_details.${index}.item_id` as keyof typeof errors]
                                   ? 'border-red-500 ring-red-100'
-                                  : ''
-                        }
+                                  : '',
+                        )}
                     />
                 </div>
                 <div className="relative grid min-w-[140px] flex-1 gap-2">
