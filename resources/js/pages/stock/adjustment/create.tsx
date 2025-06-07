@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToastNotification } from '@/hooks/use-toast-notification';
 import AppLayout from '@/layouts/app-layout';
-import { cn, formatDate, formatDateToYmd } from '@/lib/utils';
+import { cn, formatDate, formatDateToYmd, formatDecimal } from '@/lib/utils';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { ArrowLeft, CalendarIcon, CheckCircle, Edit, PlusCircle, Trash2 } from 'lucide-react';
@@ -438,13 +438,7 @@ export default function Create({ branches = [], warehouses = [] }: { branches?: 
                         <Input
                             id={`before_adjustment_quantity_${index}`}
                             type="number"
-                            value={
-                                item.before_adjustment_quantity === 0
-                                    ? 0
-                                    : item.before_adjustment_quantity % 1 === 0
-                                      ? Math.abs(Number(item.before_adjustment_quantity))
-                                      : Number(item.before_adjustment_quantity.toFixed(2))
-                            }
+                            value={item.before_adjustment_quantity === 0 ? 0 : formatDecimal(item.before_adjustment_quantity)}
                             readOnly
                             className="bg-gray-50 pr-10"
                         />
