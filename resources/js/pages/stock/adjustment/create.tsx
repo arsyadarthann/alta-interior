@@ -505,13 +505,7 @@ export default function Create({ branches = [], warehouses = [] }: { branches?: 
                         <Input
                             id={`adjustment_quantity_${index}`}
                             type="number"
-                            value={
-                                item.adjustment_quantity === 0
-                                    ? 0
-                                    : item.adjustment_quantity < 0
-                                      ? Math.abs(Number(item.adjustment_quantity.toFixed(2)))
-                                      : Number(item.adjustment_quantity.toFixed(2))
-                            }
+                            value={item.adjustment_quantity === 0 ? 0 : formatDecimal(item.adjustment_quantity)}
                             readOnly
                             className={`bg-gray-50 pr-10 ${
                                 item.adjustment_quantity < 0 ? 'text-red-600' : item.adjustment_quantity > 0 ? 'text-green-600' : ''
@@ -595,12 +589,7 @@ export default function Create({ branches = [], warehouses = [] }: { branches?: 
                     <div className="mt-1 flex gap-4 text-sm text-gray-500">
                         <p className="font-medium text-gray-900">{itemName}</p>
                         <span>
-                            Before:{' '}
-                            {adjustmentItem.before_adjustment_quantity === 0
-                                ? 0
-                                : adjustmentItem.before_adjustment_quantity % 1 === 0
-                                  ? Math.abs(Number(adjustmentItem.before_adjustment_quantity))
-                                  : Number(adjustmentItem.before_adjustment_quantity.toFixed(2))}{' '}
+                            Before: {adjustmentItem.before_adjustment_quantity === 0 ? 0 : formatDecimal(adjustmentItem.before_adjustment_quantity)}{' '}
                             {itemUnit}
                         </span>
                         <span>
@@ -618,12 +607,7 @@ export default function Create({ branches = [], warehouses = [] }: { branches?: 
                                       : ''
                             }`}
                         >
-                            {adjustmentItem.adjustment_quantity === 0
-                                ? 0
-                                : adjustmentItem.adjustment_quantity % 1 === 0
-                                  ? Math.abs(Number(adjustmentItem.adjustment_quantity))
-                                  : Number(adjustmentItem.adjustment_quantity.toFixed(2))}{' '}
-                            {itemUnit}
+                            {adjustmentItem.adjustment_quantity === 0 ? 0 : formatDecimal(adjustmentItem.adjustment_quantity)} {itemUnit}
                         </span>
                         {adjustmentItem.reason && <span>Reason: {adjustmentItem.reason}</span>}
                     </div>
