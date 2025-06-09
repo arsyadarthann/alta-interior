@@ -672,17 +672,10 @@ export default function Create({
     };
 
     const getLocationOptions = () => {
-        const branchOptions = auth?.user?.branch_id
-            ? branches
-                  .filter((branch) => branch.id === auth.user.branch_id)
-                  .map((branch) => ({
-                      value: `branch:${branch.id}`,
-                      label: `${branch.name}`,
-                  }))
-            : branches.map((branch) => ({
-                  value: `branch:${branch.id}`,
-                  label: `${branch.name}`,
-              }));
+        const branchOptions = branches.map((branch) => ({
+            value: `branch:${branch.id}`,
+            label: `${branch.name}`,
+        }));
 
         const warehouseOptions = warehouses.map((warehouse) => ({
             value: `warehouse:${warehouse.id}`,

@@ -10,7 +10,7 @@ import { useToastNotification } from '@/hooks/use-toast-notification';
 import AppLayout from '@/layouts/app-layout';
 import { cn, formatCurrency, formatDecimal } from '@/lib/utils';
 import { type BreadcrumbItem } from '@/types';
-import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import { format } from 'date-fns';
 import { ArrowLeft, CalendarIcon, CheckCircle, Edit, PlusCircle, Trash2 } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -93,7 +93,6 @@ export default function EditSalesOrder({
     const [availableStocks, setAvailableStocks] = useState<Record<number, number>>({});
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
     const [addingItem, setAddingItem] = useState<boolean>(false);
-    const { auth } = usePage().props as unknown as { auth: { user: { branch_id: number } } };
     const [initialized, setInitialized] = useState(false);
     const [selectedCustomerPrices, setSelectedCustomerPrices] = useState<Record<number, number>>({});
 
@@ -630,17 +629,10 @@ export default function EditSalesOrder({
     };
 
     const getLocationOptions = () => {
-        const branchOptions = auth?.user?.branch_id
-            ? branches
-                  .filter((branch) => branch.id === auth.user.branch_id)
-                  .map((branch) => ({
-                      value: `branch:${branch.id}`,
-                      label: `${branch.name}`,
-                  }))
-            : branches.map((branch) => ({
-                  value: `branch:${branch.id}`,
-                  label: `${branch.name}`,
-              }));
+        const branchOptions = branches.map((branch) => ({
+            value: `branch:${branch.id}`,
+            label: `${branch.name}`,
+        }));
 
         const warehouseOptions = warehouses.map((warehouse) => ({
             value: `warehouse:${warehouse.id}`,
