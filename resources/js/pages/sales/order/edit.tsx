@@ -735,13 +735,14 @@ export default function EditSalesOrder({
                         placeholder="Select an item"
                         searchPlaceholder="Search items..."
                         initialDisplayCount={5}
-                        className={
+                        className={cn(
+                            'w-full max-w-xs truncate',
                             isAddingNew && errors[`new_item.item_id` as keyof typeof errors]
                                 ? 'border-red-500 ring-red-100'
                                 : !isAddingNew && errors[`sales_order_details.${index}.item_id` as keyof typeof errors]
                                   ? 'border-red-500 ring-red-100'
-                                  : ''
-                        }
+                                  : '',
+                        )}
                     />
                 </div>
 
