@@ -244,7 +244,7 @@ export default function Create({ code, salesOrders }: Props) {
                                                         )}
                                                     >
                                                         <CalendarIcon className="mr-2 h-4 w-4" />
-                                                        {data.date ? format(data.date, 'dd MMM Y') : <span>Select date</span>}
+                                                        {data.date ? format(data.date, 'dd MMM y') : <span>Select date</span>}
                                                     </Button>
                                                 </PopoverTrigger>
                                                 <PopoverContent className="w-auto p-0" align="start">
@@ -268,7 +268,7 @@ export default function Create({ code, salesOrders }: Props) {
                                                 onValueChange={handleSalesOrderChange}
                                                 options={salesOrders.map((order) => ({
                                                     value: String(order.id),
-                                                    label: `${order.code} - ${order.customer.name ?? order.customer_name}`,
+                                                    label: `${order.code} - ${order.customer?.name ?? order.customer_name}`,
                                                 }))}
                                                 placeholder="Select sales order"
                                                 searchPlaceholder="Search orders..."
