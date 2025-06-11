@@ -534,10 +534,12 @@ export default function Create({ code, salesInvoices, paymentMethods }: Props) {
                                             <div className="rounded-md border p-4">
                                                 <h3 className="mb-2 font-medium">Bill To</h3>
                                                 <div className="text-sm">
-                                                    <p className="font-medium">{invoiceDetails.customer.name ?? invoiceDetails.customer_name}</p>
-                                                    <p>{invoiceDetails.customer.address ?? 'No address'}</p>
-                                                    <p>Phone: {invoiceDetails.customer.phone ?? '-'}</p>
-                                                    <p>Contact: {invoiceDetails.customer.contact_name ?? '-'}</p>
+                                                    <p className="font-medium">
+                                                        {invoiceDetails.customer ? invoiceDetails.customer.name : invoiceDetails.customer_name}
+                                                    </p>
+                                                    <p>{invoiceDetails.customer ? invoiceDetails.customer.address : '-'}</p>
+                                                    <p>Phone: {invoiceDetails.customer ? invoiceDetails.customer.phone : '-'}</p>
+                                                    <p>Contact: {invoiceDetails.customer ? invoiceDetails.customer.contact_name : '-'}</p>
                                                 </div>
                                             </div>
                                         </div>
