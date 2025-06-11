@@ -368,6 +368,7 @@ export default function Create({ code, salesInvoices, paymentMethods }: Props) {
                                             value={data.code}
                                             onChange={(e) => setData('code', e.target.value)}
                                             placeholder="Enter payment code"
+                                            readOnly
                                             className={errors.code ? 'border-red-500 ring-red-100' : ''}
                                         />
                                         {errors.code && <p className="mt-1 text-xs text-red-500">{errors.code}</p>}
@@ -533,7 +534,7 @@ export default function Create({ code, salesInvoices, paymentMethods }: Props) {
                                             <div className="rounded-md border p-4">
                                                 <h3 className="mb-2 font-medium">Bill To</h3>
                                                 <div className="text-sm">
-                                                    <p className="font-medium">{invoiceDetails.customer.name}</p>
+                                                    <p className="font-medium">{invoiceDetails.customer.name ?? invoiceDetails.customer_name}</p>
                                                     <p>{invoiceDetails.customer.address ?? 'No address'}</p>
                                                     <p>Phone: {invoiceDetails.customer.phone ?? '-'}</p>
                                                     <p>Contact: {invoiceDetails.customer.contact_name ?? '-'}</p>
