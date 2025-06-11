@@ -336,18 +336,6 @@ export default function Create({ code, salesInvoices, paymentMethods }: Props) {
         }, 0);
     };
 
-    // Calculate total value of all waybills in the invoice
-    const calculateTotalWaybillsValue = (): number => {
-        if (!invoiceDetails?.sales_invoice_details) return 0;
-
-        return invoiceDetails.sales_invoice_details.reduce((total, detail) => {
-            if (detail.waybill) {
-                return total + calculateWaybillTotal(detail.waybill);
-            }
-            return total;
-        }, 0);
-    };
-
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Create Payment" />
@@ -425,7 +413,7 @@ export default function Create({ code, salesInvoices, paymentMethods }: Props) {
                                             onValueChange={handleInvoiceChange}
                                             options={salesInvoices.map((invoice) => ({
                                                 value: invoice.id.toString(),
-                                                label: `${invoice.code} - ${invoice.customer.name} (${formatCurrency(parseFloat(invoice.remaining_amount))})`,
+                                                label: `${invoice.code} - ${invoice.customer ? invoice.customer.name : invoice.customer_name} (${formatCurrency(parseFloat(invoice.remaining_amount))})`,
                                             }))}
                                             placeholder="Select invoice"
                                             searchPlaceholder="Search invoices..."
