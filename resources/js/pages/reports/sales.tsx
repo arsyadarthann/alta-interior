@@ -12,7 +12,7 @@ import { cn, formatCurrency } from '@/lib/utils';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
 import { format } from 'date-fns';
-import { CalendarIcon, Download, Eye, FileText } from 'lucide-react';
+import { CalendarIcon, Eye } from 'lucide-react';
 import * as React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { DateRange } from 'react-day-picker';
@@ -139,16 +139,6 @@ function SalesReceivablesReportFilter({
                 {/* Reset button aligned with the filters */}
                 <Button variant="outline" onClick={onResetFilters} className="h-10">
                     Reset Filters
-                </Button>
-
-                {/* Export to PDF/Excel buttons */}
-                <Button variant="outline" className="h-10">
-                    <FileText className="mr-2 h-4 w-4" />
-                    Export PDF
-                </Button>
-                <Button variant="outline" className="h-10">
-                    <Download className="mr-2 h-4 w-4" />
-                    Export Excel
                 </Button>
             </div>
         </div>
@@ -520,9 +510,6 @@ export default function SalesReceivablesReport({ branches, salesReports }: Sales
                                             {formatCurrency(paidInvoices.reduce((sum, inv) => sum + parseFloat(inv.grand_total), 0))}
                                         </p>
                                     </div>
-                                    <Badge variant="secondary" className="bg-green-100 text-green-700">
-                                        {totalInvoices > 0 ? ((paidInvoices.length / totalInvoices) * 100).toFixed(1) : 0}%
-                                    </Badge>
                                 </div>
                             </Card>
 
@@ -536,9 +523,6 @@ export default function SalesReceivablesReport({ branches, salesReports }: Sales
                                             sisa
                                         </p>
                                     </div>
-                                    <Badge variant="secondary" className="bg-yellow-100 text-yellow-700">
-                                        {totalInvoices > 0 ? ((partiallyPaidInvoices.length / totalInvoices) * 100).toFixed(1) : 0}%
-                                    </Badge>
                                 </div>
                             </Card>
 
@@ -551,9 +535,6 @@ export default function SalesReceivablesReport({ branches, salesReports }: Sales
                                             {formatCurrency(unpaidInvoices.reduce((sum, inv) => sum + parseFloat(inv.grand_total), 0))}
                                         </p>
                                     </div>
-                                    <Badge variant="secondary" className="bg-red-100 text-red-700">
-                                        {totalInvoices > 0 ? ((unpaidInvoices.length / totalInvoices) * 100).toFixed(1) : 0}%
-                                    </Badge>
                                 </div>
                             </Card>
                         </div>
