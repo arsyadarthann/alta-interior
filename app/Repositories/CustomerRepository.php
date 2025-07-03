@@ -12,7 +12,17 @@ class CustomerRepository implements CustomerInterface
 
     public function getAll($filter)
     {
-        $query = $this->customer->orderBy('id');
+        $query = $this->customer
+            ->withCount(['salesInvoices as unpaid_invoices_count' => function ($query) {
+                $query->where('paid_status', '!=', 'paid');
+            }])
+            ->addSelect(['total_receivable' => function ($query) {
+                $query->selectRaw('COALESCE(SUM(remaining_amount), 0)')
+                    ->from('sales_invoices')
+                    ->whereColumn('customer_id', 'customers.id')
+                    ->where('paid_status', '!=', 'paid');
+            }])
+            ->orderBy('id');
 
         if (!empty($filter['search'])) {
             $searchTerm = strtolower($filter['search']);

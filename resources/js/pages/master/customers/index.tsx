@@ -2,6 +2,7 @@ import { DataTable } from '@/components/data-table';
 import { ActionColumn } from '@/components/data-table/action-column';
 import { createNumberColumn } from '@/components/data-table/columns';
 import Heading from '@/components/heading';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useToastNotification } from '@/hooks/use-toast-notification';
@@ -36,9 +37,14 @@ type Customer = {
     id: number;
     name: string;
     contact_name: string;
-    email: string;
+    email: string | null;
     phone: string;
     address: string;
+    created_at: string;
+    updated_at: string;
+    deleted_at: string | null;
+    unpaid_invoices_count: number;
+    total_receivable: string;
 };
 
 export default function Index({ customers, filters }: Props) {
@@ -93,6 +99,16 @@ export default function Index({ customers, filters }: Props) {
         debouncedSearch(value);
     };
 
+    // Format currency helper
+    const formatCurrency = (amount: string) => {
+        return new Intl.NumberFormat('id-ID', {
+            style: 'currency',
+            currency: 'IDR',
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0,
+        }).format(parseFloat(amount));
+    };
+
     const columns: ColumnDef<Customer>[] = [
         createNumberColumn<Customer>(),
         {
@@ -107,7 +123,7 @@ export default function Index({ customers, filters }: Props) {
             accessorKey: 'email',
             header: 'Email',
             cell: ({ row }: { row: Row<Customer> }) => {
-                const email = row.getValue('email') as string;
+                const email = row.getValue('email') as string | null;
                 return email ? email : '-';
             },
         },
@@ -118,6 +134,26 @@ export default function Index({ customers, filters }: Props) {
         {
             accessorKey: 'address',
             header: 'Address',
+        },
+        {
+            accessorKey: 'unpaid_invoices_count',
+            header: 'Unpaid Invoices',
+            cell: ({ row }: { row: Row<Customer> }) => {
+                const count = row.getValue('unpaid_invoices_count') as number;
+                if (count === 0) {
+                    return <Badge variant="secondary">0</Badge>;
+                }
+                return <Badge variant={count > 0 ? 'destructive' : 'secondary'}>{count}</Badge>;
+            },
+        },
+        {
+            accessorKey: 'total_receivable',
+            header: 'Outstanding',
+            cell: ({ row }: { row: Row<Customer> }) => {
+                const amount = row.getValue('total_receivable') as string;
+                const numAmount = parseFloat(amount);
+                return <span className={numAmount > 0 ? 'font-medium text-red-600' : 'text-gray-500'}>{formatCurrency(amount)}</span>;
+            },
         },
         ActionColumn<Customer>({
             hasPermission,

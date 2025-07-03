@@ -35,7 +35,7 @@ export function AppSidebar() {
     ];
 
     const customersAndSuppliersItems: NavItem[] = [
-        {
+        hasPermission('read_customer') && {
             title: 'Customers',
             url: '/master/customers',
             icon: BookUser,
@@ -223,6 +223,12 @@ export function AppSidebar() {
             url: '/reports/profit-loss',
             icon: TrendingUp,
             matchPatch: ['/reports/profit-loss', '/reports/profit-loss?*'],
+        },
+        {
+            title: 'Sales',
+            url: '/reports/sales',
+            icon: Banknote,
+            matchPatch: ['/reports/sales', '/reports/sales?*'],
         },
         {
             title: 'Stock Movement',
