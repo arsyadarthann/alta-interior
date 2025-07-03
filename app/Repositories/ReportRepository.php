@@ -349,6 +349,16 @@ class ReportRepository implements ReportInterface
         ];
     }
 
+    public function getSales()
+    {
+        $filters = $this->getDateAndSourceAbleFilters();
+
+        return $this->salesInvoice
+            ->when($filters['branchId'], fn($query) => $query->where('branch_id', $filters['branchId']))
+            ->whereBetween('date', [$filters['startDate'], $filters['endDate']])
+            ->get();
+    }
+
     private function formatStockMovements($stockMovements): array
     {
         $data = [

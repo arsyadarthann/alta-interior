@@ -116,7 +116,6 @@ Route::middleware(['auth'])->group(function () {
         Route::group(['prefix' => 'payments'], function () {
             Route::get('/', [PurchaseInvoicePaymentController::class, 'index'])->middleware('permission:read_purchase_invoice_payment')->name('procurement.payment.index');
             Route::get('/create', [PurchaseInvoicePaymentController::class, 'create'])->middleware('permission:create_purchase_invoice_payment')->name('procurement.payment.create');
-            Route::get('/getCode', [PurchaseInvoicePaymentController::class, 'getCode'])->middleware('permission:read_purchase_invoice_payment')->name('procurement.payment.getCode');
             Route::get('/getNotPaidPurchaseInvoice', [PurchaseInvoicePaymentController::class, 'getNotPaidPurchaseInvoice'])->middleware('permission:read_purchase_invoice_payment')->name('procurement.payment.getNotPaidInvoice');
             Route::get('/getPurchaseInvoiceData', [PurchaseInvoicePaymentController::class, 'getPurchaseInvoiceData'])->middleware('permission:read_purchase_invoice_payment')->name('procurement.payment.getPurchaseInvoiceData');
             Route::post('/', [PurchaseInvoicePaymentController::class, 'store'])->middleware('permission:create_purchase_invoice_payment')->name('procurement.payment.store');
@@ -178,6 +177,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::group(['prefix' => 'reports'], function () {
         Route::get('/profit-loss', [ReportController::class, 'getProfitLoss'])->name('reports.profit-loss');
+        Route::get('/sales', [ReportController::class, 'getSales'])->name('reports.sales');
         Route::get('/stock-movements', [ReportController::class, 'getStockMovements'])->name('reports.stock-movements');
     });
 

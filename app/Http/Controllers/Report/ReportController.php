@@ -30,6 +30,14 @@ class ReportController extends Controller
         ]);
     }
 
+    public function getSales()
+    {
+        return Inertia::render('reports/sales', [
+            'salesReports' => $this->report->getSales(),
+            'branches' => $this->branch->getAll(),
+        ]);
+    }
+
     public function getStockMovements()
     {
         return Inertia::render('reports/stock-movements', [
