@@ -253,7 +253,7 @@ class SalesInvoiceController extends Controller
             'salesInvoice' => $salesInvoice
         ]);
 
-        $pdf->setPaper('A4', 'portrait');
+        $pdf->setPaper([0, 0, 680, 510]);
         $pdf->setOptions([
             'isHtml5ParserEnabled' => true,
             'isPhpEnabled' => true,
