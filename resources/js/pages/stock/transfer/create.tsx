@@ -267,6 +267,21 @@ export default function Create({ branches = [], warehouses = [] }: { branches?: 
         [items, data.destination_able_id, data.destination_able_type, fetchDestinationItemStock, setData, data.stock_transfer_details],
     );
 
+    const formatStockQuantity = (stock: number | string | null | undefined): string => {
+        const numStock = Number(stock);
+
+        // Check if it's a valid number
+        if (isNaN(numStock)) return '0';
+
+        // If it's a whole number, return without decimals
+        if (Number.isInteger(numStock) || numStock % 1 === 0) {
+            return Math.floor(numStock).toString();
+        }
+
+        // If it has decimals, return with 2 decimal places
+        return numStock.toFixed(2);
+    };
+
     const handleSourceLocationChange = (value: string) => {
         // Skip processing for the placeholder value
         if (value === 'placeholder') return;
@@ -467,9 +482,10 @@ export default function Create({ branches = [], warehouses = [] }: { branches?: 
 
     const getAvailableItems = (currentIndex: number) => {
         return items.filter((item) => {
+            const stockValue = Number(item.stock);
             return (
-                item.stock &&
-                item.stock > 0 &&
+                !isNaN(stockValue) &&
+                stockValue > 0 &&
                 !data.stock_transfer_details.some((transferItem, i) => i !== currentIndex && transferItem.item_id === item.id)
             );
         });
@@ -536,7 +552,7 @@ export default function Create({ branches = [], warehouses = [] }: { branches?: 
                             }}
                             options={getAvailableItems(isAddingNew ? -1 : index).map((itm) => ({
                                 value: String(itm.id),
-                                label: `${itm.name} (${itm.code}) - Stock: ${itm.stock % 1 === 0 ? Math.floor(itm.stock) : itm.stock.toFixed(2)} ${itm.item_unit?.abbreviation || ''}`,
+                                label: `${itm.name} (${itm.code}) - Stock: ${formatStockQuantity(itm.stock)} ${itm.item_unit?.abbreviation || ''}`,
                             }))}
                             placeholder="Select an item"
                             searchPlaceholder="Search items..."
